@@ -10,11 +10,9 @@ provider boundary.
 
 ## Project status
 
-The repository contains the Milestone 0 foundation and the database portion of accounts and
-contacts. Profiles, private settings, discovery, contact requests, accepted contacts, and
-blocking now have PostgreSQL functions, RLS, grants, shared validation, and pgTAP coverage.
-Authentication screens and all contact UI remain unimplemented. Messaging, billing, and AI
-features are also absent. The project is not production-ready.
+The repository contains the foundation, account/social database layer, and web authentication,
+onboarding, profile, preferences, and security settings experience. Contact UI, conversations,
+messaging, billing, and AI features remain unimplemented. The project is not production-ready.
 
 ## Stack
 
@@ -49,6 +47,24 @@ Only those two public values belong in Vite environment files. `OPENROUTER_API_K
 `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_DB_URL` are future server-only settings. They must be
 configured in the relevant server or deployment secret store and must never use the `VITE_`
 prefix.
+
+Local Supabase disables email confirmation so registration can be exercised without an external
+mailer. Production deployments are expected to require email verification. Mailpit remains
+available at `http://127.0.0.1:54324` for local recovery-email inspection.
+
+## Authentication routes
+
+- `/login` and `/register`
+- `/verify-email`
+- `/forgot-password` and `/reset-password`
+- `/onboarding`
+- `/app`
+- `/app/settings/profile`
+- `/app/settings/preferences`
+- `/app/settings/security`
+
+Sessions are persisted by the Supabase browser client. Access and refresh tokens are never copied
+into application state or Zustand.
 
 ## Commands
 

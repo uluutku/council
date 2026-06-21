@@ -87,10 +87,17 @@ and only the profile/settings update columns required by their RLS policies.
 - `unblock_user`: idempotently removes only the caller block and restores nothing.
 - `list_my_contacts`: deterministic accepted-contact listing with minimal profile fields.
 - `list_my_contact_requests`: incoming/outgoing pending requests with an explicit direction.
+- `update_my_settings`: merges supported theme, notification, and privacy fields for
+  `auth.uid()` while preserving unrelated existing JSON keys.
 
 Every public function derives the acting user from `auth.uid()`. Pair mutations use a shared
 transaction-level advisory lock so request, response, removal, block, and unblock operations
 cannot race into duplicate or contradictory pair state.
+
+`update_my_settings` accepts no user ID. Notification and privacy patches must be JSON objects
+containing only currently supported boolean keys. Unsupported new keys and non-boolean values
+are rejected. Existing unknown keys are retained so later settings additions are not erased by
+an older client.
 
 ## Internal helpers
 

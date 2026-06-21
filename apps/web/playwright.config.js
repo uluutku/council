@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import { getLocalSupabaseEnvironment } from './tests/e2e/helpers/localSupabase.js';
 
 const port = 4173;
+const localSupabase = getLocalSupabaseEnvironment();
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -25,8 +27,8 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       ...process.env,
-      VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
-      VITE_SUPABASE_ANON_KEY: 'playwright-public-anon-key',
+      VITE_SUPABASE_URL: localSupabase.apiUrl,
+      VITE_SUPABASE_ANON_KEY: localSupabase.anonKey,
     },
   },
 });

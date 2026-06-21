@@ -110,7 +110,105 @@ export const profileSearchQuerySchema = z
   })
   .strict();
 
+export const emailSchema = z
+  .string()
+  .trim()
+  .min(1, 'Email is required.')
+  .max(254, 'Email is too long.')
+  .email('Enter a valid email address.');
+
+export const passwordSchema = z
+  .string()
+  .min(10, 'Password must contain at least 10 characters.')
+  .max(128, 'Password must contain at most 128 characters.');
+
+const confirmationRefinement = (value) => value.password === value.confirmPassword;
+
+export const registrationFormSchema = z
+  .object({
+    email: emailSchema,
+    password: passwordSchema,
+    confirmPassword: z.string(),
+    acceptTerms: z.literal(true, {
+      error: 'You must acknowledge the terms and privacy policy.',
+    }),
+  })
+  .strict()
+  .refine(confirmationRefinement, {
+    path: ['confirmPassword'],
+    message: 'Passwords do not match.',
+  });
+
+export const loginFormSchema = z
+  .object({
+    email: emailSchema,
+    password: z.string().min(1, 'Password is required.').max(128, 'Password is too long.'),
+  })
+  .strict();
+
+export const forgotPasswordFormSchema = z
+  .object({
+    email: emailSchema,
+  })
+  .strict();
+
+export const resetPasswordFormSchema = z
+  .object({
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .strict()
+  .refine(confirmationRefinement, {
+    path: ['confirmPassword'],
+    message: 'Passwords do not match.',
+  });
+
+export const usernameOnboardingSchema = z
+  .object({
+    username: usernameSchema,
+    display_name: nullableTrimmedString(60, 'Display name'),
+  })
+  .strict();
+
+export const profileFormSchema = z
+  .object({
+    username: usernameSchema,
+    display_name: nullableTrimmedString(60, 'Display name'),
+    bio: nullableTrimmedString(300, 'Biography'),
+    status_text: nullableTrimmedString(120, 'Status text'),
+  })
+  .strict();
+
+export const notificationPreferencesSchema = z
+  .object({
+    message_notifications: z.boolean(),
+    message_previews: z.boolean(),
+    sound: z.boolean(),
+  })
+  .strict();
+
+export const privacyPreferencesSchema = z
+  .object({
+    show_online_status: z.boolean(),
+    show_last_seen: z.boolean(),
+    allow_contact_requests: z.boolean(),
+  })
+  .strict();
+
+export const preferencesFormSchema = z
+  .object({
+    theme: z.enum(['system', 'light', 'dark']),
+    notification_preferences: notificationPreferencesSchema,
+    privacy_preferences: privacyPreferencesSchema,
+  })
+  .strict();
+
 /** @typedef {z.infer<typeof profileUpdateInputSchema>} ProfileUpdateInput */
 /** @typedef {z.infer<typeof publicProfileSchema>} PublicProfile */
 /** @typedef {z.infer<typeof userSettingsUpdateSchema>} UserSettingsUpdate */
 /** @typedef {z.infer<typeof profileSearchQuerySchema>} ProfileSearchQuery */
+/** @typedef {z.infer<typeof registrationFormSchema>} RegistrationForm */
+/** @typedef {z.infer<typeof loginFormSchema>} LoginForm */
+/** @typedef {z.infer<typeof usernameOnboardingSchema>} UsernameOnboarding */
+/** @typedef {z.infer<typeof profileFormSchema>} ProfileForm */
+/** @typedef {z.infer<typeof preferencesFormSchema>} PreferencesForm */

@@ -3,11 +3,22 @@ import {
   applicationConfigSchema,
   contactRequestDirectionSchema,
   contactRequestResponseSchema,
+  emailSchema,
+  forgotPasswordFormSchema,
+  loginFormSchema,
+  notificationPreferencesSchema,
+  passwordSchema,
+  preferencesFormSchema,
+  privacyPreferencesSchema,
+  profileFormSchema,
   profileSearchQuerySchema,
   profileUpdateInputSchema,
   publicProfileSchema,
+  registrationFormSchema,
   relationshipStatusSchema,
+  resetPasswordFormSchema,
   userSettingsUpdateSchema,
+  usernameOnboardingSchema,
   usernameSchema,
 } from './index.js';
 
@@ -141,5 +152,113 @@ describe('social contract schemas', () => {
     );
     expect(userSettingsUpdateSchema.safeParse({ ai_preferences: null }).success).toBe(false);
     expect(userSettingsUpdateSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('authentication schemas', () => {
+  it('normalizes email whitespace without changing password contents', () => {
+    expect(
+      loginFormSchema.parse({
+        email: '  User@Example.com ',
+        password: ' keep My Spaces ',
+      }),
+    ).toEqual({
+      email: 'User@Example.com',
+      password: ' keep My Spaces ',
+    });
+  });
+
+  it.each(['invalid', '@example.com', 'user@'])('rejects invalid email %s', (email) => {
+    expect(emailSchema.safeParse(email).success).toBe(false);
+  });
+
+  it('enforces a 10 to 128 character password without complexity rules', () => {
+    expect(passwordSchema.parse('abcdefghij')).toBe('abcdefghij');
+    expect(passwordSchema.safeParse('short').success).toBe(false);
+    expect(passwordSchema.safeParse('a'.repeat(129)).success).toBe(false);
+  });
+
+  it('validates registration confirmation and acknowledgment', () => {
+    const valid = {
+      email: 'person@example.com',
+      password: 'long-password',
+      confirmPassword: 'long-password',
+      acceptTerms: true,
+    };
+
+    expect(registrationFormSchema.parse(valid).email).toBe('person@example.com');
+    expect(
+      registrationFormSchema.safeParse({ ...valid, confirmPassword: 'different-password' }).success,
+    ).toBe(false);
+    expect(registrationFormSchema.safeParse({ ...valid, acceptTerms: false }).success).toBe(false);
+  });
+
+  it('validates forgot and reset password forms', () => {
+    expect(forgotPasswordFormSchema.parse({ email: 'user@example.com' }).email).toBe(
+      'user@example.com',
+    );
+    expect(
+      resetPasswordFormSchema.safeParse({
+        password: 'updated-password',
+        confirmPassword: 'not-the-same',
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('account form schemas', () => {
+  it('validates onboarding and profile fields consistently with the database', () => {
+    expect(
+      usernameOnboardingSchema.parse({
+        username: ' New_User ',
+        display_name: ' New User ',
+      }),
+    ).toEqual({
+      username: 'new_user',
+      display_name: 'New User',
+    });
+
+    expect(
+      profileFormSchema.safeParse({
+        username: '_invalid',
+        display_name: null,
+        bio: null,
+        status_text: null,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('requires complete strict notification and privacy preference objects', () => {
+    expect(
+      notificationPreferencesSchema.parse({
+        message_notifications: true,
+        message_previews: false,
+        sound: true,
+      }).sound,
+    ).toBe(true);
+    expect(
+      privacyPreferencesSchema.safeParse({
+        show_online_status: true,
+        show_last_seen: true,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('validates the complete preferences form', () => {
+    expect(
+      preferencesFormSchema.parse({
+        theme: 'dark',
+        notification_preferences: {
+          message_notifications: true,
+          message_previews: false,
+          sound: true,
+        },
+        privacy_preferences: {
+          show_online_status: true,
+          show_last_seen: false,
+          allow_contact_requests: true,
+        },
+      }).theme,
+    ).toBe('dark');
   });
 });

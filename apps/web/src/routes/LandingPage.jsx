@@ -1,6 +1,11 @@
+import { useAuth } from '../app/providers/AuthContext.js';
 import { Link } from 'react-router-dom';
+import { usePageTitle } from '../hooks/usePageTitle.js';
 
 export function LandingPage() {
+  usePageTitle('');
+  const { isAuthenticated, isOnboarded } = useAuth();
+
   return (
     <main className="hero">
       <div className="hero-copy">
@@ -11,12 +16,20 @@ export function LandingPage() {
           private, server-readable inbox.
         </p>
         <div className="actions">
-          <Link className="button" to="/login">
-            Log in
-          </Link>
-          <Link className="button button--secondary" to="/app">
-            View development status
-          </Link>
+          {isAuthenticated ? (
+            <Link className="button" to={isOnboarded ? '/app' : '/onboarding'}>
+              Open Council
+            </Link>
+          ) : (
+            <>
+              <Link className="button" to="/register">
+                Create account
+              </Link>
+              <Link className="button button--secondary" to="/login">
+                Log in
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </main>

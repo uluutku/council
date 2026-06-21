@@ -55,6 +55,36 @@ Security-definer functions must use a fixed safe search path, qualify protected 
 only minimal return shapes, and receive explicit execution grants. Anonymous execution is
 revoked. Internal arbitrary-identity helpers are not executable by authenticated clients.
 
+## Session and recovery handling
+
+The Supabase browser client persists and refreshes sessions. Council does not manually store,
+decode, log, or copy access and refresh tokens into React context, Zustand, or TanStack Query.
+Protected content is withheld until initial session hydration and account queries finish.
+
+Logout clears user-scoped query data only after the Auth operation succeeds. Current-session and
+global logout use Supabase's supported scopes. Global logout revokes refresh sessions, while an
+already-issued short-lived access token may remain valid until expiry.
+
+Password-reset requests always display the same confirmation regardless of account existence.
+Recovery links redirect only to configured Council URLs. The reset form requires either a
+Supabase `PASSWORD_RECOVERY` event or an explicit password-change intent initiated from the
+security screen; an ordinary authenticated session is not treated as recovery.
+
+Navigation return paths are accepted only when they are internal `/app` or `/onboarding`
+destinations. Absolute URLs, protocol-relative URLs, JavaScript URLs, and guest-route loops are
+normalized to `/app`.
+
+Auth and database provider errors are mapped to fixed user-facing categories. Raw SQL, stack
+traces, sessions, verification links, and recovery tokens are never rendered or intentionally
+logged.
+
+## Local Auth testing
+
+The Playwright admin helper executes only in Node test code and obtains local credentials from
+`supabase status` at runtime. It refuses non-HTTP or non-loopback Supabase URLs before creating,
+deleting, or generating links for test users. No service-role credential is committed or exposed
+through a `VITE_*` variable.
+
 ## Logging
 
 Logs must never contain full message bodies, images, complete prompts, stored memories,

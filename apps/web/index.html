@@ -8,6 +8,14 @@
       content="Council combines private human messaging and persistent AI contacts."
     />
     <title>Council</title>
+    <script>
+      (() => {
+        const theme = localStorage.getItem('council.theme');
+        document.documentElement.dataset.theme = ['light', 'dark', 'system'].includes(theme)
+          ? theme
+          : 'system';
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

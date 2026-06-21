@@ -90,3 +90,45 @@ locks. Clients cannot directly insert, update, or delete relationships or blocks
 The private helper schema is not exposed as an API schema. Authenticated users receive only the
 schema/function access required for profile RLS; arbitrary-identity block/contact helpers remain
 non-executable.
+
+## Web authentication lifecycle
+
+```mermaid
+flowchart TD
+  Start[Application starts]
+  Session[Supabase getSession]
+  Events[Auth state subscription]
+  Account[Profile and settings queries]
+  Guest[Guest routes]
+  Onboarding[Username onboarding]
+  App[Protected application]
+
+  Start --> Session
+  Start --> Events
+  Session -->|No session| Guest
+  Session -->|Session| Account
+  Events --> Account
+  Account -->|Username missing| Onboarding
+  Account -->|Username present| App
+```
+
+Supabase Auth is the only session source of truth. `AuthProvider` hydrates the existing browser
+session, subscribes to Auth events, and exposes session/account states through React context.
+Tokens remain inside the Supabase client and are never copied to Zustand, query data, or logs.
+
+TanStack Query owns the current profile and settings. Queries are enabled only for authenticated
+users, and profile/settings creation races receive bounded retries because rows are created by
+the Auth database trigger. Profile errors remain distinct from signed-out state. Logout removes
+all `account` query keys after Supabase completes the session operation.
+
+Guest, onboarding, and protected guards wait for hydration before rendering or redirecting.
+Protected redirects carry only an internal route in navigation state. Login passes that value
+through a strict internal-path allowlist before navigation.
+
+Presentational components call focused Auth and account API modules rather than using Supabase
+directly. Profile changes use `set_my_profile`; preferences use `update_my_settings`, which
+merges supported fields without deleting unrelated stored JSON keys.
+
+Password recovery is marked only by Supabase's `PASSWORD_RECOVERY` event. Ordinary authenticated
+sessions can reach the same password form only after an explicit security-screen action stored
+temporarily in session storage.

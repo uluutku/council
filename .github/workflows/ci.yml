@@ -10,7 +10,7 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Check out repository
@@ -37,10 +37,18 @@ jobs:
       - name: Build web application
         run: npm run build
 
+      - name: Start local Supabase
+        run: npm run supabase:start
+
+      - name: Reset and test local database
+        run: npm run supabase:reset && npm run db:test
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright smoke tests
+      - name: Run Playwright authentication tests
         run: npm run test:e2e
 
-  # Database tests remain local until a stable Docker-backed Supabase CI job is introduced.
+      - name: Stop local Supabase
+        if: always()
+        run: npm run supabase:stop

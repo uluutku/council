@@ -20,7 +20,8 @@ that behavior is considered complete.
 Status:
 
 - Foundation repository base: complete.
-- Accounts and contacts: database schema, social functions, grants, RLS, shared contracts, and
-  database tests complete; authentication, onboarding, profile, settings, contacts, blocking, and
-  reporting UI remain pending.
+- Accounts and contacts: database schema, web authentication, username onboarding, profile
+  settings, preference settings, security settings, social functions, grants, RLS, shared
+  contracts, and tests complete. Contact discovery, request, blocking, and reporting UI remain
+  pending.
 - Every later milestone remains pending.
