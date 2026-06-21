@@ -43,6 +43,9 @@ jobs:
       - name: Reset and test local database
         run: npm run supabase:reset && npm run db:test
 
+      - name: Run messaging concurrency integration tests
+        run: npm run test:concurrency
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 

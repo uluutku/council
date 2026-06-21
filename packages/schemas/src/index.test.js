@@ -22,7 +22,11 @@ import {
   messagePageInputSchema,
   messagePageResponseSchema,
   messageSchema,
+  messageCreatedEventSchema,
+  messageDeletedEventSchema,
+  messageEditedEventSchema,
   messagingErrorCategorySchema,
+  messagingAvailabilityChangedEventSchema,
   notificationPreferencesSchema,
   passwordSchema,
   preferencesFormSchema,
@@ -34,14 +38,22 @@ import {
   publicProfileSchema,
   reactionInputSchema,
   reactionSchema,
+  reactionChangedEventSchema,
+  realtimeEventEnvelopeSchema,
+  realtimeEventNameSchema,
+  realtimeEventVersionSchema,
+  realtimeSubscriptionStatusSchema,
   registrationFormSchema,
   relationshipStatusSchema,
   resetPasswordFormSchema,
   receiptUpdateSchema,
+  receiptChangedEventSchema,
   sendMessageInputSchema,
   userSettingsUpdateSchema,
   usernameOnboardingSchema,
   usernameSchema,
+  conversationChangedEventSchema,
+  conversationCreatedEventSchema,
 } from './index.js';
 
 describe('applicationConfigSchema', () => {
@@ -688,5 +700,152 @@ describe('conversation and messaging contracts', () => {
   it('enumerates stable messaging error categories', () => {
     expect(messagingErrorCategorySchema.parse('idempotency_conflict')).toBe('idempotency_conflict');
     expect(messagingErrorCategorySchema.safeParse('raw_sql_error').success).toBe(false);
+  });
+});
+
+describe('Realtime event contracts', () => {
+  const eventId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  const conversationId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const entityId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const actorId = '11111111-1111-4111-8111-111111111111';
+  const occurredAt = '2026-06-22T19:00:00+00:00';
+  const base = { id: eventId, version: 1, occurred_at: occurredAt };
+
+  it('accepts the supported version, event names, and statuses only', () => {
+    expect(realtimeEventVersionSchema.parse(1)).toBe(1);
+    expect(realtimeEventVersionSchema.safeParse(2).success).toBe(false);
+    expect(realtimeEventNameSchema.parse('message.created')).toBe('message.created');
+    expect(realtimeEventNameSchema.safeParse('message.content').success).toBe(false);
+    expect(realtimeSubscriptionStatusSchema.parse('reconnecting')).toBe('reconnecting');
+    expect(realtimeSubscriptionStatusSchema.safeParse('open').success).toBe(false);
+  });
+
+  it('validates all message event variants without content', () => {
+    const fields = {
+      ...base,
+      conversation_id: conversationId,
+      entity_id: entityId,
+      sequence: 4,
+      actor_user_id: actorId,
+      last_sequence: 4,
+    };
+
+    expect(messageCreatedEventSchema.parse({ ...fields, event: 'message.created' }).sequence).toBe(
+      4,
+    );
+    expect(messageEditedEventSchema.parse({ ...fields, event: 'message.edited' }).event).toBe(
+      'message.edited',
+    );
+    expect(messageDeletedEventSchema.parse({ ...fields, event: 'message.deleted' }).event).toBe(
+      'message.deleted',
+    );
+    expect(
+      messageCreatedEventSchema.safeParse({
+        ...fields,
+        event: 'message.created',
+        content: 'private',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('validates reaction events and rejects reaction values', () => {
+    const event = {
+      ...base,
+      event: 'reaction.changed',
+      conversation_id: conversationId,
+      entity_id: entityId,
+      actor_user_id: actorId,
+    };
+    expect(reactionChangedEventSchema.parse(event).entity_id).toBe(entityId);
+    expect(reactionChangedEventSchema.safeParse({ ...event, emoji: '👍' }).success).toBe(false);
+  });
+
+  it('validates coherent receipt events', () => {
+    const event = {
+      ...base,
+      event: 'receipt.changed',
+      conversation_id: conversationId,
+      entity_id: actorId,
+      actor_user_id: actorId,
+      read_sequence: 3,
+      delivered_sequence: 4,
+    };
+    expect(receiptChangedEventSchema.parse(event).read_sequence).toBe(3);
+    expect(
+      receiptChangedEventSchema.safeParse({
+        ...event,
+        read_sequence: 5,
+        delivered_sequence: 4,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('validates inbox conversation events', () => {
+    expect(
+      conversationCreatedEventSchema.parse({
+        ...base,
+        event: 'conversation.created',
+        conversation_id: conversationId,
+      }).conversation_id,
+    ).toBe(conversationId);
+    expect(
+      conversationChangedEventSchema.parse({
+        ...base,
+        event: 'conversation.changed',
+        conversation_id: conversationId,
+        last_sequence: 8,
+      }).last_sequence,
+    ).toBe(8);
+  });
+
+  it('rejects availability causes, actors, and block direction', () => {
+    const event = {
+      ...base,
+      event: 'messaging.availability_changed',
+      conversation_id: conversationId,
+    };
+    expect(messagingAvailabilityChangedEventSchema.parse(event).event).toBe(
+      'messaging.availability_changed',
+    );
+    expect(
+      messagingAvailabilityChangedEventSchema.safeParse({
+        ...event,
+        cause: 'blocked',
+        actor_user_id: actorId,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects malformed envelope fields and unknown sensitive metadata', () => {
+    expect(
+      realtimeEventEnvelopeSchema.safeParse({
+        ...base,
+        event: 'conversation.created',
+        conversation_id: 'not-a-uuid',
+      }).success,
+    ).toBe(false);
+    expect(
+      realtimeEventEnvelopeSchema.safeParse({
+        ...base,
+        event: 'conversation.created',
+        conversation_id: conversationId,
+        email: 'private@example.test',
+      }).success,
+    ).toBe(false);
+    expect(
+      realtimeEventEnvelopeSchema.safeParse({
+        ...base,
+        event: 'unknown.event',
+        conversation_id: conversationId,
+      }).success,
+    ).toBe(false);
+    expect(
+      realtimeEventEnvelopeSchema.safeParse({
+        ...base,
+        occurred_at: 'yesterday',
+        event: 'conversation.created',
+        conversation_id: conversationId,
+      }).success,
+    ).toBe(false);
   });
 });

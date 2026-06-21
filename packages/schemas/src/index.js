@@ -196,6 +196,7 @@ export const conversationTypeSchema = z.literal('direct');
 const uuidSchema = z.string().uuid();
 const positiveSequenceSchema = z.number().int().positive();
 const nonnegativeSequenceSchema = z.number().int().nonnegative();
+export const realtimeUuidSchema = uuidSchema;
 
 export const directConversationResultSchema = z
   .object({
@@ -393,6 +394,130 @@ export const messagingErrorCategorySchema = z.enum([
   'unknown_error',
 ]);
 
+export const realtimeEventVersionSchema = z.literal(1);
+export const realtimeEventNameSchema = z.enum([
+  'message.created',
+  'message.edited',
+  'message.deleted',
+  'reaction.changed',
+  'receipt.changed',
+  'messaging.availability_changed',
+  'conversation.created',
+  'conversation.changed',
+]);
+export const realtimeSubscriptionStatusSchema = z.enum([
+  'connecting',
+  'subscribed',
+  'reconnecting',
+  'closed',
+  'channel_error',
+  'timed_out',
+]);
+
+const realtimeEventBaseShape = {
+  id: uuidSchema,
+  version: realtimeEventVersionSchema,
+  occurred_at: timestampSchema,
+};
+
+export const messageCreatedEventSchema = z
+  .object({
+    ...realtimeEventBaseShape,
+    event: z.literal('message.created'),
+    conversation_id: uuidSchema,
+    entity_id: uuidSchema,
+    sequence: positiveSequenceSchema,
+    actor_user_id: uuidSchema,
+    last_sequence: positiveSequenceSchema,
+  })
+  .strict();
+
+export const messageEditedEventSchema = z
+  .object({
+    ...realtimeEventBaseShape,
+    event: z.literal('message.edited'),
+    conversation_id: uuidSchema,
+    entity_id: uuidSchema,
+    sequence: positiveSequenceSchema,
+    actor_user_id: uuidSchema,
+    last_sequence: positiveSequenceSchema,
+  })
+  .strict();
+
+export const messageDeletedEventSchema = z
+  .object({
+    ...realtimeEventBaseShape,
+    event: z.literal('message.deleted'),
+    conversation_id: uuidSchema,
+    entity_id: uuidSchema,
+    sequence: positiveSequenceSchema,
+    actor_user_id: uuidSchema,
+    last_sequence: positiveSequenceSchema,
+  })
+  .strict();
+
+export const reactionChangedEventSchema = z
+  .object({
+    ...realtimeEventBaseShape,
+    event: z.literal('reaction.changed'),
+    conversation_id: uuidSchema,
+    entity_id: uuidSchema,
+    actor_user_id: uuidSchema,
+  })
+  .strict();
+
+export const receiptChangedEventSchema = z
+  .object({
+    ...realtimeEventBaseShape,
+    event: z.literal('receipt.changed'),
+    conversation_id: uuidSchema,
+    entity_id: uuidSchema,
+    actor_user_id: uuidSchema,
+    read_sequence: nonnegativeSequenceSchema,
+    delivered_sequence: nonnegativeSequenceSchema,
+  })
+  .strict()
+  .refine(
+    (event) => event.read_sequence <= event.delivered_sequence,
+    'Realtime read sequence cannot exceed delivered sequence.',
+  );
+
+export const conversationCreatedEventSchema = z
+  .object({
+    ...realtimeEventBaseShape,
+    event: z.literal('conversation.created'),
+    conversation_id: uuidSchema,
+  })
+  .strict();
+
+export const conversationChangedEventSchema = z
+  .object({
+    ...realtimeEventBaseShape,
+    event: z.literal('conversation.changed'),
+    conversation_id: uuidSchema,
+    last_sequence: positiveSequenceSchema,
+  })
+  .strict();
+
+export const messagingAvailabilityChangedEventSchema = z
+  .object({
+    ...realtimeEventBaseShape,
+    event: z.literal('messaging.availability_changed'),
+    conversation_id: uuidSchema,
+  })
+  .strict();
+
+export const realtimeEventEnvelopeSchema = z.discriminatedUnion('event', [
+  messageCreatedEventSchema,
+  messageEditedEventSchema,
+  messageDeletedEventSchema,
+  reactionChangedEventSchema,
+  receiptChangedEventSchema,
+  conversationCreatedEventSchema,
+  conversationChangedEventSchema,
+  messagingAvailabilityChangedEventSchema,
+]);
+
 export const emailSchema = z
   .string()
   .trim()
@@ -508,3 +633,5 @@ export const preferencesFormSchema = z
 /** @typedef {z.infer<typeof conversationMemberReceiptSchema>} ConversationMemberReceipt */
 /** @typedef {z.infer<typeof sendMessageInputSchema>} SendMessageInput */
 /** @typedef {z.infer<typeof messagingErrorCategorySchema>} MessagingErrorCategory */
+/** @typedef {z.infer<typeof realtimeEventEnvelopeSchema>} RealtimeEventEnvelope */
+/** @typedef {z.infer<typeof realtimeSubscriptionStatusSchema>} RealtimeSubscriptionStatus */

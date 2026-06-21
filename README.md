@@ -10,7 +10,8 @@ be honest that the server can read your messages.
 
 It is a work in progress. The account and contact layers are finished and tested. The database
 foundation for direct conversations and text messages now exists, but the inbox, chat interface,
-Realtime delivery, media, and the AI side come later. The rest of this README is the honest
+media, and the AI side come later. Private Realtime delivery and reconciliation contracts now
+exist underneath the still-unimplemented chat interface. The rest of this README is the honest
 status, not a pitch.
 
 ## What works today
@@ -32,13 +33,17 @@ react, and advance delivered/read state through controlled database functions. E
 remains readable after contact removal or blocking, while new writes are denied until an
 accepted, unblocked relationship exists again.
 
+Database mutations also emit private, content-free Realtime Broadcast hints to conversation
+members and per-user inbox topics. These events are validated strictly in the browser and always
+lead back to database reconciliation; Broadcast is not treated as message storage.
+
 ## What it can't do yet
 
 There is no chat interface or inbox. The browser does not yet query or display the new message
-records. There is no Realtime subscription, typing indicator, file or image support, notification
-delivery, or AI contact. None of it is faked in the UI on purpose, because a disabled "Message"
-button that goes nowhere is worse than no button at all. There is also no mobile app, no group
-chats, and no billing.
+records. There is no typing indicator, presence, file or image support, notification delivery, or
+AI contact. None of it is faked in the UI on purpose, because a disabled "Message" button that
+goes nowhere is worse than no button at all. There is also no mobile app, no group chats, and no
+billing.
 
 So right now Council has the account, contact, and secure database foundations of a messenger,
 without the user-facing chat experience.
@@ -122,27 +127,32 @@ local recovery emails.
 
 ## Commands
 
-| Command                  | Purpose                                                        |
-| ------------------------ | -------------------------------------------------------------- |
-| `npm run dev`            | Start the web application                                      |
-| `npm run check`          | Format check, lint, unit and component tests, production build |
-| `npm run test`           | Unit and component tests                                       |
-| `npm run test:e2e`       | Playwright browser flows (needs local Supabase)                |
-| `npm run db:test`        | pgTAP database tests (needs local Supabase)                    |
-| `npm run supabase:reset` | Recreate the local database from migrations                    |
+| Command                    | Purpose                                                        |
+| -------------------------- | -------------------------------------------------------------- |
+| `npm run dev`              | Start the web application                                      |
+| `npm run check`            | Format check, lint, unit and component tests, production build |
+| `npm run test`             | Unit and component tests                                       |
+| `npm run test:e2e`         | Playwright browser flows (needs local Supabase)                |
+| `npm run test:concurrency` | Multi-session messaging and private Realtime integration tests |
+| `npm run db:test`          | pgTAP database tests (needs local Supabase)                    |
+| `npm run supabase:reset`   | Recreate the local database from migrations                    |
 
-`npm run check` does not need Supabase. The database and browser tests do.
+`npm run check` does not need Supabase. Database, concurrency, and browser tests do.
 
 ## How it is tested
 
 The privacy claims above are checked at every layer, not just asserted here.
 
-- Database (pgTAP): 397 assertions over 13 files cover account/social authorization plus direct
+- Database (pgTAP): 450 assertions over 14 files cover account/social authorization plus direct
   conversation uniqueness, message sequencing and idempotency, replies, tombstones, reactions,
-  receipts, pagination, relationship changes, RLS isolation, and direct-write denial.
+  receipts, pagination, relationship changes, Realtime authorization/events, RLS isolation, and
+  direct-write denial.
 - Unit and component: the contact API wrappers, the error mapping, the search debounce and
-  stale-result handling, messaging schemas and API wrappers, and the loading, empty, success, and
-  error states on every existing page.
+  stale-result handling, messaging and Realtime schemas/subscribers, gap detection, API wrappers,
+  and the loading, empty, success, and error states on every existing page.
+- Multi-session integration: opposite-direction conversation creation, 20 concurrent sends,
+  idempotent retry races, conflicting payloads, out-of-order receipts, actual private channel
+  authorization, and database-originated Broadcast delivery.
 - Browser (Playwright): multi-user flows against real local Supabase, covering discovery and
   acceptance, removal, blocking in both directions, unblocking, and the contact-request privacy
   setting. Each test makes and cleans up its own users.

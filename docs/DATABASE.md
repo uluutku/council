@@ -207,6 +207,36 @@ RLS is executable by `authenticated`; arbitrary-identity authorization helpers r
 - idempotency lookup: `(sender_user_id, client_message_id)`;
 - reaction aggregation: `(message_id, emoji, user_id)`.
 
+## Realtime Broadcast foundation
+
+Migration `20260622010000_add_secure_realtime_delivery.sql` adds private database-originated event
+delivery. It uses the installed `realtime.send(jsonb, text, text, boolean)` function because
+Council needs a purpose-built minimal envelope rather than full-row change payloads.
+
+Private topic helpers generate `conversation:{uuid}` and `user:{uuid}:inbox`. The receive-policy
+helper accepts only exact lower-case UUID topic forms. Conversation topics authorize stored
+members; inbox topics authorize only their owner.
+
+Trigger points are messages, reactions, receipt updates, statement-level member insertion after a
+fully initialized conversation, relationships, and blocks. Message creation also emits
+`conversation.changed` to both inboxes. Latest-message edits/deletes emit inbox changes for
+preview reconciliation. Duplicate sends, repeated create/get calls, duplicate reaction adds,
+missing reaction removals, and no-op receipt updates produce no event.
+
+The availability trigger design avoids duplicate block events structurally. `block_user` inserts
+the block before deleting the relationship. The block trigger emits; the relationship-delete
+trigger sees the block and suppresses its equivalent event. Remove-contact, acceptance, and
+unblock transitions still emit from their natural trigger.
+
+`realtime.messages` has one authenticated SELECT policy using the exact-topic helper.
+Authenticated INSERT/UPDATE and anonymous SELECT privileges are revoked, and no client INSERT
+policy exists. Production must also disable Realtime's dashboard-level “Allow public access”
+setting; local and browser code always request private channels.
+
+The version-1 payload permits only `id`, `version`, `event`, `occurred_at`, and applicable
+conversation/entity/sequence fields. `realtime.send` adds an ID when absent, so Council supplies
+and validates that transport UUID explicitly.
+
 ## Future schema
 
 AI identities, memory, artifacts, billing, Storage policies, attachment records, Realtime

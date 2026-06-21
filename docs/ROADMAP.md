@@ -26,7 +26,9 @@ Status:
   and blocking UI are complete.
 - Reliable direct chat: direct-conversation, canonical-pair, membership, text-message, reply,
   edit/tombstone, reaction, receipt-state, authorization, pagination, shared-contract, and browser
-  API-wrapper foundations are complete. Inbox UI, conversation UI, composer behavior, optimistic
-  sending, Realtime, typing, offline reconciliation, attachments, and notifications remain
-  pending, so this milestone is not complete.
+  API-wrapper foundations are complete. Durable private Realtime events, private topic
+  authorization, reconciliation/gap contracts, and multi-session messaging concurrency tests are
+  complete. Inbox UI, conversation UI, composer behavior, optimistic rendering, typing, presence,
+  full offline recovery, attachments, and notifications remain pending, so this milestone is not
+  complete.
 - Every later milestone remains pending.

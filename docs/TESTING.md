@@ -63,6 +63,13 @@ The messaging matrix covers:
 - anonymous denial, unrelated-user isolation, internal-helper grants, and denial of every direct
   messaging-table mutation.
 
+Task 006 adds 53 pgTAP assertions for a total of 450 assertions across 14 files. They verify exact
+topic helpers, trigger/function presence, private receive policy behavior, client Broadcast
+denial, malformed/similar-prefix rejection, member/owner authorization, minimal event payloads,
+transaction failure behavior, idempotent event suppression, edits/deletes, reaction no-ops,
+coherent receipt advancement, generic availability payloads, and one logical block event per
+topic.
+
 Tests create deterministic `auth.users` rows inside transactions. They simulate real API
 authorization with:
 
@@ -139,6 +146,26 @@ mocks. They assert RPC names and `p_` argument shapes, normalization, strict res
 deleted-content rejection, raw-error propagation for safe mapping, stable category mapping, and
 the absence of message-content logging. No component or Playwright messaging test exists because
 Task 005 intentionally adds no user-facing messaging surface.
+
+Realtime unit tests cover every version-1 event schema, unsupported versions/names, sensitive
+field rejection, deterministic topic construction, private channel configuration, current-session
+Realtime authentication, status normalization, malformed payload handling, idempotent cleanup,
+gap assessment, and event-to-query impact mapping.
+
+`npm run test:concurrency` is a local-only integration harness. It refuses non-loopback API and
+database URLs, uses three independently authenticated clients, waits for the local database
+Broadcast replication slot after the first private join, and verifies:
+
+- simultaneous reciprocal conversation creation and one inbox event per participant;
+- real private conversation/inbox joins plus unrelated and cross-user denial;
+- 20 concurrent unique sends with contiguous sequences and one event per mutation;
+- concurrent identical retries returning one row/event without sequence loss;
+- conflicting payloads persisting at most one winner with no extra event;
+- out-of-order delivered/read calls converging on the maximum state without duplicate state
+  events.
+
+This suite remains outside `npm run check` because it requires Docker, Auth, Realtime, and multiple
+sessions. CI runs it after the clean database reset and pgTAP suite.
 
 ## CI
 

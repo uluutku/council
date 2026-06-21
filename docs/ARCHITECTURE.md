@@ -216,3 +216,51 @@ events in a later task; the database remains authoritative for reconnect recover
 Storage attachment records and access functions are also deferred. Future AI conversations may
 reuse the general conversation boundary but require their own membership/sender authorization
 model rather than the direct-human pair table.
+
+## Secure Realtime delivery
+
+Council uses database-originated Supabase Broadcast, not browser-originated Broadcast and not
+Postgres Changes. Mutation triggers call `realtime.send` with a custom minimal payload in the same
+transaction as the authoritative row change. Failed transactions therefore commit neither state
+nor event, and idempotent/no-op RPC paths do not reach event-producing triggers.
+
+Topics are centralized and deterministic:
+
+```text
+conversation:{conversation_id}
+user:{user_id}:inbox
+```
+
+Conversation topics carry message create/edit/delete, reaction, receipt, and generic availability
+events. Inbox topics carry conversation create/change and the same generic availability event.
+Every payload has version `1`, a UUID transport event ID, event name, timestamp, and only the
+applicable conversation/entity/sequence identifiers. Message content, reaction values, profiles,
+settings, and social-state causes never enter Broadcast payloads.
+
+Private-channel authorization is evaluated through RLS on `realtime.messages`. Exact conversation
+topics require persistent conversation membership, so historical subscribers remain authorized
+after contact removal or blocking. Exact inbox topics require the topic UUID to equal
+`auth.uid()`. Topic parsing is anchored and fail-closed. Browser roles have no
+`realtime.messages` INSERT permission or INSERT policy.
+
+Availability events collapse acceptance, removal, block, and unblock changes into one shape
+containing only the conversation ID. `block_user` inserts the block before deleting the accepted
+relationship; the relationship trigger detects the block and defers to the block trigger,
+preventing duplicate logical events.
+
+### Reconciliation
+
+Realtime is a synchronization hint, never the durable queue. Inbox consumers fetch
+`list_my_conversations`, subscribe to their inbox, and refetch affected list state on valid
+events. Conversation consumers use this race-safe order:
+
+1. Join the private conversation topic and wait for `SUBSCRIBED`.
+2. Fetch the current bounded message page from PostgreSQL.
+3. Record the authoritative latest sequence.
+4. Process later validated events.
+5. Refetch after a sequence gap, event without sequence, reconnect, timeout, channel error,
+   browser resume, network restoration, or authentication refresh.
+
+The transport module owns only channels, validation, status normalization, and cleanup. It does
+not mutate TanStack Query. A pure event-impact mapping tells later consumers which message,
+conversation-list, detail, receipt, or contact areas require invalidation.

@@ -92,6 +92,27 @@ message ID, sender, sequence, timestamp, and reply graph as a tombstone. Listing
 functions explicitly return null deleted content. Message bodies and reaction values must never
 enter operational logs; the browser wrappers perform no message logging.
 
+## Realtime privacy
+
+All Council channels are private and use exact deterministic UUID topics. Conversation receive
+authorization derives from durable membership, while inbox authorization derives from
+`auth.uid()`. Removed contacts and blocked participants remain authorized for their historical
+conversation topic because they retain history access. Unrelated and anonymous users cannot join.
+
+Browser roles cannot insert or update `realtime.messages`, and Council defines no Broadcast INSERT
+policy. Durable events originate only from trusted database triggers. Production deployments must
+disable Realtime public-channel access in project settings in addition to the application always
+using `private: true`.
+
+Broadcast payloads contain no message body, deleted content, reaction value, email, biography,
+settings, block direction, availability cause, token, or free-form metadata. Availability events
+are identical regardless of block, unblock, removal, or acceptance. Browser modules strictly
+validate every event and never log payload contents or JWTs.
+
+Realtime delivery is not trusted as durable or complete. Channel errors, timeouts, reconnection,
+browser resume, network restoration, authentication refresh, missing sequence, or sequence gaps
+require database reconciliation through the existing bounded RPCs.
+
 ## Mutation restrictions
 
 Authenticated clients cannot directly insert, update, or delete contact relationships or block
