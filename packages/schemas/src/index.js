@@ -191,6 +191,208 @@ export const contactSearchFormSchema = z
   })
   .strict();
 
+export const conversationTypeSchema = z.literal('direct');
+
+const uuidSchema = z.string().uuid();
+const positiveSequenceSchema = z.number().int().positive();
+const nonnegativeSequenceSchema = z.number().int().nonnegative();
+
+export const directConversationResultSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    conversation_type: conversationTypeSchema,
+    created_at: timestampSchema,
+    updated_at: timestampSchema,
+    can_send: z.boolean(),
+  })
+  .strict();
+
+export const createDirectConversationInputSchema = z
+  .object({
+    target_user_id: uuidSchema,
+  })
+  .strict();
+
+export const reactionSchema = z
+  .object({
+    message_id: uuidSchema,
+    user_id: uuidSchema,
+    emoji: z.string().trim().min(1).max(32),
+    created_at: timestampSchema,
+  })
+  .strict();
+
+export const messageSchema = z
+  .object({
+    id: uuidSchema,
+    conversation_id: uuidSchema,
+    sequence: positiveSequenceSchema,
+    sender_user_id: uuidSchema,
+    content: z.string().min(1).max(8000).nullable(),
+    reply_to_message_id: uuidSchema.nullable(),
+    created_at: timestampSchema,
+    edited_at: timestampSchema.nullable(),
+    deleted_at: timestampSchema.nullable(),
+    reactions: z.array(reactionSchema),
+  })
+  .strict()
+  .superRefine((message, context) => {
+    if (message.deleted_at === null && message.content === null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['content'],
+        message: 'Active messages require content.',
+      });
+    }
+
+    if (message.deleted_at !== null && message.content !== null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['content'],
+        message: 'Deleted messages cannot contain content.',
+      });
+    }
+  });
+
+export const deletedMessageSchema = messageSchema.refine(
+  (message) => message.deleted_at !== null && message.content === null,
+  'Expected a deleted-message tombstone.',
+);
+
+export const conversationListItemSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    conversation_type: conversationTypeSchema,
+    peer_id: uuidSchema,
+    peer_username: usernameSchema.nullable(),
+    peer_display_name: nullableTrimmedString(60, 'Display name'),
+    peer_avatar_path: avatarPathSchema,
+    peer_status_text: nullableTrimmedString(120, 'Status text'),
+    last_message_id: uuidSchema.nullable(),
+    last_message_content: z.string().min(1).max(8000).nullable(),
+    last_message_deleted: z.boolean(),
+    last_message_sender_id: uuidSchema.nullable(),
+    last_message_sequence: nonnegativeSequenceSchema,
+    last_message_at: timestampSchema.nullable(),
+    last_read_sequence: nonnegativeSequenceSchema,
+    last_delivered_sequence: nonnegativeSequenceSchema,
+    unread_count: nonnegativeSequenceSchema,
+    can_send: z.boolean(),
+    updated_at: timestampSchema,
+  })
+  .strict()
+  .superRefine((conversation, context) => {
+    if (conversation.last_message_deleted && conversation.last_message_content !== null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['last_message_content'],
+        message: 'Deleted message previews cannot contain content.',
+      });
+    }
+
+    if (conversation.last_read_sequence > conversation.last_delivered_sequence) {
+      context.addIssue({
+        code: 'custom',
+        path: ['last_read_sequence'],
+        message: 'Read sequence cannot exceed delivered sequence.',
+      });
+    }
+  });
+
+export const conversationCursorSchema = z
+  .object({
+    result_limit: z.number().int().min(1).max(50).default(30),
+    cursor_updated_at: timestampSchema.nullable().default(null),
+    cursor_id: uuidSchema.nullable().default(null),
+  })
+  .strict()
+  .refine(
+    (cursor) => (cursor.cursor_updated_at === null) === (cursor.cursor_id === null),
+    'Conversation cursor timestamp and ID must be provided together.',
+  );
+
+export const conversationPageResponseSchema = z.array(conversationListItemSchema);
+
+export const conversationMemberReceiptSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    last_delivered_sequence: nonnegativeSequenceSchema,
+    last_read_sequence: nonnegativeSequenceSchema,
+  })
+  .strict()
+  .refine(
+    (receipt) => receipt.last_read_sequence <= receipt.last_delivered_sequence,
+    'Read sequence cannot exceed delivered sequence.',
+  );
+
+export const sendMessageInputSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    client_message_id: uuidSchema,
+    content: z.string().trim().min(1).max(8000),
+    reply_to_message_id: uuidSchema.nullable().default(null),
+  })
+  .strict();
+
+export const editMessageInputSchema = z
+  .object({
+    message_id: uuidSchema,
+    content: z.string().trim().min(1).max(8000),
+  })
+  .strict();
+
+export const messageActionInputSchema = z
+  .object({
+    message_id: uuidSchema,
+  })
+  .strict();
+
+export const messagePageInputSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    before_sequence: positiveSequenceSchema.nullable().default(null),
+    result_limit: z.number().int().min(1).max(100).default(50),
+  })
+  .strict();
+
+export const messagePageResponseSchema = z.array(messageSchema);
+
+export const receiptUpdateSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    through_sequence: nonnegativeSequenceSchema,
+  })
+  .strict();
+
+export const reactionInputSchema = z
+  .object({
+    message_id: uuidSchema,
+    emoji: z.string().trim().min(1).max(32),
+  })
+  .strict();
+
+export const messagingErrorCategorySchema = z.enum([
+  'authentication_required',
+  'conversation_unavailable',
+  'conversation_not_found',
+  'not_conversation_member',
+  'messaging_unavailable',
+  'message_not_found',
+  'message_deleted',
+  'message_not_editable',
+  'invalid_message_content',
+  'invalid_reply',
+  'invalid_reaction',
+  'idempotency_conflict',
+  'invalid_cursor',
+  'invalid_sequence',
+  'action_not_permitted',
+  'session_expired',
+  'rate_limited',
+  'backend_unavailable',
+  'unknown_error',
+]);
+
 export const emailSchema = z
   .string()
   .trim()
@@ -299,3 +501,10 @@ export const preferencesFormSchema = z
 /** @typedef {z.infer<typeof usernameOnboardingSchema>} UsernameOnboarding */
 /** @typedef {z.infer<typeof profileFormSchema>} ProfileForm */
 /** @typedef {z.infer<typeof preferencesFormSchema>} PreferencesForm */
+/** @typedef {z.infer<typeof directConversationResultSchema>} DirectConversationResult */
+/** @typedef {z.infer<typeof conversationListItemSchema>} ConversationListItem */
+/** @typedef {z.infer<typeof messageSchema>} Message */
+/** @typedef {z.infer<typeof reactionSchema>} Reaction */
+/** @typedef {z.infer<typeof conversationMemberReceiptSchema>} ConversationMemberReceipt */
+/** @typedef {z.infer<typeof sendMessageInputSchema>} SendMessageInput */
+/** @typedef {z.infer<typeof messagingErrorCategorySchema>} MessagingErrorCategory */

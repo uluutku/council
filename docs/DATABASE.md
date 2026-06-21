@@ -127,7 +127,87 @@ visibility, normalization, timestamp, and Auth-trigger helpers. Security-definer
 authenticated role because the profile RLS policy requires it; the schema is not exposed through
 the API.
 
+## Direct conversations and messaging
+
+Migration `20260622000000_create_direct_conversations_and_messages.sql` adds the server-readable
+human direct-message foundation.
+
+### Tables and invariants
+
+- `conversations`: currently permits only `type = 'direct'`; tracks the serialized
+  `last_sequence`, latest message identity/time, and activity ordering.
+- `direct_conversation_pairs`: one unique canonical `(user_low_id, user_high_id)` pair per direct
+  conversation. Both users reference Auth and `user_low_id < user_high_id`.
+- `conversation_members`: exactly the two canonical users are inserted by conversation creation.
+  A trigger prevents non-pair users and receipt values beyond the current conversation sequence.
+- `messages`: immutable ID, conversation sequence, sender, client idempotency UUID, optional reply,
+  active content or content-free tombstone, and a private original-payload hash.
+- `message_reactions`: one bounded reaction value per message/user/value tuple.
+
+Active message content is trimmed, nonblank, and at most 8,000 characters. Deleted rows require
+null content and remain in sequence order. Replies must point to the same conversation. Existing
+and new replies may reference tombstones so deletion does not break conversation structure.
+Deleting a message removes its reactions transactionally.
+
+### Concurrency and idempotency
+
+Direct creation canonicalizes the pair and takes `private.lock_social_pair` before checking
+relationship state or inserting. The unique pair constraint is the final duplicate defense.
+
+Sending increments `conversations.last_sequence` in a row-locked update. `(conversation_id,
+sequence)` is unique, and each sender/client-message UUID is unique across that sender. An
+additional conversation/sender/client constraint documents the RPC contract. The original
+normalized conversation/content/reply payload is represented by a SHA-256 hash; an identical retry
+returns the original row, while changed payload data returns `idempotency_conflict`, including
+after the original message has been tombstoned.
+
+### Receipts
+
+Each member stores nonnegative delivered/read sequences with read never ahead of delivered.
+`mark_conversation_delivered` and `mark_conversation_read` reject values beyond current
+`last_sequence` and use monotonic `greatest` updates. Read also advances delivered. Successful
+sends automatically advance the sender through their new sequence.
+
+### Listing and pagination
+
+`list_my_conversations` returns at most 50 rows ordered by `(updated_at, id) desc`. Both cursor
+components must be supplied together. It returns minimal peer profile fields, nullable when normal
+profile visibility is unavailable, a content-safe latest preview, receipt/unread state, and a
+generic `can_send` boolean. It never returns email, biography, settings, or block direction.
+
+`list_conversation_messages` returns at most 100 rows, newest sequence first, with
+`before_sequence` pagination. Reactions are returned as deterministic JSON arrays ordered by
+reaction and user. Tombstones remain present with null content.
+
+### Functions, errors, RLS, and grants
+
+Public RPCs are `create_or_get_direct_conversation`, `list_my_conversations`,
+`list_conversation_messages`, `send_message`, `edit_message`, `delete_message`,
+`add_message_reaction`, `remove_message_reaction`, `mark_conversation_delivered`, and
+`mark_conversation_read`.
+
+All mutation functions derive the actor from `auth.uid()`, validate arguments, use
+`search_path = public, pg_temp`, and are granted only to `authenticated`. Expected application
+failures use SQLSTATE `P0001` with a fixed category message such as `conversation_unavailable`,
+`messaging_unavailable`, `invalid_reply`, `idempotency_conflict`, or `invalid_sequence`.
+Authentication/grant failures retain SQLSTATE `42501`. Block direction and raw internal detail are
+not returned.
+
+Every messaging table has RLS. Members may select only their conversations and associated rows.
+Authenticated table privileges are select-only; no insert/update/delete policies or grants exist.
+Anonymous roles have no table or RPC access. Only the current-user membership helper required by
+RLS is executable by `authenticated`; arbitrary-identity authorization helpers remain private.
+
+### Indexes
+
+- membership lookup: `(user_id, conversation_id)` and user receipt state;
+- activity pagination: `(updated_at desc, id desc)`;
+- canonical pair uniqueness: `(user_low_id, user_high_id)`;
+- message pagination: `(conversation_id, sequence desc)`;
+- idempotency lookup: `(sender_user_id, client_message_id)`;
+- reaction aggregation: `(message_id, emoji, user_id)`.
+
 ## Future schema
 
-Conversations, messages, AI identities, memory, artifacts, billing, Storage policies, and
-operations tables remain unimplemented.
+AI identities, memory, artifacts, billing, Storage policies, attachment records, Realtime
+delivery infrastructure, and operations tables remain unimplemented.

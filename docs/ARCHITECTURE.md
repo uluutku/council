@@ -159,3 +159,60 @@ incoming-request count is derived from the shared requests query and shown in na
 Supabase Realtime is intentionally deferred to a later milestone. Until then the request count and
 lists refresh on tab focus, on normal stale-time expiry, and after successful mutations rather
 than through live subscriptions, so a short-lived stale count is expected and acceptable.
+
+## Direct messaging database boundary
+
+```mermaid
+flowchart LR
+  Browser[Authenticated browser API wrapper]
+  RPC[Messaging security-definer functions]
+  Conversations[Conversations and canonical pairs]
+  Members[Conversation members and receipts]
+  Messages[Sequenced messages and reactions]
+  Social[Accepted contacts and blocks]
+
+  Browser -->|Validated bounded RPC calls| RPC
+  RPC --> Conversations
+  RPC --> Members
+  RPC --> Messages
+  RPC --> Social
+  Browser -->|Member-only reads through RLS| Conversations
+  Browser -->|Member-only reads through RLS| Members
+  Browser -->|Member-only reads through RLS| Messages
+```
+
+Human direct conversations are separated into a general `conversations` row and a
+`direct_conversation_pairs` row. The pair stores one sorted UUID tuple, allowing the general
+conversation table to support future AI conversation types without pretending those conversations
+have two human users. Task 005 implements only the `direct` type.
+
+`create_or_get_direct_conversation` acquires the same transaction-level advisory lock used by
+social pair mutations. It rechecks the accepted-contact and block state under that lock, returns
+the existing canonical conversation when present, or transactionally inserts the conversation,
+pair, and exactly two membership rows. Reciprocal requests therefore converge on one row.
+
+`send_message` uses the conversation row update as the sequence allocation lock. Incrementing
+`last_sequence` and returning it in the same statement gives concurrent sends unique monotonic
+sequences. A sender/client-message UUID is unique across the sender, and a server-generated hash
+of the normalized original payload distinguishes a valid retry from key reuse with changed
+conversation, content, or reply target. The hash remains after content deletion so a retry cannot
+silently create a replacement message.
+
+Delivered and read state lives on each membership row. Functions lock the conversation, reject
+negative or future sequences, and update with `greatest` so delayed events cannot move state
+backward. Reading also advances delivery. The sender is automatically advanced through each
+successful own send.
+
+Historical reads depend only on conversation membership. Current accepted-contact and block state
+is consulted for creation, sending, editing, and adding reactions. Removing a contact or blocking
+therefore preserves history but returns one generic unavailable state for new writes. Own-message
+deletion and own-reaction removal remain available. Reaccepting the pair resumes the original
+conversation.
+
+The web messaging feature currently contains only focused API wrappers, error mapping, shared
+schemas, and query-key factories. No inbox, conversation route, composer, or message component is
+implemented. Supabase Broadcast/Postgres Changes will attach to persisted message and receipt
+events in a later task; the database remains authoritative for reconnect recovery. Private
+Storage attachment records and access functions are also deferred. Future AI conversations may
+reuse the general conversation boundary but require their own membership/sender authorization
+model rather than the direct-human pair table.

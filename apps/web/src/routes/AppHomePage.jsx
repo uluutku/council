@@ -13,8 +13,7 @@ export function AppHomePage() {
       <h1>Welcome, {name}</h1>
       <p className="lede">
         Find people and manage your connections from the <Link to="/app/contacts">Contacts</Link>{' '}
-        area. Conversations, messaging, and AI contacts are intentionally not part of this
-        milestone.
+        area. The chat interface, Realtime delivery, and AI contacts are not available yet.
       </p>
       <section className="panel compact-panel">
         <h2>Account status</h2>

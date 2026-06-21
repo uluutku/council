@@ -23,6 +23,10 @@ Status:
 - Accounts and contacts: database schema, web authentication, username onboarding, profile
   settings, preference settings, security settings, social functions, grants, RLS, shared
   contracts, and tests complete. User discovery UI, contact requests UI, contact management UI,
-  and blocking UI are complete. Conversations and messaging are intentionally not part of this
-  milestone and remain pending.
+  and blocking UI are complete.
+- Reliable direct chat: direct-conversation, canonical-pair, membership, text-message, reply,
+  edit/tombstone, reaction, receipt-state, authorization, pagination, shared-contract, and browser
+  API-wrapper foundations are complete. Inbox UI, conversation UI, composer behavior, optimistic
+  sending, Realtime, typing, offline reconciliation, attachments, and notifications remain
+  pending, so this milestone is not complete.
 - Every later milestone remains pending.

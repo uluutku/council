@@ -47,6 +47,22 @@ the returned shape exposes only minimal profile fields and never email, biograph
 the acting identity is derived from `auth.uid()`; unblocking removes the row; and anonymous
 callers are denied. The database suite now contains 201 assertions across eight files.
 
+Task 005 adds five pgTAP files and 196 assertions for a total of 397 assertions across 13 files.
+The messaging matrix covers:
+
+- tables, foreign keys, RLS, constraints, canonical pairs, membership triggers, and required
+  indexes;
+- accepted/pending/rejected/blocked conversation creation, reciprocal idempotency, partial-write
+  prevention, member visibility, and historical access after removal/blocking;
+- message normalization, atomic monotonic sequencing, sender identity, retry idempotency,
+  payload-conflict detection, same-conversation replies, edits, and tombstones;
+- relationship removal, reacceptance, blocking, unblocking without reacceptance, and the
+  distinction between historical read access and current write permission;
+- reaction idempotency/scope/removal, tombstone cleanup, delivered/read monotonicity, unread
+  counts, bounded conversation cursors, and sequence-based message pagination;
+- anonymous denial, unrelated-user isolation, internal-helper grants, and denial of every direct
+  messaging-table mutation.
+
 Tests create deterministic `auth.users` rows inside transactions. They simulate real API
 authorization with:
 
@@ -111,6 +127,18 @@ list; unblocking, which restores no relationship or pending request and re-enabl
 the contact-request privacy preference hiding a stranger from discovery and restoring it when
 re-enabled. The administrative helper refuses non-loopback Supabase URLs and is never imported
 into browser code.
+
+## Messaging contract tests
+
+The shared-schema suite validates direct conversation results, nullable peer profile fields,
+strict exclusion of email/private fields, active-message and tombstone invariants, reactions,
+paired activity cursors, bounded message pages, receipt ordering, and stable error categories.
+
+Web unit tests exercise all ten messaging API wrappers against realistic Supabase RPC-shaped
+mocks. They assert RPC names and `p_` argument shapes, normalization, strict response validation,
+deleted-content rejection, raw-error propagation for safe mapping, stable category mapping, and
+the absence of message-content logging. No component or Playwright messaging test exists because
+Task 005 intentionally adds no user-facing messaging surface.
 
 ## CI
 

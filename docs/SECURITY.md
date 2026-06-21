@@ -66,6 +66,32 @@ profile-table search), and contact, block, and unblock mutations run only throug
 `auth.uid()`-scoped database functions. The minimal contact, request, search, and blocked-user
 contracts never include email addresses.
 
+## Direct-message authorization
+
+Council messages are server-readable plaintext within the trusted PostgreSQL/Supabase boundary;
+this does not change the explicit no-E2EE privacy model. Authenticated users may read a
+conversation, its pair/membership data, messages, and reactions only while their `auth.uid()` is a
+stored member. RLS-backed table grants are read-only. Conversation creation, message writes,
+edits, tombstones, reactions, and receipt updates are available only through fixed-search-path
+security-definer functions.
+
+The database derives every sender and receipt owner from `auth.uid()`. Browser input cannot set a
+sender, add a member, advance another member's receipt, or directly mutate any messaging table.
+Unrelated and anonymous callers receive no conversation existence information through table reads
+or listing functions.
+
+Contact removal and blocking do not erase historical membership, so both original participants
+retain their existing history. They cannot send, edit, or add reactions unless the pair is
+currently accepted and unblocked. Blocking and removed-contact failures use the same generic
+messaging-unavailable result and never expose block direction. Own-message deletion and
+own-reaction removal remain permitted so a user can remove their own historical contribution.
+Unblocking alone restores no send permission.
+
+Soft deletion clears `messages.content`, removes reactions on that message, and preserves the
+message ID, sender, sequence, timestamp, and reply graph as a tombstone. Listing and preview
+functions explicitly return null deleted content. Message bodies and reaction values must never
+enter operational logs; the browser wrappers perform no message logging.
+
 ## Mutation restrictions
 
 Authenticated clients cannot directly insert, update, or delete contact relationships or block
