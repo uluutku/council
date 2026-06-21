@@ -1,7 +1,13 @@
 import { realtimeEventEnvelopeSchema } from '@council/schemas';
 import { RealtimeSubscriptionError, normalizeRealtimeStatus } from './realtimeErrors.js';
 
-export async function subscribeToPrivateEvents({
+// Subscribes to a private Broadcast topic. The channel is created and torn down
+// synchronously so that, under React StrictMode's mount/unmount/mount cycle, a
+// previous channel is fully removed before a new one joins the same topic —
+// otherwise two concurrent joins to one private topic leave the subscription
+// stuck. Auth is refreshed without blocking channel creation; the client already
+// carries the session token from sign-in, and setAuth() updates the join payload.
+export function subscribeToPrivateEvents({
   supabase,
   topic,
   eventNames,
@@ -10,14 +16,6 @@ export async function subscribeToPrivateEvents({
   onError = () => {},
 }) {
   onStatus('connecting');
-
-  try {
-    await supabase.realtime.setAuth();
-  } catch (error) {
-    const normalized = new RealtimeSubscriptionError('authentication_failed', error);
-    onError(normalized);
-    throw normalized;
-  }
 
   const channel = supabase.channel(topic, {
     config: { private: true },
@@ -37,6 +35,12 @@ export async function subscribeToPrivateEvents({
   for (const eventName of eventNames) {
     channel.on('broadcast', { event: eventName }, handlePayload);
   }
+
+  // Refresh the realtime auth token for private-topic authorization without
+  // awaiting, so teardown stays synchronous.
+  Promise.resolve(supabase.realtime.setAuth()).catch((error) => {
+    onError(new RealtimeSubscriptionError('authentication_failed', error));
+  });
 
   channel.subscribe((providerStatus, error) => {
     const status = normalizeRealtimeStatus(providerStatus);

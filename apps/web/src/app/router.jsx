@@ -3,6 +3,7 @@ import { PublicLayout } from './layouts/PublicLayout.jsx';
 import { AuthenticatedLayout } from './layouts/AuthenticatedLayout.jsx';
 import { SettingsLayout } from './layouts/SettingsLayout.jsx';
 import { ContactsLayout } from './layouts/ContactsLayout.jsx';
+import { MessagingLayout } from './layouts/MessagingLayout.jsx';
 import { GuestRoute } from './router/GuestRoute.jsx';
 import { ProtectedRoute } from './router/ProtectedRoute.jsx';
 import { OnboardingRoute } from './router/OnboardingRoute.jsx';
@@ -22,6 +23,8 @@ import { ContactsPage } from '../features/contacts/pages/ContactsPage.jsx';
 import { DiscoverContactsPage } from '../features/contacts/pages/DiscoverContactsPage.jsx';
 import { ContactRequestsPage } from '../features/contacts/pages/ContactRequestsPage.jsx';
 import { BlockedUsersPage } from '../features/contacts/pages/BlockedUsersPage.jsx';
+import { InboxPage } from '../features/messaging/pages/InboxPage.jsx';
+import { ConversationPage } from '../features/messaging/pages/ConversationPage.jsx';
 
 export const routes = [
   {
@@ -52,6 +55,14 @@ export const routes = [
         element: <AuthenticatedLayout />,
         children: [
           { index: true, element: <AppHomePage /> },
+          {
+            path: 'messages',
+            element: <MessagingLayout />,
+            children: [
+              { index: true, element: <InboxPage /> },
+              { path: ':conversationId', element: <ConversationPage /> },
+            ],
+          },
           {
             path: 'contacts',
             element: <ContactsLayout />,

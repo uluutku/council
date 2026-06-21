@@ -113,6 +113,33 @@ Realtime delivery is not trusted as durable or complete. Channel errors, timeout
 browser resume, network restoration, authentication refresh, missing sequence, or sequence gaps
 require database reconciliation through the existing bounded RPCs.
 
+## Messaging UI privacy and rendering
+
+Message content is always rendered as plain text. The UI never uses raw HTML or
+`dangerouslySetInnerHTML`, never renders arbitrary markdown, and never builds automatic rich
+previews or executes embedded content. The only enrichment is linkifying bare `http(s)` URLs; those
+anchors always carry `rel="noopener noreferrer"` and open in a new tab, and non-`http(s)` schemes
+(such as `javascript:` or `data:`) are never turned into links. Long words, URLs, and line breaks
+wrap inside the bubble without horizontal overflow, and the 8,000-character backend limit is
+enforced in the composer and editor.
+
+The messaging-unavailable state is generic. When sending is unavailable the UI shows only
+"Messaging is currently unavailable for this conversation." and never discloses who blocked whom,
+whether a block happened, whether contact status changed, or why availability changed. Access and
+existence failures collapse to the same "This conversation is unavailable." screen, so a
+nonexistent, inaccessible, or blocked conversation cannot be distinguished, and no error difference
+reveals another conversation's existence. History stays readable after contact removal or blocking;
+only sending, editing, and adding reactions are disabled, while a sender may still delete their own
+messages and remove their own reactions where the backend permits.
+
+Deleted content is removed from every visible client cache the moment deletion is authoritatively
+confirmed: the tombstone (content `null`) replaces the row in the message cache, reactions are
+cleared, and reply excerpts that pointed at the message render "Message deleted" rather than the
+former content. Realtime event payloads are never logged, and all private messaging queries are
+dropped from the cache on sign-out (`queryClient.clear()`), so no message content, preview, or
+receipt state survives a session change. Realtime channels are torn down on conversation change,
+route change, and logout.
+
 ## Mutation restrictions
 
 Authenticated clients cannot directly insert, update, or delete contact relationships or block

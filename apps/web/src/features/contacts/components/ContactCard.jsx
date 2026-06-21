@@ -4,8 +4,9 @@ import { ContactStatusBadge } from './ContactStatusBadge.jsx';
 import { contactDisplayName } from '../utils/contactDisplay.js';
 
 // One accepted contact. Email, biography, and online status are intentionally
-// absent, and there is no message control because conversations do not exist yet.
-export function ContactCard({ contact, onRemove, onBlock }) {
+// absent. The Message action opens or creates the single direct conversation
+// with this contact; the backend remains the authority on availability.
+export function ContactCard({ contact, onMessage, onRemove, onBlock, isStarting }) {
   const name = contactDisplayName(contact);
 
   return (
@@ -18,6 +19,14 @@ export function ContactCard({ contact, onRemove, onBlock }) {
         <ContactStatusBadge label="Contact" tone="success" />
       </div>
       <ContactActionMenu label={`Actions for ${name}`}>
+        <button
+          type="button"
+          className="button button--small"
+          onClick={() => onMessage(contact)}
+          disabled={isStarting}
+        >
+          {isStarting ? 'Opening…' : 'Message'}
+        </button>
         <button
           type="button"
           className="button button--secondary button--small"

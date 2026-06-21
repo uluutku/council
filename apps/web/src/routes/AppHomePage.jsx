@@ -12,8 +12,9 @@ export function AppHomePage() {
       <p className="eyebrow">Signed in</p>
       <h1>Welcome, {name}</h1>
       <p className="lede">
-        Find people and manage your connections from the <Link to="/app/contacts">Contacts</Link>{' '}
-        area. The chat interface, Realtime delivery, and AI contacts are not available yet.
+        Open <Link to="/app/messages">Messages</Link> to read and reply in real time, or find people
+        and manage your connections from <Link to="/app/contacts">Contacts</Link>. Media sharing and
+        AI contacts are not available yet.
       </p>
       <section className="panel compact-panel">
         <h2>Account status</h2>

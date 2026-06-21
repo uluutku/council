@@ -8,11 +8,10 @@ Council is a private web messenger I am building one milestone at a time. The pl
 and slow to do: put real people and AI contacts in the same app, keep the two clearly apart, and
 be honest that the server can read your messages.
 
-It is a work in progress. The account and contact layers are finished and tested. The database
-foundation for direct conversations and text messages now exists, but the inbox, chat interface,
-media, and the AI side come later. Private Realtime delivery and reconciliation contracts now
-exist underneath the still-unimplemented chat interface. The rest of this README is the honest
-status, not a pitch.
+It is a work in progress. The account and contact layers are finished and tested, and human text
+messaging now works end to end: an inbox, a real conversation screen, optimistic sending, replies,
+editing, deletion, reactions, and live Realtime synchronization between two people. Media sharing
+and the AI side still come later. The rest of this README is the honest status, not a pitch.
 
 ## What works today
 
@@ -37,16 +36,25 @@ Database mutations also emit private, content-free Realtime Broadcast hints to c
 members and per-user inbox topics. These events are validated strictly in the browser and always
 lead back to database reconciliation; Broadcast is not treated as message storage.
 
+The human text-messaging interface is now built on top of all of this:
+
+- a Message action on each accepted contact that opens or creates the single direct conversation,
+- an inbox that lists your conversations with previews, timestamps, and unread counts,
+- a conversation screen with paginated history, replies, editing, deletion, and a small reaction set,
+- optimistic sends that reuse the backend idempotency key, retry the same client id on failure, and
+  reconcile to exactly one authoritative message,
+- live updates over Realtime with gap detection and reconnect/focus reconciliation from the database,
+- honest Sent/Delivered/Read indicators on the newest outgoing message, and
+- a responsive split view on desktop with full-screen conversation routing on narrow screens.
+
 ## What it can't do yet
 
-There is no chat interface or inbox. The browser does not yet query or display the new message
-records. There is no typing indicator, presence, file or image support, notification delivery, or
-AI contact. None of it is faked in the UI on purpose, because a disabled "Message" button that
-goes nowhere is worse than no button at all. There is also no mobile app, no group chats, and no
-billing.
+There is no typing indicator, presence or online status, file or image support, notification
+delivery, or AI contact. There is no mobile app, no group chats, and no billing. None of these are
+faked in the UI on purpose — there are no disabled controls advertising features that do not exist.
 
-So right now Council has the account, contact, and secure database foundations of a messenger,
-without the user-facing chat experience.
+So Council now has working human text messaging on top of its account, contact, and secure database
+foundations, but not media, presence, or AI.
 
 ## Why it is built this way
 
@@ -91,7 +99,11 @@ Direct-message writes are function-only. Conversation creation locks the canonic
 message sends lock the conversation row while allocating the next sequence, and sender/client
 UUIDs make network retries idempotent. Conversation and message listing are bounded and
 cursor-based. The browser-facing wrappers validate the returned rows with strict shared schemas,
-but no route or visual messaging feature consumes them yet.
+and the messaging UI now consumes them through TanStack Query: the inbox and per-conversation
+message history are infinite queries, Realtime events trigger targeted invalidation or refetch
+rather than direct writes, and message content is always rendered as plain text (no raw HTML, no
+`dangerouslySetInnerHTML`, no automatic markdown; bare links are linkified with
+`rel="noopener noreferrer"`).
 
 ## Run it locally
 
@@ -122,6 +134,7 @@ local recovery emails.
 | Auth       | `/login`, `/register`, `/verify-email`, `/forgot-password`, `/reset-password` |
 | Onboarding | `/onboarding`                                                                 |
 | App        | `/app`                                                                        |
+| Messages   | `/app/messages`, `/app/messages/:conversationId`                              |
 | Contacts   | `/app/contacts`, `/app/contacts/discover`, `/app/contacts/requests`           |
 | Settings   | `/app/settings/{profile,preferences,security,blocked}`                        |
 
@@ -147,15 +160,20 @@ The privacy claims above are checked at every layer, not just asserted here.
   conversation uniqueness, message sequencing and idempotency, replies, tombstones, reactions,
   receipts, pagination, relationship changes, Realtime authorization/events, RLS isolation, and
   direct-write denial.
-- Unit and component: the contact API wrappers, the error mapping, the search debounce and
-  stale-result handling, messaging and Realtime schemas/subscribers, gap detection, API wrappers,
-  and the loading, empty, success, and error states on every existing page.
+- Unit and component: the contact and messaging API wrappers, the error mapping, the search
+  debounce and stale-result handling, messaging and Realtime schemas/subscribers, gap detection,
+  safe text rendering, optimistic-send reconciliation, edit/delete/reaction flows, receipt
+  derivation, the realtime hooks (subscribe/cleanup/reconnect/gap/malformed/conversation-switch),
+  and the loading, empty, success, and error states on every page.
 - Multi-session integration: opposite-direction conversation creation, 20 concurrent sends,
   idempotent retry races, conflicting payloads, out-of-order receipts, actual private channel
   authorization, and database-originated Broadcast delivery.
-- Browser (Playwright): multi-user flows against real local Supabase, covering discovery and
-  acceptance, removal, blocking in both directions, unblocking, and the contact-request privacy
-  setting. Each test makes and cleans up its own users.
+- Browser (Playwright): multi-user flows against real local Supabase. The contact suite covers
+  discovery, acceptance, removal, blocking in both directions, unblocking, and the contact-request
+  privacy setting. The messaging suite covers creating and sending, realtime delivery and replies
+  between two open clients, failed-send retry and idempotency, replies that stay linked through
+  edit and deletion, reactions, contact removal, blocking privacy, reaccepting into the same
+  conversation, and reconnection reconciliation. Each test makes and cleans up its own users.
 
 ## Layout
 

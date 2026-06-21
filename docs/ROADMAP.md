@@ -28,7 +28,11 @@ Status:
   edit/tombstone, reaction, receipt-state, authorization, pagination, shared-contract, and browser
   API-wrapper foundations are complete. Durable private Realtime events, private topic
   authorization, reconciliation/gap contracts, and multi-session messaging concurrency tests are
-  complete. Inbox UI, conversation UI, composer behavior, optimistic rendering, typing, presence,
-  full offline recovery, attachments, and notifications remain pending, so this milestone is not
-  complete.
-- Every later milestone remains pending.
+  complete. The human text-messaging frontend is complete: the inbox and conversation UI, direct
+  conversation creation from contacts, message history with bounded pagination, optimistic and
+  idempotent sending with retry, replies, editing, deletion, reactions, honest delivery/read
+  display, unread counts, realtime inbox and conversation synchronization, gap-triggered and
+  reconnect reconciliation, and the responsive desktop/mobile-web layout. Typing indicators,
+  presence, push notifications, attachments/media, and group chats remain pending, so this
+  milestone's media/presence extensions are not complete.
+- Every later milestone remains pending. Storage, media, billing, and AI are not started.

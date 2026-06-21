@@ -264,3 +264,73 @@ events. Conversation consumers use this race-safe order:
 The transport module owns only channels, validation, status normalization, and cleanup. It does
 not mutate TanStack Query. A pure event-impact mapping tells later consumers which message,
 conversation-list, detail, receipt, or contact areas require invalidation.
+
+The transport `subscribeToPrivateEvents` is synchronous: it creates the channel, registers
+handlers, refreshes auth without blocking, and subscribes in one synchronous call, returning the
+channel handle immediately. This lets a React effect tear the channel down synchronously on
+cleanup, so React StrictMode's mount/unmount/mount cycle in development never leaves two channels
+joining the same private topic at once (which would otherwise wedge the subscription).
+
+## Messaging frontend
+
+The human text-messaging UI lives under `apps/web/src/features/messaging` and is wired into the
+authenticated shell through two routes:
+
+```text
+/app/messages                    inbox (list pane) + placeholder/active conversation
+/app/messages/:conversationId    a single direct conversation
+```
+
+`MessagingLayout` renders the conversation list in a sidebar and the active conversation through an
+`<Outlet/>`. On wide screens both panes show (list | conversation). On narrow screens a single pane
+shows at a time, chosen by a `data-view` attribute derived from the route param, giving full-screen
+conversation routing on mobile-web. The conversation id is validated as a UUID before any query
+runs; an invalid id renders the same generic "unavailable" screen as an inaccessible conversation.
+
+### Query and cache ownership
+
+TanStack Query owns all messaging server state. Stable keys live in `lib/query-keys/messaging.js`:
+
+```text
+messaging.conversations()          inbox (infinite query, keyset cursor)
+messaging.messages(conversationId) per-conversation history (infinite query, before-sequence cursor)
+```
+
+The inbox is keyset-paginated by `(updated_at, id)` exactly as `list_my_conversations` returns it;
+ordering is never recomputed locally from event arrival. Message history loads the newest page
+first and pages older windows with an exclusive `before_sequence` cursor; pages are flattened,
+de-duplicated by id, and sorted ascending for rendering. Cache mutations are centralized in
+`queries/messageCache.js` (upsert/replace a message in place, clear deleted content) and
+`queries/conversationCache.js` (patch the caller's own receipt fields to clear the unread badge
+without a refetch). All messaging queries are dropped on sign-out via `queryClient.clear()`.
+
+### Optimistic send and reconciliation
+
+`useSendMessage` owns optimistic outgoing state per conversation — never the message query cache.
+Each send generates a client UUID used as the backend idempotency key. On success the authoritative
+row is written into the message cache and the optimistic placeholder is removed, so the realtime
+echo and any refetch converge to exactly one message (de-duplicated by id). A failed send stays
+visible with retry/remove controls; retry reuses the same client id and payload, which the backend
+treats idempotently. Optimistic messages are never marked delivered or read.
+
+### Realtime lifecycle and gap recovery
+
+`useInboxRealtime` runs at the authenticated shell level: it subscribes to the user inbox topic and,
+on any validated event, invalidates the conversation list (and, for availability changes, the
+affected conversation's messages and the contact list). `useConversationRealtime` subscribes to the
+active conversation topic. Message create/edit/delete and reaction events trigger targeted
+invalidation of that conversation's message query; receipt events from the peer update outgoing
+receipt state; availability events refresh the inbox and contacts without inferring a cause.
+Sequence gaps are assessed with the Task 006 reconciliation helper, and the message window is
+refetched on (re)subscribe, on focus/visibility resume, and after any gap — so messages missed
+while offline are reconciled from the database on reconnect. Malformed events are dropped by the
+transport layer before reaching UI state, and event payloads are never logged.
+
+### Receipt behavior
+
+`useConversationReceipts` advances the caller's own delivered/read receipts monotonically and
+debounced: delivered advances whenever an open conversation has reconciled messages; read advances
+only while the conversation is active and the document is visible. The peer's read/delivered
+sequences are learned from realtime receipt events, so the newest outgoing message shows an honest
+single indicator — Sent until a receipt is observed, then Delivered, then Read — rather than a
+fabricated per-message status.

@@ -42,7 +42,9 @@ export function AuthProvider({ children, client = getSupabaseClient() }) {
       }
 
       if (event === 'SIGNED_OUT') {
-        queryClient.removeQueries({ queryKey: accountKeys.all });
+        // Drop every cached query so no private data (messages, previews,
+        // receipts, contacts) survives a session change.
+        queryClient.clear();
       }
     });
 
@@ -96,7 +98,9 @@ export function AuthProvider({ children, client = getSupabaseClient() }) {
   const signOut = useCallback(
     async (scope = 'local') => {
       await signOutSession(scope, client);
-      queryClient.removeQueries({ queryKey: accountKeys.all });
+      // Clear all cached queries on explicit sign-out so private message
+      // content and previews never persist across sessions.
+      queryClient.clear();
     },
     [client, queryClient],
   );

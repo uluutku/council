@@ -1,6 +1,13 @@
 import { ContactCard } from './ContactCard.jsx';
 
-export function ContactList({ contacts, onRemove, onBlock, emptyState }) {
+export function ContactList({
+  contacts,
+  onMessage,
+  onRemove,
+  onBlock,
+  startingContactId,
+  emptyState,
+}) {
   if (contacts.length === 0) {
     return emptyState ?? null;
   }
@@ -8,7 +15,14 @@ export function ContactList({ contacts, onRemove, onBlock, emptyState }) {
   return (
     <ul className="contact-list">
       {contacts.map((contact) => (
-        <ContactCard key={contact.id} contact={contact} onRemove={onRemove} onBlock={onBlock} />
+        <ContactCard
+          key={contact.id}
+          contact={contact}
+          onMessage={onMessage}
+          onRemove={onRemove}
+          onBlock={onBlock}
+          isStarting={startingContactId === contact.id}
+        />
       ))}
     </ul>
   );

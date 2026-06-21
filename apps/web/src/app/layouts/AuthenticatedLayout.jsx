@@ -4,12 +4,16 @@ import { useAuth } from '../providers/AuthContext.js';
 import { mapSupabaseError } from '../../features/auth/utils/authErrors.js';
 import { useRouteFocus } from '../../hooks/useRouteFocus.js';
 import { usePendingRequestCount } from '../../features/contacts/hooks/usePendingRequestCount.js';
+import { useUnreadCount } from '../../features/messaging/hooks/useUnreadCount.js';
+import { useInboxRealtime } from '../../features/messaging/hooks/useInboxRealtime.js';
 
 export function AuthenticatedLayout() {
   useRouteFocus();
+  useInboxRealtime();
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
   const pendingRequests = usePendingRequestCount();
+  const unreadMessages = useUnreadCount();
   const [logoutError, setLogoutError] = useState('');
   const [isSigningOut, setIsSigningOut] = useState(false);
   const name = profile?.display_name || profile?.username;
@@ -37,6 +41,14 @@ export function AuthenticatedLayout() {
         <nav className="app-navigation" aria-label="Application">
           <NavLink to="/app" end>
             Home
+          </NavLink>
+          <NavLink to="/app/messages">
+            Messages
+            {unreadMessages > 0 ? (
+              <span className="nav-count" aria-label={`${unreadMessages} unread messages`}>
+                {unreadMessages > 99 ? '99+' : unreadMessages}
+              </span>
+            ) : null}
           </NavLink>
           <NavLink to="/app/contacts">
             Contacts

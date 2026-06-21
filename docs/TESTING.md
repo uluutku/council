@@ -144,8 +144,7 @@ paired activity cursors, bounded message pages, receipt ordering, and stable err
 Web unit tests exercise all ten messaging API wrappers against realistic Supabase RPC-shaped
 mocks. They assert RPC names and `p_` argument shapes, normalization, strict response validation,
 deleted-content rejection, raw-error propagation for safe mapping, stable category mapping, and
-the absence of message-content logging. No component or Playwright messaging test exists because
-Task 005 intentionally adds no user-facing messaging surface.
+the absence of message-content logging.
 
 Realtime unit tests cover every version-1 event schema, unsupported versions/names, sensitive
 field rejection, deterministic topic construction, private channel configuration, current-session
@@ -166,6 +165,48 @@ Broadcast replication slot after the first private join, and verifies:
 
 This suite remains outside `npm run check` because it requires Docker, Auth, Realtime, and multiple
 sessions. CI runs it after the clean database reset and pgTAP suite.
+
+## Messaging UI tests
+
+Vitest and React Testing Library cover the messaging frontend. Utility tests assert the safe
+text-rendering rules (plain text, `http(s)`-only linkification, rejection of `javascript:`/`data:`
+schemes, trailing-punctuation handling), message-page flatten/de-duplication and older-cursor
+derivation, calendar-day comparison, honest receipt derivation and monotonic peer-receipt merge,
+reaction summarization, peer name/initials, and the error map that collapses every
+availability/access cause into the two generic messages. Component tests cover the inbox list
+(empty state, rendering, deleted preview, "You:" preview, unread count, selected state, error/retry,
+and the bounded load-more control), the composer (validation, Enter to send, Shift+Enter newline,
+IME-composition safety, the character counter near the limit, and the reply preview/cancel), and
+the contacts Message action (opening/creating a conversation and navigating, plus the generic
+unavailable message on failure).
+
+The conversation page is tested as an integration surface with the messaging API and the realtime
+transport mocked over a small in-memory server model, so optimistic sends, realtime echoes, and
+refetches converge against one source of truth. These tests assert: rendering of own/peer messages,
+edited state, deleted tombstones, and reply references; a generic unavailable screen for an
+inaccessible conversation; the empty-conversation prompt; an optimistic send that confirms to
+exactly one message and is not duplicated by a realtime echo; a failed send that stays visible and
+converges to one message after a retry that reuses the same client id; editing and deleting the
+sender's own message (with no edit/delete controls on another user's message); a confirmation
+dialog and tombstone on deletion; adding a reaction that reconciles through a refetch; and the
+messaging-unavailable state hiding the composer, showing the generic banner, and still allowing
+deletion. Realtime-hook tests cover subscribe and cleanup, reconcile on (re)subscribe, targeted
+invalidation on message events, peer-only receipt handling, ignoring events for other
+conversations, cleanup on unmount, and resubscribe with old-channel cleanup on conversation change.
+
+Playwright covers nine multi-user messaging scenarios against local Supabase, each provisioning its
+own onboarded accepted contacts in separate browser contexts and cleaning them up afterward:
+creating a conversation from Contacts, sending, and the recipient seeing unread then having it clear
+on read; realtime delivery and replies between two open clients with no duplication; a failed send
+(via a one-time intercepted `send_message` response) retried with the same client id that persists
+exactly one message through reload; replies that stay linked through edit and deletion (the reply
+excerpt shows "Message deleted"); reactions added and removed reconciling on both clients; contact
+removal keeping history readable while disabling the composer and still allowing the sender to
+delete an old message; blocking disabling sending for both with no block disclosure to the blocked
+user; reaccepting a removed contact reusing the same conversation with no duplicate; and
+reconnection reconciling messages a client missed while offline. Message-content assertions are
+scoped to the message-history list so the inbox sidebar's last-message preview is not mistaken for a
+duplicate. The interception helper alters only a test response and never weakens production code.
 
 ## CI
 
