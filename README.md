@@ -1,122 +1,151 @@
 # Council
 
-Council is a private web messenger that places direct conversations with real people and
-persistent AI contacts in one inbox. Human and AI contacts remain clearly distinguished.
+[![CI](https://github.com/uluutku/council/actions/workflows/ci.yml/badge.svg)](https://github.com/uluutku/council/actions/workflows/ci.yml)
+![Node](https://img.shields.io/badge/node-%3E%3D22-3c873a)
+![License](https://img.shields.io/badge/license-source--available-blue)
 
-Council uses a server-readable privacy model. Traffic is encrypted in transit and hosted data is
-encrypted at rest, but trusted server infrastructure can read messages and media. Council does
-not claim end-to-end encryption. Content explicitly sent to AI contacts crosses the OpenRouter
-provider boundary.
+Council is a private web messenger I am building one milestone at a time. The plan is easy to say
+and slow to do: put real people and AI contacts in the same app, keep the two clearly apart, and
+be honest that the server can read your messages.
 
-## Project status
+It is a work in progress. The account and contact layers are finished and tested. Conversations,
+messaging, and the AI side come later. The rest of this README is the honest status, not a pitch.
 
-The repository contains the foundation, account/social database layer, the web authentication,
-onboarding, profile, preferences, and security settings experience, and the full contact
-management experience: user discovery, contact requests, accepted-contact management, and
-blocking. Conversations, messaging, Realtime, Storage, billing, and AI features remain
-unimplemented. The project is not production-ready.
+## What works today
 
-## Stack
+You can register, verify your email, recover a password, and stay signed in across reloads. You
+pick a username when you onboard, edit your profile, and set your theme, notification, and privacy
+preferences.
 
-- React, JavaScript, Vite, and React Router
-- TanStack Query, Zustand, and Zod
-- Supabase Auth, PostgreSQL, Realtime, Storage, and Edge Functions
-- Vitest, React Testing Library, Playwright, ESLint, and Prettier
-- npm workspaces
+The contact layer is done:
 
-## Prerequisites
+- find people by username or display name,
+- send contact requests and answer the ones you receive,
+- see incoming and outgoing requests separately,
+- remove a contact, block someone, and unblock them later.
 
-- Node.js 22 or newer
-- npm 11 or newer
-- Docker Desktop or another Docker-compatible runtime for local Supabase
+## What it can't do yet
 
-## Local setup
+There is no chat. No messages, no inbox, no realtime, no typing indicators, no files or images,
+and no AI contacts. None of it is faked in the UI on purpose, because a disabled "Message" button
+that goes nowhere is worse than no button at all. There is also no mobile app, no group chats, and
+no billing.
+
+So right now Council is the part of a messenger that comes before the messaging: finding people
+and deciding who you are connected to.
+
+## Why it is built this way
+
+Most apps bolt AI on as a sidebar. I wanted an AI contact to sit in the contact list like any
+other contact, clearly labelled as AI, with no confusion about who you are talking to and no
+surprise about when your text leaves for a model provider.
+
+Council is server-readable, not end-to-end encrypted, and it says so plainly. Traffic is encrypted
+in transit and stored data is encrypted at rest, but the server can read messages and media so the
+product can run and, later, so AI contacts can reply. If you need end-to-end encryption, this is
+not that.
+
+The part I spent the most time on is keeping the privacy rules in the database, not in the
+interface. Every table has row-level security. Every action that touches another user (sending a
+request, accepting one, blocking someone) goes through a database function that decides who you
+are from your session, not from whatever the browser claims. The browser cannot write a
+relationship or a block row directly, even if it tries.
+
+One example I like: if someone blocks you, nothing in the app tells you. A blocked request and a
+request to someone who simply turned discovery off return the same "not available" message, so you
+cannot tell them apart. The blocked-users screen only ever shows people you blocked, behind its own
+database function, because the normal rules hide a blocked pair from each other.
+
+## How it is built
+
+The browser is treated as untrusted. It gets the public Supabase URL and the anon key, and nothing
+else. Server-only secrets never get a `VITE_` prefix and never reach the bundle. Authorization is
+PostgreSQL row-level security plus a small set of security-definer functions, not hidden buttons.
+
+- React, Vite, and React Router for the app, in JavaScript with JSDoc at the edges.
+- TanStack Query for server state, Zustand only for client-only UI state, and Zod for validation,
+  shared from one package so the same rules run in the browser and in tests.
+- Supabase Auth and PostgreSQL today. Realtime, Storage, and Edge Functions later.
+- OpenRouter with DeepSeek as the planned model, plus a separate vision model, once AI contacts
+  exist, behind a server-checked entitlement.
+
+Discovery goes through one bounded function that needs at least two characters, caps the number of
+results, and filters out blocked and privacy-hidden users on the server. The client never lists
+users on its own.
+
+## Run it locally
+
+You need Node 22 or newer, npm 11 or newer, and Docker for local Supabase.
 
 ```bash
 npm install
-Copy-Item .env.example .env.local
+cp .env.example .env.local
+npm run supabase:start
 npm run dev
 ```
 
-Set the browser-safe local Supabase values in `.env.local` after starting Supabase:
+Once Supabase is up, put its two public values in `.env.local`:
 
 ```text
 VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_ANON_KEY=<local public anon key>
 ```
 
-Only those two public values belong in Vite environment files. `OPENROUTER_API_KEY`,
-`SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_DB_URL` are future server-only settings. They must be
-configured in the relevant server or deployment secret store and must never use the `VITE_`
-prefix.
+Those are the only two values that belong in a Vite env file. Local Supabase turns off email
+confirmation so you can register without a mailer, and Mailpit at `http://127.0.0.1:54324` catches
+local recovery emails.
 
-Local Supabase disables email confirmation so registration can be exercised without an external
-mailer. Production deployments are expected to require email verification. Mailpit remains
-available at `http://127.0.0.1:54324` for local recovery-email inspection.
+## Routes
 
-## Authentication routes
-
-- `/login` and `/register`
-- `/verify-email`
-- `/forgot-password` and `/reset-password`
-- `/onboarding`
-- `/app`
-- `/app/settings/profile`
-- `/app/settings/preferences`
-- `/app/settings/security`
-
-Sessions are persisted by the Supabase browser client. Access and refresh tokens are never copied
-into application state or Zustand.
-
-## Contact routes
-
-- `/app/contacts` — accepted contacts, with remove and block actions
-- `/app/contacts/discover` — bounded user discovery and contact requests
-- `/app/contacts/requests` — incoming and outgoing pending requests
-- `/app/settings/blocked` — users you have blocked, with unblock
-
-Discovery is intentionally not a table scan. It runs through the bounded `search_profiles`
-function, requires at least two characters, and returns a minimal public shape. All contact and
-block mutations run through database functions that derive the actor from `auth.uid()`; the
-browser never writes relationship or block rows directly. A small pending incoming-request count
-is shown in the Contacts navigation and refreshes on tab focus and after contact mutations;
-Supabase Realtime is deferred, so the count may be briefly stale.
+| Area       | Routes                                                                        |
+| ---------- | ----------------------------------------------------------------------------- |
+| Auth       | `/login`, `/register`, `/verify-email`, `/forgot-password`, `/reset-password` |
+| Onboarding | `/onboarding`                                                                 |
+| App        | `/app`                                                                        |
+| Contacts   | `/app/contacts`, `/app/contacts/discover`, `/app/contacts/requests`           |
+| Settings   | `/app/settings/{profile,preferences,security,blocked}`                        |
 
 ## Commands
 
-| Command                   | Purpose                                     |
-| ------------------------- | ------------------------------------------- |
-| `npm run dev`             | Start the web application                   |
-| `npm run dev:web`         | Start only the web workspace                |
-| `npm run lint`            | Run ESLint                                  |
-| `npm run format`          | Format supported files                      |
-| `npm run format:check`    | Verify formatting                           |
-| `npm run test`            | Run unit and component tests                |
-| `npm run test:watch`      | Run web tests in watch mode                 |
-| `npm run test:e2e`        | Run the Playwright browser flows            |
-| `npm run build`           | Build the production web bundle             |
-| `npm run check`           | Run formatting, lint, unit tests, and build |
-| `npm run supabase:start`  | Start local Supabase                        |
-| `npm run supabase:stop`   | Stop local Supabase                         |
-| `npm run supabase:status` | Show local Supabase status                  |
-| `npm run supabase:reset`  | Recreate the local database from migrations |
-| `npm run db:test`         | Run pgTAP database tests                    |
+| Command                  | Purpose                                                        |
+| ------------------------ | -------------------------------------------------------------- |
+| `npm run dev`            | Start the web application                                      |
+| `npm run check`          | Format check, lint, unit and component tests, production build |
+| `npm run test`           | Unit and component tests                                       |
+| `npm run test:e2e`       | Playwright browser flows (needs local Supabase)                |
+| `npm run db:test`        | pgTAP database tests (needs local Supabase)                    |
+| `npm run supabase:reset` | Recreate the local database from migrations                    |
 
-`npm run check` intentionally does not require Supabase. Database tests (`npm run db:test`) and the
-Playwright browser flows (`npm run test:e2e`) require local Supabase to be running. The contact
-end-to-end scenarios create isolated multi-user accounts with unique deterministic data and clean
-them up afterward; their admin helper refuses any non-loopback Supabase URL.
+`npm run check` does not need Supabase. The database and browser tests do.
 
-## Repository structure
+## How it is tested
+
+The privacy claims above are checked at every layer, not just asserted here.
+
+- Database (pgTAP): 201 assertions over eight files cover row-level security, the social functions,
+  reciprocal acceptance, block isolation, and the blocked-users function, including the negative
+  cases that prove a blocked user cannot find out who blocked them.
+- Unit and component: the contact API wrappers, the error mapping, the search debounce and
+  stale-result handling, and the loading, empty, success, and error states on every page.
+- Browser (Playwright): multi-user flows against real local Supabase, covering discovery and
+  acceptance, removal, blocking in both directions, unblocking, and the contact-request privacy
+  setting. Each test makes and cleans up its own users.
+
+## Layout
 
 ```text
 apps/web/          React web application and browser tests
-packages/schemas/  Runtime validation shared across trusted boundaries
-supabase/          Local services, migrations, database tests, and Edge Function utilities
-docs/              Product, architecture, security, and engineering documentation
-tasks/             Task specification template and retained project history
-.github/workflows/ Continuous integration
+packages/schemas/  Runtime validation shared across trust boundaries
+supabase/          Local services, migrations, and pgTAP tests
+docs/              Product, architecture, security, and engineering decisions
+tasks/             The task specs this was built from, kept as history
 ```
 
-Read [the architecture](docs/ARCHITECTURE.md) and [security model](docs/SECURITY.md) before making
-implementation changes.
+If you want the design before the code, read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
+[docs/SECURITY.md](docs/SECURITY.md).
+
+## Status
+
+Council has not had a security audit and is not production-ready. It is built one milestone at a
+time, and [docs/ROADMAP.md](docs/ROADMAP.md) is the real list of what is and is not done. The
+source is public to read; see [LICENSE](LICENSE) for what you may do with it.

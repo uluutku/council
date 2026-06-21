@@ -1,7 +1,6 @@
-# Coding agent rules
+# Engineering rules
 
-These instructions apply to Codex, Claude Code, and every other coding agent working in this
-repository.
+These instructions apply to everyone working in this repository.
 
 ## Required context
 

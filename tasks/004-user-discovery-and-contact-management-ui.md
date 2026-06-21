@@ -1,4 +1,4 @@
-# Task 004 — User Discovery and Contact Management UI
+# Task 004: User Discovery and Contact Management UI
 
 ## Objective
 
@@ -101,9 +101,9 @@ cancellation, and reporting remain deferred.
 ## Results
 
 - `npm run supabase:reset`: pass.
-- `npm run db:test`: pass — 201 assertions across 8 files (was 190; +11 for
+- `npm run db:test`: pass, 201 assertions across 8 files (was 190; +11 for
   `list_my_blocked_users`).
 - Supabase schema lint: clean.
-- `npm run check`: pass — shared schemas 42 tests, web unit/component 101 tests, production build
-  succeeds.
-- `npm run test:e2e`: pass — 7 Playwright tests (smoke, auth/account, and 5 contact scenarios).
+- `npm run check`: pass (shared schemas 42 tests, web unit/component 102 tests, production build
+  succeeds).
+- `npm run test:e2e`: pass, 7 Playwright tests (smoke, auth/account, and 5 contact scenarios).

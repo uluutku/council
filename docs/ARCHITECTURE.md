@@ -142,7 +142,7 @@ Presentational components never call Supabase directly; only the `api` wrappers 
 wrapper validates returned rows with the shared `@council/schemas` contracts before the data
 reaches a component.
 
-All cross-user social writes — sending, responding to, removing, blocking, and unblocking — go
+All cross-user social writes (sending, responding to, removing, blocking, and unblocking) go
 through the existing security-definer database functions. The browser never inserts, updates, or
 deletes relationship or block rows. Discovery deliberately avoids direct profile-table
 enumeration: it calls the bounded `search_profiles` RPC, which requires at least two characters,

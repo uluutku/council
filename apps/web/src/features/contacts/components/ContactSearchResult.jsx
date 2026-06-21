@@ -13,7 +13,7 @@ function describeRelationship(status) {
     case 'pending':
       return { label: 'Request pending', tone: 'info', canAdd: false };
     default:
-      // null (no relationship) or 'rejected' — a fresh request is allowed.
+      // null (no relationship) or 'rejected'; a fresh request is allowed.
       return { label: null, tone: 'neutral', canAdd: true };
   }
 }

@@ -61,8 +61,8 @@ so the two cases are indistinguishable. Database errors are mapped to a fixed se
 rate-limited, network, session-expired, backend-unavailable, and unknown). Raw SQL, stack traces,
 internal function names, and UUIDs are never rendered, and private profile data is never logged.
 A confirmed session loss redirects to login; ordinary backend errors do not. Discovery is driven
-only by the bounded `search_profiles` RPC — the client performs no username enumeration or direct
-profile-table search — and contact, block, and unblock mutations run only through the
+only by the bounded `search_profiles` RPC (the client performs no username enumeration or direct
+profile-table search), and contact, block, and unblock mutations run only through the
 `auth.uid()`-scoped database functions. The minimal contact, request, search, and blocked-user
 contracts never include email addresses.
 

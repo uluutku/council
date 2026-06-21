@@ -4,7 +4,7 @@ import { render } from '@testing-library/react';
 import { AuthContext } from '../../../app/providers/AuthContext.js';
 
 // Shared render helper for contacts pages. Tests mock the contactsApi module, so
-// real TanStack queries/mutations run against the mock — a realistic integration
+// real TanStack queries/mutations run against the mock, a realistic integration
 // surface without standing up Supabase.
 export function renderWithContacts(element, options = {}) {
   const {
