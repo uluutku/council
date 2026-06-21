@@ -44,6 +44,28 @@ row. Social behavior treats a block in either direction as mutual isolation. Blo
 relationship deletion occur in one transaction, profile search hides both users from each other,
 and new requests fail in either direction. Unblocking never restores removed relationships.
 
+The blocked-users settings screen reads through the dedicated `list_my_blocked_users` function
+rather than the profiles table, because profile RLS intentionally hides a blocked pair from each
+other. That function returns only rows the caller created, so a user blocked by someone else is
+never exposed to that other user, and it returns no email, biography, or private settings. Profile
+policies are not weakened to support the screen.
+
+## Contact UI privacy and error handling
+
+The contacts UI enforces the same privacy posture as the database. No screen ever reveals that
+another user blocked the caller. When a contact request fails because the target blocked the
+caller or disabled contact requests, the UI shows a single generic "this person is not available
+right now" message; the block and privacy rejection paths are mapped to the same user-facing text
+so the two cases are indistinguishable. Database errors are mapped to a fixed set of categories
+(validation, query-too-short, user-unavailable, request-no-longer-pending, action-not-permitted,
+rate-limited, network, session-expired, backend-unavailable, and unknown). Raw SQL, stack traces,
+internal function names, and UUIDs are never rendered, and private profile data is never logged.
+A confirmed session loss redirects to login; ordinary backend errors do not. Discovery is driven
+only by the bounded `search_profiles` RPC — the client performs no username enumeration or direct
+profile-table search — and contact, block, and unblock mutations run only through the
+`auth.uid()`-scoped database functions. The minimal contact, request, search, and blocked-user
+contracts never include email addresses.
+
 ## Mutation restrictions
 
 Authenticated clients cannot directly insert, update, or delete contact relationships or block

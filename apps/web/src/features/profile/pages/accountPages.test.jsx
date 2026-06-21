@@ -1,6 +1,7 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../../../app/providers/AuthContext.js';
 import { AuthenticatedLayout } from '../../../app/layouts/AuthenticatedLayout.jsx';
@@ -12,6 +13,12 @@ import { setMyProfile, updateMySettings } from '../api/profileApi.js';
 vi.mock('../api/profileApi.js', () => ({
   setMyProfile: vi.fn(),
   updateMySettings: vi.fn(),
+}));
+
+// The authenticated shell now renders a pending-request count badge. Keep that
+// background query out of these account-focused tests with a stable empty list.
+vi.mock('../../contacts/api/contactsApi.js', () => ({
+  listMyContactRequests: vi.fn().mockResolvedValue([]),
 }));
 
 const profile = {
@@ -48,10 +55,13 @@ function renderWithAuth(element, authOverrides = {}) {
     ...authOverrides,
   };
 
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
-    <AuthContext.Provider value={auth}>
-      <MemoryRouter>{element}</MemoryRouter>
-    </AuthContext.Provider>,
+    <QueryClientProvider client={queryClient}>
+      <AuthContext.Provider value={auth}>
+        <MemoryRouter>{element}</MemoryRouter>
+      </AuthContext.Provider>
+    </QueryClientProvider>,
   );
   return auth;
 }

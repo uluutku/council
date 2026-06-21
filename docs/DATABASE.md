@@ -89,6 +89,8 @@ and only the profile/settings update columns required by their RLS policies.
 - `list_my_contact_requests`: incoming/outgoing pending requests with an explicit direction.
 - `update_my_settings`: merges supported theme, notification, and privacy fields for
   `auth.uid()` while preserving unrelated existing JSON keys.
+- `list_my_blocked_users`: returns only the authenticated user's own blocked targets with minimal
+  profile fields.
 
 Every public function derives the acting user from `auth.uid()`. Pair mutations use a shared
 transaction-level advisory lock so request, response, removal, block, and unblock operations
@@ -98,6 +100,24 @@ cannot race into duplicate or contradictory pair state.
 containing only currently supported boolean keys. Unsupported new keys and non-boolean values
 are rejected. Existing unknown keys are retained so later settings additions are not erased by
 an older client.
+
+### `list_my_blocked_users`
+
+Direct profile RLS intentionally hides a blocked pair from each other, so the blocked-users
+settings screen cannot use a plain profile join. `list_my_blocked_users` is a narrowly scoped
+security-definer function added in `20260621230000_add_list_my_blocked_users.sql` that returns
+`id`, `username`, `display_name`, `avatar_path`, `status_text`, and `blocked_at` for each target
+the caller has blocked.
+
+It derives the acting user from `auth.uid()` and accepts no caller-supplied identity. It returns
+only rows where `user_blocks.blocker_id = auth.uid()`, so a user blocked by someone else never
+appears in that other user's list and the function never reveals block direction beyond the
+caller's own rows. It exposes no email, biography, private settings, or Auth metadata. It uses
+`set search_path = public, pg_temp`, has its default privileges revoked from `public`, `anon`, and
+`authenticated`, and is then granted only to `authenticated`. The profile policies are not
+weakened and no direct profile-table enumeration is granted. Positive and negative pgTAP tests
+cover blocker visibility, blocked-user and unrelated-user denial, anonymous denial, field
+exclusion, identity derivation, and removal after unblocking.
 
 ## Internal helpers
 

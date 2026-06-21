@@ -132,3 +132,30 @@ merges supported fields without deleting unrelated stored JSON keys.
 Password recovery is marked only by Supabase's `PASSWORD_RECOVERY` event. Ordinary authenticated
 sessions can reach the same password form only after an explicit security-screen action stored
 temporarily in session storage.
+
+## Contacts feature boundary
+
+The contacts experience lives in a focused feature area under
+`apps/web/src/features/contacts`: an `api` module of Supabase wrappers, `queries` for query
+options and mutation hooks, presentational `components`, `pages`, `hooks`, and pure `utils`.
+Presentational components never call Supabase directly; only the `api` wrappers do, and every
+wrapper validates returned rows with the shared `@council/schemas` contracts before the data
+reaches a component.
+
+All cross-user social writes — sending, responding to, removing, blocking, and unblocking — go
+through the existing security-definer database functions. The browser never inserts, updates, or
+deletes relationship or block rows. Discovery deliberately avoids direct profile-table
+enumeration: it calls the bounded `search_profiles` RPC, which requires at least two characters,
+caps results, and applies privacy and block filtering server-side. The blocked-users screen uses
+the dedicated `list_my_blocked_users` function because profile RLS hides blocked pairs from each
+other.
+
+TanStack Query owns all contacts server state under stable `contacts.*` query keys
+(`list`, `requests`, `blocked`, and per-query `search`). Mutations invalidate exactly the buckets
+the database contract can change rather than relying on optimistic updates. Only transient form
+and dialog state is component-local; no contact data is duplicated into Zustand. A pending
+incoming-request count is derived from the shared requests query and shown in navigation.
+
+Supabase Realtime is intentionally deferred to a later milestone. Until then the request count and
+lists refresh on tab focus, on normal stale-time expiry, and after successful mutations rather
+than through live subscriptions, so a short-lived stale count is expected and acceptable.

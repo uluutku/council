@@ -606,6 +606,226 @@ code {
   border-radius: 0.25rem;
 }
 
+/* Contacts */
+.contacts-layout {
+  display: grid;
+  gap: 2rem;
+}
+
+.contacts-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.contacts-subnav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  color: var(--color-muted);
+  border-radius: var(--radius-small);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.contacts-subnav a.active {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.contacts-section {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 46rem;
+}
+
+.search-form {
+  max-width: 32rem;
+}
+
+.contact-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contact-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-large);
+}
+
+.contact-avatar {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  place-items: center;
+  color: white;
+  font-size: 1rem;
+  font-weight: 800;
+  background: var(--color-accent);
+  border-radius: 50%;
+}
+
+.contact-identity {
+  display: grid;
+  gap: 0.15rem;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.contact-name {
+  margin: 0;
+  font-weight: 700;
+}
+
+.contact-username,
+.contact-status,
+.contact-meta {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 0.25rem;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-muted);
+}
+
+.status-badge[data-tone='success'] {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.status-badge[data-tone='info'] {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.request-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.request-section h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.nav-count {
+  display: inline-grid;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  place-items: center;
+  padding: 0 0.35rem;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: var(--color-accent);
+  border-radius: 999px;
+}
+
+.empty-state {
+  padding: 1.5rem;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-large);
+}
+
+.empty-state-title {
+  margin: 0 0 0.35rem;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.empty-state p {
+  margin: 0;
+}
+
+.loading-state {
+  color: var(--color-muted);
+}
+
+.error-state {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-large);
+}
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgb(10 13 20 / 55%);
+}
+
+.dialog-panel {
+  width: min(100%, 30rem);
+  padding: clamp(1.25rem, 4vw, 1.75rem);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+}
+
+.dialog-panel h2 {
+  margin: 0 0 0.75rem;
+}
+
+.dialog-body {
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.dialog-body p {
+  margin: 0 0 0.5rem;
+}
+
+.dialog-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
 @media (max-width: 44rem) {
   .site-header {
     position: relative;
@@ -679,6 +899,14 @@ code {
   .detail-list div {
     grid-template-columns: 1fr;
     gap: 0.25rem;
+  }
+
+  .contact-actions {
+    width: 100%;
+  }
+
+  .dialog-actions {
+    flex-direction: column-reverse;
   }
 }
 

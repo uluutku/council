@@ -110,6 +110,87 @@ export const profileSearchQuerySchema = z
   })
   .strict();
 
+const timestampSchema = z
+  .string()
+  .datetime({ offset: true, message: 'Expected an ISO 8601 timestamp.' });
+
+export const contactRelationshipSchema = z
+  .object({
+    id: z.string().uuid(),
+    user_low_id: z.string().uuid(),
+    user_high_id: z.string().uuid(),
+    requested_by: z.string().uuid(),
+    status: relationshipStatusSchema,
+    created_at: timestampSchema,
+    responded_at: timestampSchema.nullable(),
+    updated_at: timestampSchema,
+  })
+  .strict();
+
+export const contactListItemSchema = z
+  .object({
+    id: z.string().uuid(),
+    username: usernameSchema,
+    display_name: nullableTrimmedString(60, 'Display name'),
+    avatar_path: avatarPathSchema,
+    status_text: nullableTrimmedString(120, 'Status text'),
+    relationship_id: z.string().uuid(),
+    accepted_at: timestampSchema.nullable(),
+  })
+  .strict();
+
+export const contactListSchema = z.array(contactListItemSchema);
+
+export const contactRequestItemSchema = z
+  .object({
+    relationship_id: z.string().uuid(),
+    id: z.string().uuid(),
+    username: usernameSchema,
+    display_name: nullableTrimmedString(60, 'Display name'),
+    avatar_path: avatarPathSchema,
+    status_text: nullableTrimmedString(120, 'Status text'),
+    direction: contactRequestDirectionSchema,
+    created_at: timestampSchema,
+  })
+  .strict();
+
+export const contactRequestListSchema = z.array(contactRequestItemSchema);
+
+export const profileSearchResultSchema = publicProfileSchema;
+export const profileSearchResultsSchema = z.array(profileSearchResultSchema);
+
+export const blockedUserItemSchema = z
+  .object({
+    id: z.string().uuid(),
+    username: usernameSchema,
+    display_name: nullableTrimmedString(60, 'Display name'),
+    avatar_path: avatarPathSchema,
+    status_text: nullableTrimmedString(120, 'Status text'),
+    blocked_at: timestampSchema,
+  })
+  .strict();
+
+export const blockedUserListSchema = z.array(blockedUserItemSchema);
+
+export const contactActionOutcomeSchema = z.enum([
+  'request_sent',
+  'now_contacts',
+  'already_contacts',
+]);
+
+export const contactActionResultSchema = z
+  .object({
+    outcome: contactActionOutcomeSchema,
+    relationship: contactRelationshipSchema,
+  })
+  .strict();
+
+export const contactSearchFormSchema = z
+  .object({
+    query: z.string().max(100, 'Search is limited to 100 characters.'),
+  })
+  .strict();
+
 export const emailSchema = z
   .string()
   .trim()
@@ -203,6 +284,12 @@ export const preferencesFormSchema = z
   })
   .strict();
 
+/** @typedef {z.infer<typeof contactRelationshipSchema>} ContactRelationship */
+/** @typedef {z.infer<typeof contactListItemSchema>} ContactListItem */
+/** @typedef {z.infer<typeof contactRequestItemSchema>} ContactRequestItem */
+/** @typedef {z.infer<typeof profileSearchResultSchema>} ProfileSearchResult */
+/** @typedef {z.infer<typeof blockedUserItemSchema>} BlockedUserItem */
+/** @typedef {z.infer<typeof contactActionResultSchema>} ContactActionResult */
 /** @typedef {z.infer<typeof profileUpdateInputSchema>} ProfileUpdateInput */
 /** @typedef {z.infer<typeof publicProfileSchema>} PublicProfile */
 /** @typedef {z.infer<typeof userSettingsUpdateSchema>} UserSettingsUpdate */

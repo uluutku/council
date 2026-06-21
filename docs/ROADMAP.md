@@ -22,6 +22,7 @@ Status:
 - Foundation repository base: complete.
 - Accounts and contacts: database schema, web authentication, username onboarding, profile
   settings, preference settings, security settings, social functions, grants, RLS, shared
-  contracts, and tests complete. Contact discovery, request, blocking, and reporting UI remain
-  pending.
+  contracts, and tests complete. User discovery UI, contact requests UI, contact management UI,
+  and blocking UI are complete. Conversations and messaging are intentionally not part of this
+  milestone and remain pending.
 - Every later milestone remains pending.

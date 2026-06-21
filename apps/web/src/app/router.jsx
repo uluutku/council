@@ -2,6 +2,7 @@ import { createBrowserRouter, createMemoryRouter } from 'react-router-dom';
 import { PublicLayout } from './layouts/PublicLayout.jsx';
 import { AuthenticatedLayout } from './layouts/AuthenticatedLayout.jsx';
 import { SettingsLayout } from './layouts/SettingsLayout.jsx';
+import { ContactsLayout } from './layouts/ContactsLayout.jsx';
 import { GuestRoute } from './router/GuestRoute.jsx';
 import { ProtectedRoute } from './router/ProtectedRoute.jsx';
 import { OnboardingRoute } from './router/OnboardingRoute.jsx';
@@ -17,6 +18,10 @@ import { OnboardingPage } from '../features/onboarding/OnboardingPage.jsx';
 import { ProfileSettingsPage } from '../features/profile/pages/ProfileSettingsPage.jsx';
 import { PreferencesSettingsPage } from '../features/profile/pages/PreferencesSettingsPage.jsx';
 import { SecuritySettingsPage } from '../features/profile/pages/SecuritySettingsPage.jsx';
+import { ContactsPage } from '../features/contacts/pages/ContactsPage.jsx';
+import { DiscoverContactsPage } from '../features/contacts/pages/DiscoverContactsPage.jsx';
+import { ContactRequestsPage } from '../features/contacts/pages/ContactRequestsPage.jsx';
+import { BlockedUsersPage } from '../features/contacts/pages/BlockedUsersPage.jsx';
 
 export const routes = [
   {
@@ -48,6 +53,15 @@ export const routes = [
         children: [
           { index: true, element: <AppHomePage /> },
           {
+            path: 'contacts',
+            element: <ContactsLayout />,
+            children: [
+              { index: true, element: <ContactsPage /> },
+              { path: 'discover', element: <DiscoverContactsPage /> },
+              { path: 'requests', element: <ContactRequestsPage /> },
+            ],
+          },
+          {
             path: 'settings',
             element: <SettingsLayout />,
             children: [
@@ -55,6 +69,7 @@ export const routes = [
               { path: 'profile', element: <ProfileSettingsPage /> },
               { path: 'preferences', element: <PreferencesSettingsPage /> },
               { path: 'security', element: <SecuritySettingsPage /> },
+              { path: 'blocked', element: <BlockedUsersPage /> },
             ],
           },
         ],

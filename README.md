@@ -10,9 +10,11 @@ provider boundary.
 
 ## Project status
 
-The repository contains the foundation, account/social database layer, and web authentication,
-onboarding, profile, preferences, and security settings experience. Contact UI, conversations,
-messaging, billing, and AI features remain unimplemented. The project is not production-ready.
+The repository contains the foundation, account/social database layer, the web authentication,
+onboarding, profile, preferences, and security settings experience, and the full contact
+management experience: user discovery, contact requests, accepted-contact management, and
+blocking. Conversations, messaging, Realtime, Storage, billing, and AI features remain
+unimplemented. The project is not production-ready.
 
 ## Stack
 
@@ -66,6 +68,20 @@ available at `http://127.0.0.1:54324` for local recovery-email inspection.
 Sessions are persisted by the Supabase browser client. Access and refresh tokens are never copied
 into application state or Zustand.
 
+## Contact routes
+
+- `/app/contacts` — accepted contacts, with remove and block actions
+- `/app/contacts/discover` — bounded user discovery and contact requests
+- `/app/contacts/requests` — incoming and outgoing pending requests
+- `/app/settings/blocked` — users you have blocked, with unblock
+
+Discovery is intentionally not a table scan. It runs through the bounded `search_profiles`
+function, requires at least two characters, and returns a minimal public shape. All contact and
+block mutations run through database functions that derive the actor from `auth.uid()`; the
+browser never writes relationship or block rows directly. A small pending incoming-request count
+is shown in the Contacts navigation and refreshes on tab focus and after contact mutations;
+Supabase Realtime is deferred, so the count may be briefly stale.
+
 ## Commands
 
 | Command                   | Purpose                                     |
@@ -77,7 +93,7 @@ into application state or Zustand.
 | `npm run format:check`    | Verify formatting                           |
 | `npm run test`            | Run unit and component tests                |
 | `npm run test:watch`      | Run web tests in watch mode                 |
-| `npm run test:e2e`        | Run the Playwright smoke test               |
+| `npm run test:e2e`        | Run the Playwright browser flows            |
 | `npm run build`           | Build the production web bundle             |
 | `npm run check`           | Run formatting, lint, unit tests, and build |
 | `npm run supabase:start`  | Start local Supabase                        |
@@ -86,7 +102,10 @@ into application state or Zustand.
 | `npm run supabase:reset`  | Recreate the local database from migrations |
 | `npm run db:test`         | Run pgTAP database tests                    |
 
-`npm run check` intentionally does not require Supabase. Database tests are a separate command.
+`npm run check` intentionally does not require Supabase. Database tests (`npm run db:test`) and the
+Playwright browser flows (`npm run test:e2e`) require local Supabase to be running. The contact
+end-to-end scenarios create isolated multi-user accounts with unique deterministic data and clean
+them up afterward; their admin helper refuses any non-loopback Supabase URL.
 
 ## Repository structure
 

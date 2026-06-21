@@ -3,11 +3,13 @@ import { useState } from 'react';
 import { useAuth } from '../providers/AuthContext.js';
 import { mapSupabaseError } from '../../features/auth/utils/authErrors.js';
 import { useRouteFocus } from '../../hooks/useRouteFocus.js';
+import { usePendingRequestCount } from '../../features/contacts/hooks/usePendingRequestCount.js';
 
 export function AuthenticatedLayout() {
   useRouteFocus();
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
+  const pendingRequests = usePendingRequestCount();
   const [logoutError, setLogoutError] = useState('');
   const [isSigningOut, setIsSigningOut] = useState(false);
   const name = profile?.display_name || profile?.username;
@@ -33,7 +35,20 @@ export function AuthenticatedLayout() {
           Council
         </NavLink>
         <nav className="app-navigation" aria-label="Application">
-          <NavLink to="/app">Home</NavLink>
+          <NavLink to="/app" end>
+            Home
+          </NavLink>
+          <NavLink to="/app/contacts">
+            Contacts
+            {pendingRequests > 0 ? (
+              <span
+                className="nav-count"
+                aria-label={`${pendingRequests} pending incoming requests`}
+              >
+                {pendingRequests}
+              </span>
+            ) : null}
+          </NavLink>
           <NavLink to="/app/settings/profile">Settings</NavLink>
         </nav>
         <div className="account-menu">
