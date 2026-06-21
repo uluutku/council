@@ -1,0 +1,26 @@
+name: Change proposal
+description: Propose a feature, route, or schema change
+title: '[Proposal]: '
+labels: ['proposal']
+body:
+  - type: textarea
+    id: change
+    attributes:
+      label: What
+      description: The feature or change you are proposing.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: The problem it solves and who it is for.
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security and privacy impact
+      description: New tables need row-level security; cross-user actions go through database functions. Note any effect on discovery, blocking, or what data is exposed.
+    validations:
+      required: true
