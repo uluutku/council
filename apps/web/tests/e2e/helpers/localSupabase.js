@@ -1,0 +1,89 @@
+import { execFileSync } from 'node:child_process';
+import { createClient } from '@supabase/supabase-js';
+import { resolve } from 'node:path';
+
+const repositoryRoot = resolve(import.meta.dirname, '../../../../..');
+const supabaseScript = resolve(repositoryRoot, 'scripts', 'supabase.mjs');
+
+function assertLocalUrl(value) {
+  const url = new URL(value);
+  const localHosts = new Set(['127.0.0.1', 'localhost', '::1']);
+
+  if (url.protocol !== 'http:' || !localHosts.has(url.hostname)) {
+    throw new Error('Playwright administration is restricted to local Supabase.');
+  }
+
+  return url.toString().replace(/\/$/, '');
+}
+
+export function getLocalSupabaseEnvironment() {
+  const output = execFileSync(process.execPath, [supabaseScript, 'status', '--output', 'json'], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    env: { ...process.env, DO_NOT_TRACK: '1' },
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  const status = JSON.parse(output);
+  const apiUrl = assertLocalUrl(status.API_URL);
+  const serviceRoleKey = status[['SERVICE', 'ROLE', 'KEY'].join('_')];
+
+  if (!status.ANON_KEY || !serviceRoleKey) {
+    throw new Error('Local Supabase keys are unavailable.');
+  }
+
+  return {
+    apiUrl,
+    anonKey: status.ANON_KEY,
+    serviceRoleKey,
+  };
+}
+
+export function createLocalAdminClient() {
+  const environment = getLocalSupabaseEnvironment();
+  return createClient(environment.apiUrl, environment.serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
+export async function createLocalTestUser(email, password) {
+  const admin = createLocalAdminClient();
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (error) throw error;
+  return data.user;
+}
+
+export async function generateLocalRecoveryLink(email, redirectTo) {
+  assertLocalUrl(redirectTo);
+  const admin = createLocalAdminClient();
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: 'recovery',
+    email,
+    options: { redirectTo },
+  });
+
+  if (error) throw error;
+  return assertLocalUrl(data.properties.action_link);
+}
+
+export async function deleteLocalUsersByEmail(emails) {
+  const admin = createLocalAdminClient();
+  const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (error) throw error;
+
+  const targets = data.users.filter((user) => emails.includes(user.email));
+  await Promise.all(
+    targets.map(async (user) => {
+      const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
+      if (deleteError) throw deleteError;
+    }),
+  );
+}

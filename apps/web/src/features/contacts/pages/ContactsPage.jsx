@@ -1,0 +1,108 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { usePageTitle } from '../../../hooks/usePageTitle.js';
+import { FormStatus } from '../../../components/FormStatus.jsx';
+import { ContactList } from '../components/ContactList.jsx';
+import { RemoveContactDialog } from '../components/RemoveContactDialog.jsx';
+import { BlockUserDialog } from '../components/BlockUserDialog.jsx';
+import { ContactsError, ContactsLoading, EmptyState } from '../components/ContactsFeedback.jsx';
+import { contactsQueryOptions } from '../queries/contactQueries.js';
+import { useBlockUser, useRemoveContact } from '../queries/contactMutations.js';
+import { mapContactError } from '../utils/contactErrors.js';
+import { contactDisplayName } from '../utils/contactDisplay.js';
+
+const NEUTRAL = { message: '', tone: 'neutral' };
+
+export function ContactsPage() {
+  usePageTitle('Contacts');
+  const contactsQuery = useQuery(contactsQueryOptions());
+  const removeContact = useRemoveContact();
+  const blockUser = useBlockUser();
+  const [dialog, setDialog] = useState(null);
+  const [status, setStatus] = useState(NEUTRAL);
+
+  const contacts = contactsQuery.data ?? [];
+
+  function closeDialog() {
+    setDialog(null);
+  }
+
+  async function confirmRemove() {
+    const contact = dialog.contact;
+    const name = contactDisplayName(contact);
+    try {
+      await removeContact.mutateAsync({ targetUserId: contact.id });
+      setStatus({ message: `${name} was removed from your contacts.`, tone: 'success' });
+    } catch (error) {
+      setStatus({ message: mapContactError(error).message, tone: 'error' });
+    } finally {
+      closeDialog();
+    }
+  }
+
+  async function confirmBlock() {
+    const contact = dialog.contact;
+    const name = contactDisplayName(contact);
+    try {
+      await blockUser.mutateAsync({ targetUserId: contact.id });
+      setStatus({ message: `${name} is now blocked.`, tone: 'success' });
+    } catch (error) {
+      setStatus({ message: mapContactError(error).message, tone: 'error' });
+    } finally {
+      closeDialog();
+    }
+  }
+
+  return (
+    <section className="contacts-section">
+      <div>
+        <p className="eyebrow">People</p>
+        <h1>My contacts</h1>
+        <p>The people you are connected with on Council.</p>
+      </div>
+
+      <FormStatus message={status.message} tone={status.tone} />
+
+      {contactsQuery.isPending ? <ContactsLoading label="Loading your contacts…" /> : null}
+
+      {contactsQuery.isError ? (
+        <ContactsError
+          message={mapContactError(contactsQuery.error).message}
+          onRetry={() => contactsQuery.refetch()}
+        />
+      ) : null}
+
+      {contactsQuery.isSuccess ? (
+        <ContactList
+          contacts={contacts}
+          onRemove={(contact) => setDialog({ type: 'remove', contact })}
+          onBlock={(contact) => setDialog({ type: 'block', contact })}
+          emptyState={
+            <EmptyState title="You have no contacts yet.">
+              <p>
+                Find people on the <Link to="/app/contacts/discover">Discover</Link> page and send a
+                contact request to get started.
+              </p>
+            </EmptyState>
+          }
+        />
+      ) : null}
+
+      <RemoveContactDialog
+        open={dialog?.type === 'remove'}
+        name={dialog ? contactDisplayName(dialog.contact) : ''}
+        isPending={removeContact.isPending}
+        onConfirm={confirmRemove}
+        onCancel={closeDialog}
+      />
+      <BlockUserDialog
+        open={dialog?.type === 'block'}
+        name={dialog ? contactDisplayName(dialog.contact) : ''}
+        isPending={blockUser.isPending}
+        onConfirm={confirmBlock}
+        onCancel={closeDialog}
+      />
+    </section>
+  );
+}

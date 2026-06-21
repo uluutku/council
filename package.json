@@ -1,0 +1,39 @@
+{
+  "name": "council",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private human and AI messaging in one web application.",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev:web",
+    "dev:web": "npm run dev --workspace @council/web",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test --workspace @council/schemas && npm run test --workspace @council/web",
+    "test:watch": "npm run test:watch --workspace @council/web",
+    "test:e2e": "npm run test:e2e --workspace @council/web",
+    "build": "npm run build --workspace @council/web",
+    "check": "npm run format:check && npm run lint && npm run test && npm run build",
+    "supabase:start": "node scripts/supabase.mjs start",
+    "supabase:stop": "node scripts/supabase.mjs stop",
+    "supabase:status": "node scripts/supabase.mjs status",
+    "supabase:reset": "node scripts/supabase.mjs db reset",
+    "db:test": "node scripts/supabase.mjs test db"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "eslint": "^10.5.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.4",
+    "supabase": "^2.107.0"
+  }
+}
