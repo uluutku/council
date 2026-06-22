@@ -145,5 +145,26 @@ The context import is linked to the normal AI user message. Reusing the same req
 payload replays without another import, run, message, or credit; changed selections conflict. Prompt
 assembly remains platform, contact/persona, style, curated memory, bounded AI history, then
 explicitly delimited untrusted copied context and the user instruction. Forwarded text is never
-saved as memory automatically and is never logged. PDF and document analysis remains deferred until
-the end of the project.
+saved as memory automatically and is never logged. Existing human-chat attachments remain excluded
+from forwarding.
+
+## Task 014: private document understanding
+
+Direct AI prompts may reference up to two finalized owner-scoped PDF, TXT, or Markdown attachments,
+within per-file and 15 MB combined limits. `start_ai_generation` binds sorted document IDs into the
+normal idempotency payload, attaches them to exactly one user message, and uses the existing
+one-credit reservation/refund path. Exact retries reuse the message, run, attachments, parsing
+cache, and credit; changed document selections conflict.
+
+The Edge Function downloads private bytes through trusted Storage access and revalidates ownership,
+conversation, MIME, extension, size, signature, and SHA-256. TXT and Markdown are decoded as bounded
+UTF-8 plain text. PDFs are sent as base64 to the server-configured OpenRouter file parser using
+`OPENROUTER_PDF_ENGINE` (`cloudflare-ai` by default); signed URLs are never sent to the provider.
+Image-only PDFs fail with an OCR-not-enabled message.
+
+Completed extraction is cached per user, document hash, MIME, parser engine, and parser version in a
+browser-inaccessible table. Prompt order remains platform, contact/persona, style, curated memory,
+bounded history, forwarded context, delimited untrusted document context, then the current question.
+Document text and parser annotations are never returned in browser events, logged, or saved as
+memory. Safe document metadata persists with the user message for reload and short-lived authorized
+download access.

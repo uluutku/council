@@ -34,6 +34,13 @@ const MESSAGES = {
   context_import_unavailable: 'That forwarded context is no longer available.',
   source_conversation_unavailable: 'The source conversation is unavailable.',
   source_message_unavailable: 'One or more selected messages can no longer be forwarded.',
+  unsupported_document: 'Only PDF, TXT, and Markdown documents are supported.',
+  document_too_large: 'The selected documents exceed Council’s size limit.',
+  document_unavailable: 'That private document is no longer available.',
+  document_unreadable:
+    'This PDF does not contain enough readable text. Scanned-document OCR is not enabled in this build.',
+  document_text_too_long: 'The readable document text exceeds Council’s processing limit.',
+  pdf_parser_unavailable: 'PDF processing is temporarily unavailable. Try again.',
   backend_unavailable: 'Council is temporarily unavailable. Try again.',
   unknown_error: 'Something went wrong. Try again.',
 };

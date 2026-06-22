@@ -34,6 +34,12 @@ const KNOWN_CATEGORIES = new Set([
   'context_import_unavailable',
   'source_conversation_unavailable',
   'source_message_unavailable',
+  'unsupported_document',
+  'document_too_large',
+  'document_unavailable',
+  'document_unreadable',
+  'document_text_too_long',
+  'pdf_parser_unavailable',
 ]);
 
 export function mapAiError(error) {

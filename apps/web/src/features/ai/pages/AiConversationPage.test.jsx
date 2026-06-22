@@ -47,7 +47,8 @@ beforeEach(() => {
     status: 'ok',
     provider_mode: 'openrouter',
     model: 'deepseek/deepseek-v4-flash',
-    vision_model: 'xiaomi/mimo-v2.5',
+    vision_model: 'google/gemini-2.5-flash',
+    pdf_engine: 'cloudflare-ai',
   });
   aiApi.getAiMemorySettings.mockResolvedValue({
     conversation_id: CONVERSATION_ID,
@@ -111,6 +112,31 @@ describe('AiConversationPage', () => {
     expect(screen.getByText('Decision one')).toBeInTheDocument();
     expect(screen.getByText('Question two')).toBeInTheDocument();
     expect(screen.getByText('Attachment excluded')).toBeInTheDocument();
+  });
+
+  it('renders persistent document metadata without extracted text', async () => {
+    aiApi.listAiMessages.mockResolvedValue([
+      makeAiMessage({
+        id: 'd5000000-0000-4000-8000-000000000005',
+        documents: [
+          {
+            id: 'd6000000-0000-4000-8000-000000000006',
+            original_filename: 'project-plan.md',
+            mime_type: 'text/markdown',
+            size_bytes: 2048,
+            page_count: null,
+            status: 'attached',
+            created_at: '2026-06-22T10:00:00+00:00',
+          },
+        ],
+      }),
+    ]);
+
+    renderConversation();
+
+    expect(await screen.findByText('project-plan.md')).toBeInTheDocument();
+    expect(screen.getByText(/Markdown · 2.0 KB/)).toBeInTheDocument();
+    expect(screen.queryByText(/extracted document text/i)).not.toBeInTheDocument();
   });
 
   it('shows the custom persona identity', async () => {

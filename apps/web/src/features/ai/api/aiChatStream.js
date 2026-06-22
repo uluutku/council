@@ -41,6 +41,7 @@ export async function streamAiChat({
   clientMessageId,
   content,
   attachmentIds = [],
+  documentAttachmentIds = [],
   contextImport = null,
   signal,
   onEvent,
@@ -50,6 +51,7 @@ export async function streamAiChat({
     client_message_id: clientMessageId,
     content,
     attachment_ids: attachmentIds,
+    document_attachment_ids: documentAttachmentIds,
     context_import: contextImport,
   });
 
@@ -74,6 +76,7 @@ export async function streamAiChat({
         client_message_id: input.client_message_id,
         content: input.content,
         attachment_ids: input.attachment_ids,
+        document_attachment_ids: input.document_attachment_ids,
         context_import: input.context_import,
       }),
       signal,

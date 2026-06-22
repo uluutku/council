@@ -56,11 +56,14 @@ Status:
   analysis caching, and provider-sharing disclosure.
 - Explicit human-message forwarding is complete for selected text only: local selection, exact
   review/removal, built-in or active-persona destination, owner-only immutable provenance,
-  idempotent generation through the existing AI pipeline, and persistent context cards. Images,
-  files, PDFs, and document analysis are excluded; PDF/document understanding remains deferred
-  until the end of the project.
+  idempotent generation through the existing AI pipeline, and persistent context cards. Images and
+  files remain excluded from forwarding.
+- Private AI document understanding is complete for directly uploaded PDF, TXT, and Markdown files:
+  private staged uploads, server-side text extraction or configured PDF parsing, user-scoped
+  analysis caching, persistent document cards, provider disclosure, and idempotent generation.
+  Scanned-PDF OCR, Office/HTML analysis, human-chat attachment forwarding, semantic search, and
+  document knowledge bases remain pending.
 - Automatic memory extraction, embeddings, contradiction resolution, tools, web search,
-  file/document understanding, AI inside human conversations, and public/shared personas remain
-  pending.
+  AI inside human conversations, and public/shared personas remain pending.
 - Billing and entitlements (Pro checkout) is not started; the credit model exists but `pro_enabled`
   is only settable by the trusted backend hook. Every later milestone remains pending.

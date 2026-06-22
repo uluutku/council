@@ -83,13 +83,24 @@ const tinyPng = Buffer.from(
 );
 
 async function attachImage(page, name = 'screen.png') {
-  await page.locator('.ai-composer input[type="file"]').setInputFiles({
+  await page.locator('.ai-composer input[accept*="image/jpeg"]').setInputFiles({
     name,
     mimeType: 'image/png',
     buffer: tinyPng,
   });
   await expect(page.getByAltText(name)).toBeVisible();
   await expect(page.getByText(/will be sent to Council’s configured AI provider/i)).toBeVisible();
+  await expect(page.getByText('Ready', { exact: true })).toBeVisible({ timeout: 20_000 });
+}
+
+async function attachDocument(page, { name, mimeType, buffer }) {
+  await page.locator('.ai-composer input[accept*="application/pdf"]').setInputFiles({
+    name,
+    mimeType,
+    buffer,
+  });
+  await expect(page.getByText(name, { exact: true })).toBeVisible();
+  await expect(page.getByText(/Only files you explicitly send are analyzed/i)).toBeVisible();
   await expect(page.getByText('Ready', { exact: true })).toBeVisible({ timeout: 20_000 });
 }
 
@@ -325,7 +336,7 @@ test.describe('AI contacts and personas', () => {
     const b = await newUserContext(browser, 'imageb');
     try {
       await openBuiltin(a.page, 'Council Assistant');
-      const input = a.page.locator('.ai-composer input[type="file"]');
+      const input = a.page.locator('.ai-composer input[accept*="image/jpeg"]');
       await input.setInputFiles({
         name: 'document.pdf',
         mimeType: 'application/pdf',
@@ -459,6 +470,85 @@ test.describe('AI contacts and personas', () => {
       await expect(
         b.page.getByText('Only this text may be forwarded.', { exact: true }),
       ).toHaveCount(0);
+    } finally {
+      await a.context.close();
+      await b.context.close();
+    }
+  });
+
+  test('uploads Markdown, receives an answer, and keeps the document after reload', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const { context, page } = await newUserContext(browser, 'docmarkdown');
+    try {
+      await openBuiltin(page, 'Council Assistant');
+      await attachDocument(page, {
+        name: 'project-plan.md',
+        mimeType: 'text/markdown',
+        buffer: Buffer.from('# Plan\n\n- Ship safely\n- Review risks'),
+      });
+      await page.getByLabel('Message the assistant').fill('List the risks and next actions.');
+      await page.getByRole('button', { name: 'Send' }).click();
+      await expect(await lastAssistant(page)).toContainText(
+        'Private document context was supplied',
+        {
+          timeout: 30_000,
+        },
+      );
+      await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0, {
+        timeout: 30_000,
+      });
+
+      await page.reload();
+      await expect(page.getByText('project-plan.md', { exact: true })).toBeVisible({
+        timeout: 20_000,
+      });
+      await expect(page.getByText(/Markdown/)).toBeVisible();
+      await expect(await lastAssistant(page)).toContainText(
+        'Private document context was supplied',
+      );
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('parses a PDF, rejects unsupported files, and denies cross-user document access', async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000);
+    const a = await newUserContext(browser, 'docpdfa');
+    const b = await newUserContext(browser, 'docpdfb');
+    try {
+      await openBuiltin(a.page, 'Council Assistant');
+      await attachDocument(a.page, {
+        name: 'report.pdf',
+        mimeType: 'application/pdf',
+        buffer: Buffer.from(
+          '%PDF-1.4\nMOCK_TEXT_START\nA text-based PDF for browser testing.\nMOCK_TEXT_END\n%%EOF',
+        ),
+      });
+      await a.page.getByLabel('Message the assistant').fill('Summarize the report.');
+      await a.page.getByRole('button', { name: 'Send' }).click();
+      await expect(await lastAssistant(a.page)).toContainText(
+        'Private document context was supplied',
+        {
+          timeout: 30_000,
+        },
+      );
+      const ownerPath = new URL(a.page.url()).pathname;
+      await expect(a.page.getByText('report.pdf', { exact: true })).toBeVisible();
+
+      await a.page.locator('.ai-composer input[accept*="application/pdf"]').setInputFiles({
+        name: 'unsafe.html',
+        mimeType: 'text/html',
+        buffer: Buffer.from('<script>unsafe</script>'),
+      });
+      await expect(a.page.getByText(/must be a PDF, TXT, or Markdown file/i)).toBeVisible();
+
+      await b.page.goto(ownerPath);
+      await expect(b.page.getByText('This AI conversation is unavailable.')).toBeVisible();
+      await expect(b.page.getByText('report.pdf', { exact: true })).toHaveCount(0);
     } finally {
       await a.context.close();
       await b.context.close();

@@ -2,6 +2,7 @@
 // HTML). White-space is preserved so multi-line answers read naturally.
 import { AiImageAttachments } from './AiImageAttachments.jsx';
 import { AiContextCard } from './AiContextCard.jsx';
+import { AiDocumentAttachments } from './AiDocumentAttachments.jsx';
 
 export function AiMessageBubble({
   role,
@@ -13,6 +14,7 @@ export function AiMessageBubble({
   conversationId,
   attachments = [],
   contextImport = null,
+  documents = [],
 }) {
   const isAssistant = role === 'assistant';
   return (
@@ -29,7 +31,10 @@ export function AiMessageBubble({
           {streaming ? <span className="ai-stream-caret" aria-hidden="true" /> : null}
         </p>
         {!isAssistant ? (
-          <AiImageAttachments conversationId={conversationId} attachments={attachments} />
+          <>
+            <AiImageAttachments conversationId={conversationId} attachments={attachments} />
+            <AiDocumentAttachments conversationId={conversationId} documents={documents} />
+          </>
         ) : null}
         {!isAssistant && !pending && onRemember ? (
           <button type="button" className="ai-message-remember" onClick={onRemember}>

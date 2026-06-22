@@ -788,6 +788,52 @@ export const finalizedAiImageSchema = z
     height: z.number().int().positive(),
   })
   .strict();
+export const MAX_AI_DOCUMENTS_PER_MESSAGE = 2;
+export const MAX_AI_PDF_BYTES = 10 * 1024 * 1024;
+export const MAX_AI_TEXT_DOCUMENT_BYTES = 2 * 1024 * 1024;
+export const MAX_AI_DOCUMENT_COMBINED_BYTES = 15 * 1024 * 1024;
+export const aiDocumentMimeTypeSchema = z.enum(['application/pdf', 'text/plain', 'text/markdown']);
+export const aiDocumentAttachmentSchema = z
+  .object({
+    id: uuidSchema,
+    original_filename: z.string().min(1).max(255),
+    mime_type: aiDocumentMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_AI_PDF_BYTES),
+    page_count: z.number().int().min(1).max(100).nullable(),
+    status: z.enum(['attached', 'failed']),
+    created_at: timestampSchema,
+  })
+  .strict();
+export const aiDocumentUploadInputSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    original_filename: z.string().trim().min(1).max(255),
+    mime_type: aiDocumentMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_AI_PDF_BYTES),
+  })
+  .strict();
+export const aiDocumentUploadTargetSchema = z
+  .object({
+    attachment_id: uuidSchema,
+    storage_bucket: z.literal('ai-chat-documents'),
+    storage_path: attachmentStoragePathSchema,
+  })
+  .strict();
+export const finalizedAiDocumentSchema = z
+  .object({
+    attachment_id: uuidSchema,
+    status: z.literal('ready'),
+    mime_type: aiDocumentMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_AI_PDF_BYTES),
+    original_filename: z.string().min(1).max(255),
+  })
+  .strict();
+export const aiDocumentAccessTargetSchema = z
+  .object({
+    storage_bucket: z.literal('ai-chat-documents'),
+    storage_path: attachmentStoragePathSchema,
+  })
+  .strict();
 export const MAX_FORWARDED_MESSAGES = 20;
 export const MAX_FORWARDED_TEXT_LENGTH = 20_000;
 export const MAX_FORWARD_INSTRUCTION_LENGTH = 2_000;
@@ -826,6 +872,7 @@ export const aiMessageSchema = z
     client_message_id: uuidSchema,
     created_at: timestampSchema,
     attachments: z.array(aiImageAttachmentSchema).max(MAX_AI_IMAGES_PER_MESSAGE).default([]),
+    documents: z.array(aiDocumentAttachmentSchema).max(MAX_AI_DOCUMENTS_PER_MESSAGE).default([]),
     context_import: aiContextImportSchema.nullable().default(null),
   })
   .strict();
@@ -866,6 +913,7 @@ export const aiProviderMetadataSchema = z
     provider_mode: z.enum(['openrouter', 'mock']),
     model: z.string().min(1).max(200),
     vision_model: z.string().min(1).max(200),
+    pdf_engine: z.string().min(1).max(100),
   })
   .strict();
 
@@ -893,6 +941,7 @@ export const aiSendInputSchema = z
     client_message_id: uuidSchema,
     content: z.string().trim().max(8000),
     attachment_ids: z.array(uuidSchema).max(MAX_AI_IMAGES_PER_MESSAGE).default([]),
+    document_attachment_ids: z.array(uuidSchema).max(MAX_AI_DOCUMENTS_PER_MESSAGE).default([]),
     context_import: aiContextForwardInputSchema.nullable().default(null),
   })
   .strict()
@@ -912,6 +961,13 @@ export const aiSendInputSchema = z
           code: 'custom',
           path: ['attachment_ids'],
           message: 'Forwarded context cannot include attachments.',
+        });
+      }
+      if (value.document_attachment_ids.length > 0) {
+        context.addIssue({
+          code: 'custom',
+          path: ['document_attachment_ids'],
+          message: 'Forwarded context cannot include document attachments.',
         });
       }
     } else if (value.content.length < 1) {
@@ -982,6 +1038,12 @@ export const aiErrorCategorySchema = z.enum([
   'context_import_unavailable',
   'source_conversation_unavailable',
   'source_message_unavailable',
+  'unsupported_document',
+  'document_too_large',
+  'document_unavailable',
+  'document_unreadable',
+  'document_text_too_long',
+  'pdf_parser_unavailable',
   'session_expired',
   'backend_unavailable',
   'unknown_error',

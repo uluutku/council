@@ -46,7 +46,8 @@ function baseMocks() {
     status: 'ok',
     provider_mode: 'openrouter',
     model: 'deepseek/deepseek-v4-flash',
-    vision_model: 'xiaomi/mimo-v2.5',
+    vision_model: 'google/gemini-2.5-flash',
+    pdf_engine: 'cloudflare-ai',
   });
 }
 

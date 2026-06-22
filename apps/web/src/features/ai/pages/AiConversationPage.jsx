@@ -13,6 +13,7 @@ import { AiMemoryPanel } from '../components/AiMemoryPanel.jsx';
 import { AiProviderBadge } from '../components/AiProviderBadge.jsx';
 import { useAiImageDraft } from '../hooks/useAiImageDraft.js';
 import { useUiStore } from '../../../stores/uiStore.js';
+import { useAiDocumentDraft } from '../hooks/useAiDocumentDraft.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -44,6 +45,7 @@ export function AiConversationPage() {
   const { data: access } = useAiAccess();
   const chat = useAiChat(conversationId);
   const images = useAiImageDraft(conversationId);
+  const documents = useAiDocumentDraft(conversationId);
   const [draft, setDraft] = useState('');
   const [draftKey, setDraftKey] = useState(0);
   const [memoryPanel, setMemoryPanel] = useState(null);
@@ -170,6 +172,7 @@ export function AiConversationPage() {
           initialValue={draft}
           contactName={displayName}
           images={images}
+          documents={documents}
         />
       )}
 

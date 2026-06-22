@@ -3,6 +3,8 @@
 // for automated tests). Neither mode ever surfaces a raw provider error to the
 // caller — failures are reduced to a small set of safe categories.
 
+import { buildPdfParserRequest, extractPdfFileAnnotation } from './pdf-parser.mjs';
+
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 export type ProviderOptions = {
@@ -38,6 +40,23 @@ export type VisionOptions = {
   signal: AbortSignal;
 };
 
+export type PdfOptions = {
+  mode: 'openrouter' | 'mock';
+  model: string;
+  parserEngine: string;
+  apiKey?: string;
+  filename: string;
+  base64: string;
+  signal: AbortSignal;
+};
+
+export type DocumentAnalysis = {
+  extractedText: string;
+  pageCount: number | null;
+  annotations: Record<string, unknown> | null;
+  usage: ProviderUsage;
+};
+
 export class ProviderError extends Error {
   category: string;
   constructor(category: string) {
@@ -70,11 +89,15 @@ async function* runMock(options: ProviderOptions, usage: ProviderUsage): AsyncGe
   const visionNote = options.systemPrompt.includes('Private image analysis for this request')
     ? ' Vision analysis was supplied to the final text model.'
     : '';
+  const documentNote = lastUser?.content.includes('User-provided document')
+    ? ' Private document context was supplied to the final text model.'
+    : '';
   const reply =
     `Council Assistant (mock mode) received: "${prompt}". ` +
     `This is a deterministic local response used for testing; no external provider was called.` +
     memoryNote +
-    visionNote;
+    visionNote +
+    documentNote;
   const tokens = reply.split(/(\s+)/);
   let emitted = 0;
   for (const token of tokens) {
@@ -305,6 +328,86 @@ export async function runVisionProvider(
       inputTokens: usageInfo?.prompt_tokens ?? null,
       outputTokens: usageInfo?.completion_tokens ?? null,
       cost: usageInfo?.cost ?? null,
+      providerRequestId: response.headers.get('x-request-id'),
+    },
+  };
+}
+
+export async function runPdfParser(options: PdfOptions): Promise<DocumentAnalysis> {
+  if (options.mode === 'mock') {
+    const bytes = Uint8Array.from(atob(options.base64), (character) => character.charCodeAt(0));
+    const decoded = new TextDecoder().decode(bytes);
+    if (decoded.includes('MOCK_PDF_FAIL')) throw new ProviderError('pdf_parser_unavailable');
+    if (decoded.includes('MOCK_SCANNED_ONLY')) throw new ProviderError('document_unreadable');
+    const marker = /MOCK_TEXT_START([\s\S]*?)MOCK_TEXT_END/.exec(decoded)?.[1]?.trim();
+    const extractedText =
+      marker || 'Mock text-based PDF content extracted by the configured local parser.';
+    return {
+      extractedText,
+      pageCount: 1,
+      annotations: { parser_engine: options.parserEngine, mock: true },
+      usage: {
+        inputTokens: options.base64.length,
+        outputTokens: extractedText.length,
+        cost: 0,
+        providerRequestId: 'mock-pdf',
+      },
+    };
+  }
+
+  if (!options.apiKey) throw new ProviderError('provider_not_configured');
+  let response: Response;
+  try {
+    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${options.apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://council.local',
+        'X-Title': 'Council',
+      },
+      body: JSON.stringify(
+        buildPdfParserRequest({
+          model: options.model,
+          parserEngine: options.parserEngine,
+          filename: options.filename,
+          base64: options.base64,
+        }),
+      ),
+      signal: options.signal,
+    });
+  } catch {
+    throw new ProviderError('pdf_parser_unavailable');
+  }
+  if (!response.ok) {
+    try {
+      await response.body?.cancel();
+    } catch {
+      /* ignore */
+    }
+    throw new ProviderError('pdf_parser_unavailable');
+  }
+
+  let payload: Record<string, any>;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new ProviderError('pdf_parser_unavailable');
+  }
+  const parsed = extractPdfFileAnnotation(payload.choices?.[0]?.message);
+  if (parsed.extractedText.length < 20) {
+    throw new ProviderError('document_unreadable');
+  }
+  return {
+    extractedText: parsed.extractedText,
+    pageCount: parsed.pageCount,
+    annotations: parsed.fileHash
+      ? { file_hash: parsed.fileHash, filename: options.filename }
+      : null,
+    usage: {
+      inputTokens: payload.usage?.prompt_tokens ?? null,
+      outputTokens: payload.usage?.completion_tokens ?? null,
+      cost: payload.usage?.cost ?? null,
       providerRequestId: response.headers.get('x-request-id'),
     },
   };

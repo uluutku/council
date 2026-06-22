@@ -316,8 +316,29 @@ changed payloads conflict.
 
 Forwarded text is plain untrusted quoted context. Platform and persona instructions retain
 precedence, copied content is not automatically written to memory, assembled prompts are not
-returned, and copied text is excluded from operational logs. PDF/document analysis and all
-attachment forwarding remain deferred until the end of the project.
+returned, and copied text is excluded from operational logs. Human-chat attachment forwarding
+remains deferred.
+
+### Private AI documents (Task 014)
+
+AI documents use the private `ai-chat-documents` bucket and owner-scoped attachment metadata. Narrow
+RPCs derive the user and storage path, verify AI-conversation ownership, and permit only PDF, TXT,
+and Markdown within bounded size/count limits. Browser roles cannot directly mutate attachment rows
+or read `ai_document_analyses`; cross-user and anonymous metadata, object, analysis, and signed-URL
+access are denied. Archived persona documents remain readable, but archived personas cannot start a
+new generation.
+
+The Edge Function downloads bytes through trusted access, rechecks MIME/extension/signature and
+limits, and sends PDFs to the configured parser as base64 rather than exposing a Supabase URL. TXT
+and Markdown are decoded as plain UTF-8 and are never rendered or executed. Extracted text and
+bounded parser annotations stay in a user-scoped server-only cache and never enter logs, Realtime,
+stream events, browser responses, or automatic memory.
+
+Document contents are explicitly delimited as untrusted source material after platform, persona,
+style, memory, history, and forwarded context. Instructions inside a document cannot replace higher
+priority instructions. Sorted document IDs participate in generation idempotency; parser or provider
+failure uses the existing guarded refund, and retries cannot duplicate attachments, parsing, runs,
+messages, or credit use. Scanned-document OCR and paid parser fallbacks are not enabled.
 
 ## Disclosure and assurance
 

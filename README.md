@@ -19,7 +19,8 @@ user-curated memory that can be edited, deleted, or disabled without deleting co
 Users can also attach private JPEG, PNG, or WebP images directly to an AI prompt for analysis. The
 user can now explicitly select up to 20 active text messages from a human conversation, review the
 exact copied package, and send it to a built-in AI contact or active custom persona. The rest of
-this README is the honest status, not a pitch.
+this README is the honest status, not a pitch. AI conversations also accept private PDF, TXT, and
+Markdown documents for explicit, question-driven analysis.
 
 ## What works today
 
@@ -83,6 +84,12 @@ a separate private bucket, discloses provider sharing before send, and uses a co
 model to produce structured context for the selected DeepSeek contact. Images and responses persist
 on reload and remain scoped to the account and AI conversation.
 
+AI prompts may also include up to two private PDF, TXT, or Markdown documents. TXT and Markdown are
+decoded as plain UTF-8 text; text-based PDFs are sent as private base64 bytes to the configured
+OpenRouter PDF parser, never by signed URL. The browser shows a disclosure and requires an explicit
+Send action before processing. Persistent document cards expose only safe metadata and authorized
+short-lived download links. Scanned PDFs are not OCRed.
+
 Human-message forwarding is text-only and confirmation-gated. The review dialog shows sender
 labels, timestamps, destination, optional instruction, provider disclosure, and attachment
 exclusions. The server re-fetches selected text, creates an immutable owner-only snapshot, and
@@ -92,13 +99,12 @@ conversation, and the other participant cannot access the copied context or AI r
 ## What it can't do yet
 
 There is no typing indicator, presence or online status, or notification delivery. The AI side is
-deliberately focused: text, curated memory, directly attached image understanding, and explicit
-text-only human-message forwarding; no automatic extraction, tools, web search, PDFs or general
-file/document understanding,
-no AI inside human conversations, no public/shared personas, and no billing checkout (when the trial
-ends the app says so honestly rather than showing a fake upgrade). There is no mobile app, no group
-chats. None of these are faked in the UI on purpose — there are no disabled controls advertising
-features that do not exist.
+deliberately focused: text, curated memory, directly attached image and document understanding, and
+explicit text-only human-message forwarding. It has no automatic memory extraction, OCR, Office or
+HTML analysis, semantic document search, tools, web search, AI inside human conversations,
+public/shared personas, or billing checkout (when the trial ends the app says so honestly rather
+than showing a fake upgrade). There is no mobile app or group chat. None of these are faked in the
+UI on purpose — there are no disabled controls advertising features that do not exist.
 
 So Council now has working human text and attachment messaging plus a small AI-contact system —
 built-in assistants, private custom personas, and transparent per-contact memory — on top of its
