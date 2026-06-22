@@ -22,7 +22,7 @@ export function resolveProviderConfig({ providerMode, model, visionModel, apiKey
   return {
     mode: 'openrouter',
     model: model || 'deepseek/deepseek-v4-flash',
-    visionModel: visionModel || 'google/gemini-2.5-flash',
+    visionModel: visionModel || 'deepseek/deepseek-v4-flash',
     configured: Boolean(apiKey),
   };
 }

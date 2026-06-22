@@ -176,7 +176,7 @@ async function main() {
     );
     check(
       'the configured vision model is selected',
-      missingConfig.visionModel === 'google/gemini-2.5-flash',
+      missingConfig.visionModel === 'deepseek/deepseek-v4-flash',
     );
     check(
       'missing OpenRouter key reports a safe configuration error',
