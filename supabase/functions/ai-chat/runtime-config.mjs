@@ -22,7 +22,7 @@ export function resolveProviderConfig({ providerMode, model, visionModel, apiKey
   return {
     mode: 'openrouter',
     model: model || 'deepseek/deepseek-v4-flash',
-    visionModel: visionModel || 'deepseek/deepseek-v4-flash',
+    visionModel: visionModel || 'xiaomi/mimo-v2.5',
     configured: Boolean(apiKey),
   };
 }

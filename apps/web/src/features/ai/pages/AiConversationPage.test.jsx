@@ -47,7 +47,7 @@ beforeEach(() => {
     status: 'ok',
     provider_mode: 'openrouter',
     model: 'deepseek/deepseek-v4-flash',
-    vision_model: 'deepseek/deepseek-v4-flash',
+    vision_model: 'xiaomi/mimo-v2.5',
   });
   aiApi.getAiMemorySettings.mockResolvedValue({
     conversation_id: CONVERSATION_ID,

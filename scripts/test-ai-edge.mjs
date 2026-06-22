@@ -176,7 +176,7 @@ async function main() {
     );
     check(
       'the configured vision model is selected',
-      missingConfig.visionModel === 'deepseek/deepseek-v4-flash',
+      missingConfig.visionModel === 'xiaomi/mimo-v2.5',
     );
     check(
       'missing OpenRouter key reports a safe configuration error',
