@@ -10,8 +10,9 @@ be honest that the server can read your messages.
 
 It is a work in progress. The account and contact layers are finished and tested, and human text
 messaging now works end to end: an inbox, a real conversation screen, optimistic sending, replies,
-editing, deletion, reactions, and live Realtime synchronization between two people. Media sharing
-and the AI side still come later. The rest of this README is the honest status, not a pitch.
+editing, deletion, reactions, and live Realtime synchronization between two people. Messages can
+now also carry private image and file attachments. The AI side still comes later. The rest of this
+README is the honest status, not a pitch.
 
 ## What works today
 
@@ -47,14 +48,21 @@ The human text-messaging interface is now built on top of all of this:
 - honest Sent/Delivered/Read indicators on the newest outgoing message, and
 - a responsive split view on desktop with full-screen conversation routing on narrow screens.
 
+Messages can now include attachments: up to four images or documents per message (JPEG, PNG, WebP,
+GIF, PDF, plain text, or Markdown, each up to 10 MB). Files upload to a private Storage bucket
+through a staged, validated flow, render as bounded thumbnails or file cards, and are reached only
+through short-lived signed URLs that conversation members request on demand. Deleting a message
+removes its attachment metadata and revokes access.
+
 ## What it can't do yet
 
-There is no typing indicator, presence or online status, file or image support, notification
-delivery, or AI contact. There is no mobile app, no group chats, and no billing. None of these are
-faked in the UI on purpose — there are no disabled controls advertising features that do not exist.
+There is no typing indicator, presence or online status, notification delivery, or AI contact.
+There is no mobile app, no group chats, and no billing. There is no AI understanding of attached
+images or files — they are stored and shared, not interpreted. None of these are faked in the UI on
+purpose — there are no disabled controls advertising features that do not exist.
 
-So Council now has working human text messaging on top of its account, contact, and secure database
-foundations, but not media, presence, or AI.
+So Council now has working human text and attachment messaging on top of its account, contact, and
+secure database foundations, but not presence or AI.
 
 ## Why it is built this way
 

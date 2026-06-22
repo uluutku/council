@@ -26,6 +26,26 @@ export function makeMessage(overrides = {}) {
     edited_at: null,
     deleted_at: null,
     reactions: [],
+    attachments: [],
+    ...overrides,
+  };
+}
+
+let attachmentCounter = 0;
+
+export function makeAttachment(overrides = {}) {
+  attachmentCounter += 1;
+  const index = attachmentCounter;
+  return {
+    id: `bbbbbbbb-0000-4000-8000-${String(index).padStart(12, '0')}`,
+    storage_bucket: 'message-attachments',
+    storage_path: `conversations/${CONVERSATION_ID}/file-${index}/file-${index}.png`,
+    original_filename: `file-${index}.png`,
+    mime_type: 'image/png',
+    size_bytes: 2048,
+    width: 800,
+    height: 600,
+    created_at: '2026-06-22T10:00:00+00:00',
     ...overrides,
   };
 }

@@ -6,7 +6,8 @@ import {
   editMessage,
   removeMessageReaction,
 } from '../api/messagingApi.js';
-import { replaceMessage } from '../queries/messageCache.js';
+import { getCachedMessage, replaceMessage } from '../queries/messageCache.js';
+import { evictAttachmentUrls } from '../queries/attachmentUrlCache.js';
 
 // Edit, delete, and reaction mutations for one conversation. Edits and deletions
 // return the authoritative row, which is written into the cache in place — a
@@ -31,6 +32,10 @@ export function useMessageMutations(conversationId) {
   const remove = useMutation({
     mutationFn: ({ messageId }) => deleteMessage(messageId),
     onSuccess: (tombstone) => {
+      // Drop any signed URLs the deleted message's attachments produced before
+      // the tombstone (with no attachments) replaces it in the cache.
+      const previous = getCachedMessage(queryClient, conversationId, tombstone.id);
+      evictAttachmentUrls((previous?.attachments ?? []).map((attachment) => attachment.id));
       replaceMessage(queryClient, conversationId, tombstone);
       invalidatePreview();
     },

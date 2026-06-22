@@ -334,3 +334,52 @@ only while the conversation is active and the document is visible. The peer's re
 sequences are learned from realtime receipt events, so the newest outgoing message shows an honest
 single indicator — Sent until a receipt is observed, then Delivered, then Read — rather than a
 fabricated per-message status.
+
+## Private attachment storage and upload flow
+
+Attachments live in a private `message-attachments` Storage bucket. The browser never selects its
+own object path: it goes through a staged, database-authorized flow.
+
+```mermaid
+flowchart LR
+  Browser[Authenticated browser]
+  Reserve[create_message_attachment_upload]
+  Bucket[Private Storage bucket]
+  Finalize[finalize_message_attachment]
+  Send[send_message + attachment IDs]
+
+  Browser -->|1 validate + reserve| Reserve
+  Reserve -->|returns the only allowed path| Browser
+  Browser -->|2 upload bytes| Bucket
+  Browser -->|3 confirm + dimensions| Finalize
+  Browser -->|4 send with finalized IDs| Send
+```
+
+`create_message_attachment_upload` validates conversation membership, the MIME type, the
+declared file extension, and the size, then inserts a `pending` `message_attachments` row and
+returns a single derived path of the form
+`conversations/{conversation_id}/{attachment_id}/{safe_filename}`. Storage INSERT RLS only allows a
+write whose object name matches a pending reservation owned by the caller, so a client cannot upload
+to an arbitrary conversation or an unreserved path. `finalize_message_attachment` confirms the
+object exists and records optional image dimensions, moving the row to `ready`.
+
+`send_message` takes an array of up to four finalized attachment IDs. Inside the conversation's
+sequence-allocation lock it re-validates that each ID is owned by the sender, belongs to the
+conversation, and is still `ready` and unattached, then attaches them to the new message in the same
+transaction. The idempotency payload hash includes the sorted attachment IDs, so a retry with a
+changed attachment set is a conflict rather than a silent replacement. A message may carry text,
+attachments, or both, but never neither; the `messages.has_attachments` flag lets the content
+tombstone constraint permit null content only when attachments are present.
+
+Attachment metadata flows back through the existing message-returning functions as an
+`attachments` JSON array (never a URL). Rendering resolves a short-lived signed URL per attachment
+on demand and caches it in memory only. Deleting a message removes its `message_attachments`
+rows; because Storage SELECT RLS requires a live attached row, every later signed-URL request for
+that object then fails. Physical object cleanup is best-effort from the owning client; access
+revocation does not depend on it.
+
+The web attachment code lives under `apps/web/src/features/messaging`: `api/attachmentsApi.js`
+wraps the reserve/finalize/remove RPCs and the signed-URL calls, `hooks/useAttachmentDraft.js` owns
+the composer-side upload lifecycle, `hooks/useAttachmentUrl.js` plus `queries/attachmentUrlCache.js`
+resolve and cache signed URLs, and the rendering components display thumbnails, file cards, and an
+accessible image viewer.

@@ -663,6 +663,7 @@ describe('conversation and messaging contracts', () => {
       client_message_id: clientMessageId,
       content: 'hello',
       reply_to_message_id: null,
+      attachment_ids: [],
     });
     expect(
       editMessageInputSchema.safeParse({

@@ -60,6 +60,7 @@ export async function sendMessage(input, client = getSupabaseClient()) {
       p_client_message_id: parsed.client_message_id,
       p_content: parsed.content,
       p_reply_to_message_id: parsed.reply_to_message_id,
+      p_attachment_ids: parsed.attachment_ids,
     })
     .single();
 

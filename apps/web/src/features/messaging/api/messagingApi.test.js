@@ -170,6 +170,7 @@ describe('message RPC wrappers', () => {
         p_client_message_id: CLIENT_MESSAGE,
         p_content: 'Hello',
         p_reply_to_message_id: null,
+        p_attachment_ids: [],
       },
     });
   });

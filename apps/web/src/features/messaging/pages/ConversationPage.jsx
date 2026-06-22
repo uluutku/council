@@ -9,10 +9,12 @@ import { MessageList } from '../components/MessageList.jsx';
 import { MessageComposer } from '../components/MessageComposer.jsx';
 import { MessagingUnavailableBanner } from '../components/MessagingUnavailableBanner.jsx';
 import { MessagingError } from '../components/MessagingFeedback.jsx';
+import { ImageViewer } from '../components/ImageViewer.jsx';
 import { useConversationSummary } from '../hooks/useConversationSummary.js';
 import { useConversationMessages } from '../hooks/useConversationMessages.js';
 import { useConversationRealtime } from '../hooks/useConversationRealtime.js';
 import { useSendMessage } from '../hooks/useSendMessage.js';
+import { useAttachmentDraft } from '../hooks/useAttachmentDraft.js';
 import { useMessageMutations } from '../hooks/useMessageMutations.js';
 import { useConversationReceipts } from '../hooks/useConversationReceipts.js';
 import { conversationPeer, peerName } from '../utils/peer.js';
@@ -46,6 +48,7 @@ export function ConversationPage() {
   const messagesState = useConversationMessages(isValidId ? conversationId : null);
   const mutations = useMessageMutations(conversationId);
   const sender = useSendMessage(conversationId);
+  const attachmentDraft = useAttachmentDraft(conversationId);
 
   const [peerReceipt, setPeerReceipt] = useState({ readSequence: 0, deliveredSequence: 0 });
   const [replyTarget, setReplyTarget] = useState(null);
@@ -53,6 +56,7 @@ export function ConversationPage() {
   const [editError, setEditError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [actionError, setActionError] = useState('');
+  const [viewerAttachment, setViewerAttachment] = useState(null);
 
   const handlePeerReceipt = useCallback((receipt) => {
     setPeerReceipt((current) => mergePeerReceipt(current, receipt));
@@ -117,12 +121,23 @@ export function ConversationPage() {
 
   const handleSend = useCallback(
     (content) => {
-      const clientMessageId = sender.send(content, replyTarget?.id ?? null);
+      const drafts = attachmentDraft.hasAny ? attachmentDraft.consume() : [];
+      const clientMessageId = sender.send(content, replyTarget?.id ?? null, drafts);
       if (clientMessageId) setReplyTarget(null);
       return clientMessageId;
     },
-    [sender, replyTarget],
+    [sender, replyTarget, attachmentDraft],
   );
+
+  // Derive the visible viewer attachment so a deleted (or paged-out) message
+  // closes the viewer without a state write inside an effect.
+  const activeViewerAttachment = useMemo(() => {
+    if (!viewerAttachment) return null;
+    const stillVisible = messages.some((message) =>
+      (message.attachments ?? []).some((attachment) => attachment.id === viewerAttachment.id),
+    );
+    return stillVisible ? viewerAttachment : null;
+  }, [messages, viewerAttachment]);
 
   const handleSaveEdit = useCallback(
     async (message, content) => {
@@ -210,6 +225,7 @@ export function ConversationPage() {
           onToggleReaction={handleToggleReaction}
           onRetry={sender.retry}
           onRemoveFailed={sender.remove}
+          onOpenImage={setViewerAttachment}
         />
       )}
 
@@ -219,8 +235,11 @@ export function ConversationPage() {
           onCancelReply={() => setReplyTarget(null)}
           onSend={handleSend}
           autoFocusKey={conversationId}
+          attachments={attachmentDraft}
         />
       )}
+
+      <ImageViewer attachment={activeViewerAttachment} onClose={() => setViewerAttachment(null)} />
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}

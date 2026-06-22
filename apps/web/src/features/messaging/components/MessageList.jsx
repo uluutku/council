@@ -55,6 +55,7 @@ export function MessageList({
   onToggleReaction,
   onRetry,
   onRemoveFailed,
+  onOpenImage,
 }) {
   const scrollRef = useRef(null);
   const nearBottomRef = useRef(true);
@@ -210,6 +211,7 @@ export function MessageList({
         onDelete={() => onDelete(message)}
         onToggleReaction={(emoji, reactedByMe) => onToggleReaction(message, emoji, reactedByMe)}
         onJumpToReply={() => jumpToMessage(message.reply_to_message_id)}
+        onOpenImage={onOpenImage}
       />,
     );
   }

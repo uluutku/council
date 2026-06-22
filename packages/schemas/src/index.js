@@ -223,6 +223,80 @@ export const reactionSchema = z
   })
   .strict();
 
+// Private message attachments. Limits are conservative and enforced both in the
+// browser and the database. The extension allowlist guards against a renamed
+// executable declaring a supported MIME type.
+export const MAX_ATTACHMENTS_PER_MESSAGE = 4;
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+export const supportedAttachmentTypes = Object.freeze({
+  'image/jpeg': ['jpg', 'jpeg'],
+  'image/png': ['png'],
+  'image/webp': ['webp'],
+  'image/gif': ['gif'],
+  'application/pdf': ['pdf'],
+  'text/plain': ['txt'],
+  'text/markdown': ['md', 'markdown'],
+});
+
+export const attachmentMimeTypeSchema = z.enum(
+  /** @type {[string, ...string[]]} */ (Object.keys(supportedAttachmentTypes)),
+);
+
+export function isImageMimeType(mimeType) {
+  return (
+    typeof mimeType === 'string' &&
+    mimeType.startsWith('image/') &&
+    mimeType in supportedAttachmentTypes
+  );
+}
+
+export function attachmentExtension(filename) {
+  if (typeof filename !== 'string') return null;
+  const match = /\.([^.\\/]+)$/.exec(filename);
+  return match ? match[1].toLowerCase() : null;
+}
+
+export function isSupportedAttachment(mimeType, filename) {
+  const extensions = supportedAttachmentTypes[mimeType];
+  if (!extensions) return false;
+  const extension = attachmentExtension(filename);
+  return extension !== null && extensions.includes(extension);
+}
+
+export const attachmentStoragePathSchema = z
+  .string()
+  .min(1)
+  .max(512, 'Attachment path is too long.')
+  .refine((value) => !/^[\\/]/.test(value), 'Attachment path must be Storage-relative.')
+  .refine((value) => !/^[a-z][a-z0-9+.-]*:/i.test(value), 'Attachment path cannot be a URL.')
+  .refine(
+    (value) => !/(^|[\\/])\.\.([\\/]|$)/.test(value),
+    'Attachment path cannot contain parent traversal.',
+  )
+  .refine(
+    (value) =>
+      !Array.from(value).some((character) => {
+        const codePoint = character.codePointAt(0);
+        return codePoint < 32 || codePoint === 127;
+      }),
+    'Attachment path is invalid.',
+  );
+
+export const attachmentSchema = z
+  .object({
+    id: uuidSchema,
+    storage_bucket: z.literal('message-attachments'),
+    storage_path: attachmentStoragePathSchema,
+    original_filename: z.string().min(1).max(255),
+    mime_type: attachmentMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_ATTACHMENT_BYTES),
+    width: z.number().int().positive().nullable(),
+    height: z.number().int().positive().nullable(),
+    created_at: timestampSchema,
+  })
+  .strict();
+
 export const messageSchema = z
   .object({
     id: uuidSchema,
@@ -235,14 +309,19 @@ export const messageSchema = z
     edited_at: timestampSchema.nullable(),
     deleted_at: timestampSchema.nullable(),
     reactions: z.array(reactionSchema),
+    attachments: z.array(attachmentSchema).default([]),
   })
   .strict()
   .superRefine((message, context) => {
-    if (message.deleted_at === null && message.content === null) {
+    if (
+      message.deleted_at === null &&
+      message.content === null &&
+      message.attachments.length === 0
+    ) {
       context.addIssue({
         code: 'custom',
         path: ['content'],
-        message: 'Active messages require content.',
+        message: 'Active messages require content or an attachment.',
       });
     }
 
@@ -253,7 +332,52 @@ export const messageSchema = z
         message: 'Deleted messages cannot contain content.',
       });
     }
+
+    if (message.deleted_at !== null && message.attachments.length > 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['attachments'],
+        message: 'Deleted messages cannot retain attachments.',
+      });
+    }
   });
+
+export const createAttachmentUploadInputSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    original_filename: z.string().trim().min(1).max(255),
+    mime_type: attachmentMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_ATTACHMENT_BYTES),
+  })
+  .strict();
+
+export const attachmentUploadTargetSchema = z
+  .object({
+    attachment_id: uuidSchema,
+    storage_bucket: z.literal('message-attachments'),
+    storage_path: attachmentStoragePathSchema,
+  })
+  .strict();
+
+export const finalizeAttachmentInputSchema = z
+  .object({
+    attachment_id: uuidSchema,
+    width: z.number().int().positive().nullable().default(null),
+    height: z.number().int().positive().nullable().default(null),
+  })
+  .strict();
+
+export const finalizedAttachmentSchema = z
+  .object({
+    attachment_id: uuidSchema,
+    status: z.enum(['pending', 'ready', 'attached']),
+    mime_type: attachmentMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_ATTACHMENT_BYTES),
+    original_filename: z.string().min(1).max(255),
+    width: z.number().int().positive().nullable(),
+    height: z.number().int().positive().nullable(),
+  })
+  .strict();
 
 export const deletedMessageSchema = messageSchema.refine(
   (message) => message.deleted_at !== null && message.content === null,
@@ -330,10 +454,24 @@ export const sendMessageInputSchema = z
   .object({
     conversation_id: uuidSchema,
     client_message_id: uuidSchema,
-    content: z.string().trim().min(1).max(8000),
+    content: z.preprocess((value) => {
+      if (typeof value !== 'string') return value ?? null;
+      const normalized = value.trim();
+      return normalized === '' ? null : normalized;
+    }, z.string().min(1).max(8000).nullable()),
     reply_to_message_id: uuidSchema.nullable().default(null),
+    attachment_ids: z.array(uuidSchema).max(MAX_ATTACHMENTS_PER_MESSAGE).default([]),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.content === null && value.attachment_ids.length === 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['content'],
+        message: 'A message needs text or at least one attachment.',
+      });
+    }
+  });
 
 export const editMessageInputSchema = z
   .object({
@@ -388,6 +526,13 @@ export const messagingErrorCategorySchema = z.enum([
   'invalid_cursor',
   'invalid_sequence',
   'action_not_permitted',
+  'invalid_attachment',
+  'unsupported_attachment_type',
+  'attachment_too_large',
+  'too_many_attachments',
+  'attachment_not_found',
+  'attachment_not_ready',
+  'attachment_not_uploaded',
   'session_expired',
   'rate_limited',
   'backend_unavailable',
@@ -629,6 +774,9 @@ export const preferencesFormSchema = z
 /** @typedef {z.infer<typeof directConversationResultSchema>} DirectConversationResult */
 /** @typedef {z.infer<typeof conversationListItemSchema>} ConversationListItem */
 /** @typedef {z.infer<typeof messageSchema>} Message */
+/** @typedef {z.infer<typeof attachmentSchema>} Attachment */
+/** @typedef {z.infer<typeof attachmentUploadTargetSchema>} AttachmentUploadTarget */
+/** @typedef {z.infer<typeof finalizedAttachmentSchema>} FinalizedAttachment */
 /** @typedef {z.infer<typeof reactionSchema>} Reaction */
 /** @typedef {z.infer<typeof conversationMemberReceiptSchema>} ConversationMemberReceipt */
 /** @typedef {z.infer<typeof sendMessageInputSchema>} SendMessageInput */

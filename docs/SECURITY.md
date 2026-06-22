@@ -24,8 +24,8 @@ RLS is mandatory for every product table and must be introduced in the same migr
 table. Every policy requires positive and negative pgTAP coverage. Client-side checks are
 convenience only.
 
-Message media will use private Storage buckets. Access must be checked before short-lived signed
-URLs are created. Milestone 0 does not create buckets or policies.
+Message media uses a private Storage bucket (`message-attachments`); see "Private attachment
+security" below. Access is checked before any short-lived signed URL is created.
 
 ## Profile discovery and social privacy
 
@@ -91,6 +91,39 @@ Soft deletion clears `messages.content`, removes reactions on that message, and 
 message ID, sender, sequence, timestamp, and reply graph as a tombstone. Listing and preview
 functions explicitly return null deleted content. Message bodies and reaction values must never
 enter operational logs; the browser wrappers perform no message logging.
+
+## Private attachment security
+
+Attachments are stored in a private bucket; no object is ever public. The bucket enforces a 10 MB
+size limit and the supported MIME allowlist (JPEG, PNG, WebP, GIF, PDF, plain text, Markdown).
+HTML, SVG, executables, scripts, archives, audio, video, Office documents, and unknown MIME types
+are rejected. Validation checks both the declared MIME type and the file extension in the browser
+and again in the database; the browser `accept` attribute is treated as advisory only.
+
+Uploads are authorized, not arbitrary. A member first reserves an attachment through
+`create_message_attachment_upload`, which derives the uploader from `auth.uid()`, checks send
+permission for the conversation, validates type and size, and fixes the single Storage path the
+upload may use. Storage INSERT RLS permits a write only when the object name matches a pending
+reservation owned by the caller, so a client cannot upload into another conversation, reuse another
+user's upload, or choose its own path. `send_message` re-verifies, under the conversation lock,
+that every attachment ID is owned by the sender, belongs to the conversation, is finalized, and is
+unattached before linking at most four to a message. The idempotency hash includes the attachment
+IDs, so a retry with a different attachment set is a conflict.
+
+Attachment metadata is readable only by conversation members through RLS; unrelated and anonymous
+users receive nothing. Message listing returns attachment metadata, never a permanent or public
+URL. Images and documents are reached only through short-lived signed URLs (about ten minutes) that
+are created on demand after a Storage SELECT RLS authorization check, cached in memory only, never
+persisted, never written to logs, and never placed in Realtime payloads. The signed-URL cache is
+keyed by attachment ID, expires before the server URL does, is evicted when a message is deleted,
+and is cleared on sign-out.
+
+Deleting a message clears its text, removes its reactions, and deletes its attachment metadata
+rows. Because Storage SELECT RLS requires a live attached metadata row, every later signed-URL
+request for that object fails, so deletion revokes access even though physical object cleanup is a
+best-effort follow-up. Filenames are always rendered as text and never injected into HTML; image
+alt text is the sanitized filename, not an invented interpretation of the image. No attached image
+or file is interpreted by AI in this milestone.
 
 ## Realtime privacy
 

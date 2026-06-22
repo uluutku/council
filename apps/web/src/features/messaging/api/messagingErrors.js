@@ -13,6 +13,13 @@ const DATABASE_CATEGORIES = new Set([
   'invalid_cursor',
   'invalid_sequence',
   'action_not_permitted',
+  'invalid_attachment',
+  'unsupported_attachment_type',
+  'attachment_too_large',
+  'too_many_attachments',
+  'attachment_not_found',
+  'attachment_not_ready',
+  'attachment_not_uploaded',
 ]);
 
 /**

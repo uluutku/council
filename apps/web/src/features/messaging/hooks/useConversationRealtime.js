@@ -6,6 +6,8 @@ import { messagingKeys } from '../../../lib/query-keys/messaging.js';
 import { subscribeToConversationEvents } from '../realtime/conversationSubscription.js';
 import { assessRealtimeSequence } from '../realtime/reconciliation.js';
 import { flattenMessagePages, highestLoadedSequence } from '../utils/messageList.js';
+import { getCachedMessage } from '../queries/messageCache.js';
+import { evictAttachmentUrls } from '../queries/attachmentUrlCache.js';
 
 // Subscribes to a single conversation's private topic. Validated events trigger
 // targeted reconciliation against the database (the authoritative source);
@@ -49,9 +51,20 @@ export function useConversationRealtime({
       if (!active || event.conversation_id !== conversationId) return;
 
       switch (event.event) {
-        case 'message.created':
-        case 'message.edited':
         case 'message.deleted': {
+          // Drop signed URLs for the deleted message's attachments before the
+          // reconcile pulls the content/attachment-free tombstone.
+          const cached = getCachedMessage(queryClient, conversationId, event.entity_id);
+          evictAttachmentUrls((cached?.attachments ?? []).map((attachment) => attachment.id));
+          assessRealtimeSequence({
+            knownLastSequence: knownLastSequence(),
+            eventSequence: event.sequence,
+          });
+          reconcileMessages();
+          break;
+        }
+        case 'message.created':
+        case 'message.edited': {
           // Gap assessment decides whether a simple reconcile suffices; either
           // way we refetch the loaded window from the database to converge.
           assessRealtimeSequence({

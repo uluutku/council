@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DeletedMessage } from './DeletedMessage.jsx';
 import { EditMessageForm } from './EditMessageForm.jsx';
 import { MessageActions } from './MessageActions.jsx';
+import { MessageAttachments } from './MessageAttachments.jsx';
 import { MessageReactionPicker } from './MessageReactionPicker.jsx';
 import { MessageReactions } from './MessageReactions.jsx';
 import { ReplyPreview } from './ReplyPreview.jsx';
@@ -44,9 +45,11 @@ export function MessageBubble({
   onDelete,
   onToggleReaction,
   onJumpToReply,
+  onOpenImage,
 }) {
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const isDeleted = message.deleted_at !== null;
+  const attachments = message.attachments ?? [];
   const activeEmojis = (message.reactions ?? [])
     .filter((reaction) => reaction.user_id === currentUserId)
     .map((reaction) => reaction.emoji);
@@ -72,16 +75,23 @@ export function MessageBubble({
 
         {isDeleted ? (
           <DeletedMessage />
-        ) : isEditing ? (
-          <EditMessageForm
-            initialContent={message.content ?? ''}
-            isSaving={editState?.isSaving}
-            errorMessage={editState?.errorMessage}
-            onSave={onSaveEdit}
-            onCancel={onCancelEdit}
-          />
         ) : (
-          <MessageText content={message.content ?? ''} />
+          <>
+            {attachments.length > 0 ? (
+              <MessageAttachments attachments={attachments} onOpenImage={onOpenImage} />
+            ) : null}
+            {isEditing ? (
+              <EditMessageForm
+                initialContent={message.content ?? ''}
+                isSaving={editState?.isSaving}
+                errorMessage={editState?.errorMessage}
+                onSave={onSaveEdit}
+                onCancel={onCancelEdit}
+              />
+            ) : message.content ? (
+              <MessageText content={message.content} />
+            ) : null}
+          </>
         )}
 
         {!isEditing ? (
