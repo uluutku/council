@@ -57,11 +57,14 @@ conversation and a coarse per-user rate limit are enforced in the database.
 
 ### Provider modes
 
-`AI_PROVIDER_MODE=openrouter` calls OpenRouter (default model `deepseek/deepseek-chat`, configurable
-via `OPENROUTER_TEXT_MODEL`). `AI_PROVIDER_MODE=mock` produces deterministic local output for
-automated tests and refuses to run unless Supabase is local/loopback. `OPENROUTER_API_KEY` and the
-model id are server-only and never placed in a `VITE_*` variable. See
-`supabase/functions/.env.example`.
+Missing `AI_PROVIDER_MODE` defaults to `openrouter`; the default text model is
+`deepseek/deepseek-v4-flash`. `AI_PROVIDER_MODE=mock` is explicit, deterministic, used by automated
+tests, and refuses to run unless Supabase is local/loopback. `OPENROUTER_API_KEY` and the model id
+are server-only and never placed in a `VITE_*` variable.
+
+Local live startup uses `npm run dev:ai`, which reads `supabase/functions/.env` and fails before
+serving when OpenRouter mode has no key. Content-free GET metadata reports only `provider_mode`,
+`model`, and configuration status; the development UI renders `Live provider` or `Local mock`.
 
 ### Streaming protocol
 
@@ -108,3 +111,12 @@ conversation id, client id, and message content — never raw system instruction
 
 The configured model (`OPENROUTER_TEXT_MODEL`, e.g. `deepseek/deepseek-v4-flash`) is passed through
 to the provider; mock mode remains for automated tests.
+
+## Task 011: curated memory context
+
+`load_ai_run_context` now assembles platform rules, built-in/persona instructions, persona style,
+active user-approved memory when mode is `curated`, then the bounded message window. Memories are
+ordered deterministically, capped at 50 per conversation, and marked as untrusted context that
+cannot override platform instructions. `conversation_only` leaves rows stored but excludes them
+from generation. Deleted rows disappear from the next context load. Prompts and memory content are
+never returned to the browser or logged.

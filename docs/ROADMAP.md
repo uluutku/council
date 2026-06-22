@@ -48,8 +48,10 @@ Status:
   (`deepseek/deepseek-v4-flash`), SSE streaming, a shared seven-day credit trial with atomic
   reservation and refund, idempotent/retryable generation through the `ai-chat` Edge Function, a
   deterministic local mock provider, and database, edge-integration, component, and end-to-end
-  coverage.
-- Personas (relationship roles), persistent memory, memory extraction, tools, web search,
+  coverage. Transparent curated memory is complete: per-contact save/edit/delete/clear,
+  Remember-from-message confirmation, curated/conversation-only modes, server-side inclusion,
+  provider-state disclosure, and cross-user/contact isolation.
+- Automatic memory extraction, embeddings, contradiction resolution, tools, web search,
   image/file understanding, AI inside human conversations, and public/shared personas remain
   pending.
 - Billing and entitlements (Pro checkout) is not started; the credit model exists but `pro_enabled`

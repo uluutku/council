@@ -9,6 +9,8 @@ import { aiErrorMessage, isAiAccessError } from '../api/aiErrorMessages.js';
 import { AiMessageList } from '../components/AiMessageList.jsx';
 import { AiComposer } from '../components/AiComposer.jsx';
 import { AiAccessSummary } from '../components/AiAccessSummary.jsx';
+import { AiMemoryPanel } from '../components/AiMemoryPanel.jsx';
+import { AiProviderBadge } from '../components/AiProviderBadge.jsx';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -39,6 +41,7 @@ export function AiConversationPage() {
   const chat = useAiChat(conversationId);
   const [draft, setDraft] = useState('');
   const [draftKey, setDraftKey] = useState(0);
+  const [memoryPanel, setMemoryPanel] = useState(null);
 
   const conversation = conversations.find((entry) => entry.id === conversationId);
   const displayName =
@@ -54,6 +57,14 @@ export function AiConversationPage() {
   const handleSelectStarter = useCallback((prompt) => {
     setDraft(prompt);
     setDraftKey((key) => key + 1);
+  }, []);
+
+  const handleRememberMessage = useCallback((message) => {
+    setMemoryPanel({
+      content: message.content,
+      sourceMessageId: message.id,
+      key: crypto.randomUUID(),
+    });
   }, []);
 
   const accessError = chat.errorCategory && isAiAccessError({ category: chat.errorCategory });
@@ -78,7 +89,17 @@ export function AiConversationPage() {
             AI messages are processed by Council’s configured AI provider.
           </p>
         </div>
-        <AiAccessSummary access={access} variant="compact" />
+        <div className="ai-conversation-header-actions">
+          <AiProviderBadge />
+          <button
+            type="button"
+            className="button button--secondary button--small"
+            onClick={() => setMemoryPanel({ key: crypto.randomUUID() })}
+          >
+            Memory
+          </button>
+          <AiAccessSummary access={access} variant="compact" />
+        </div>
       </header>
 
       <AiMessageList
@@ -89,6 +110,8 @@ export function AiConversationPage() {
         isLoading={messagesQuery.isPending}
         onSelectStarter={handleSelectStarter}
         composerDisabled={composerDisabled}
+        contactName={displayName}
+        onRememberMessage={handleRememberMessage}
       />
 
       {chat.errorCategory ? (
@@ -128,6 +151,22 @@ export function AiConversationPage() {
           contactName={displayName}
         />
       )}
+
+      {memoryPanel ? (
+        <AiMemoryPanel
+          conversationId={conversationId}
+          initialDraft={
+            memoryPanel.content
+              ? {
+                  content: memoryPanel.content,
+                  sourceMessageId: memoryPanel.sourceMessageId,
+                  key: memoryPanel.key,
+                }
+              : null
+          }
+          onClose={() => setMemoryPanel(null)}
+        />
+      ) : null}
     </section>
   );
 }

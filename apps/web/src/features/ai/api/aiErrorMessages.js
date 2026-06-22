@@ -18,6 +18,11 @@ const MESSAGES = {
   persona_not_found: 'That persona is no longer available.',
   persona_limit_reached: 'You can have up to 10 active personas. Archive one to add another.',
   invalid_persona: 'Check the persona details and try again.',
+  memory_not_found: 'That saved memory is no longer available.',
+  memory_limit_reached: 'This AI contact can remember up to 50 saved memories.',
+  invalid_memory: 'Check the memory details and try again.',
+  invalid_memory_source: 'That message cannot be used as a memory source.',
+  invalid_memory_mode: 'That memory mode is not available.',
   backend_unavailable: 'Council is temporarily unavailable. Try again.',
   unknown_error: 'Something went wrong. Try again.',
 };

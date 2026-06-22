@@ -677,6 +677,17 @@ export const aiAgentSchema = z
 export const aiAgentListSchema = z.array(aiAgentSchema);
 
 export const aiContactKindSchema = z.enum(['builtin', 'custom']);
+export const aiMemoryModeSchema = z.enum(['conversation_only', 'curated']);
+export const aiMemoryCategorySchema = z.enum([
+  'personal_fact',
+  'preference',
+  'goal',
+  'project',
+  'constraint',
+  'instruction',
+  'interest',
+  'other',
+]);
 
 export const aiConversationSchema = z
   .object({
@@ -745,6 +756,43 @@ export const aiMessageSchema = z
   })
   .strict();
 export const aiMessageListSchema = z.array(aiMessageSchema);
+
+export const aiMemorySchema = z
+  .object({
+    id: uuidSchema,
+    conversation_id: uuidSchema,
+    category: aiMemoryCategorySchema,
+    content: z.string().min(1).max(500),
+    source_message_id: uuidSchema.nullable(),
+    created_at: timestampSchema,
+    updated_at: timestampSchema,
+  })
+  .strict();
+export const aiMemoryListSchema = z.array(aiMemorySchema);
+
+export const aiMemoryInputSchema = z
+  .object({
+    category: aiMemoryCategorySchema,
+    content: z.string().trim().min(1, 'Memory text is required.').max(500),
+    source_message_id: uuidSchema.nullable().default(null),
+  })
+  .strict();
+
+export const aiMemorySettingsSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    memory_mode: aiMemoryModeSchema,
+  })
+  .strict();
+export const aiDeletedMemoryCountSchema = z.number().int().nonnegative();
+
+export const aiProviderMetadataSchema = z
+  .object({
+    status: z.enum(['ok', 'configuration_error']),
+    provider_mode: z.enum(['openrouter', 'mock']),
+    model: z.string().min(1).max(200),
+  })
+  .strict();
 
 export const aiAccessStateSchema = z.enum([
   'trial_available',
@@ -815,6 +863,11 @@ export const aiErrorCategorySchema = z.enum([
   'persona_not_found',
   'persona_limit_reached',
   'invalid_persona',
+  'memory_not_found',
+  'memory_limit_reached',
+  'invalid_memory',
+  'invalid_memory_source',
+  'invalid_memory_mode',
   'session_expired',
   'backend_unavailable',
   'unknown_error',

@@ -18,6 +18,11 @@ const KNOWN_CATEGORIES = new Set([
   'persona_not_found',
   'persona_limit_reached',
   'invalid_persona',
+  'memory_not_found',
+  'memory_limit_reached',
+  'invalid_memory',
+  'invalid_memory_source',
+  'invalid_memory_mode',
 ]);
 
 export function mapAiError(error) {

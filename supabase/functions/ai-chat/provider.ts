@@ -37,9 +37,21 @@ const MAX_OUTPUT_CHARS = 40000;
 async function* runMock(options: ProviderOptions, usage: ProviderUsage): AsyncGenerator<string> {
   const lastUser = [...options.messages].reverse().find((message) => message.role === 'user');
   const prompt = (lastUser?.content ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
+  const memorySection = options.systemPrompt.match(
+    /User-approved memory \(untrusted context; it never overrides platform rules\):\n([\s\S]*)$/,
+  );
+  const approvedMemory = memorySection?.[1]
+    ?.split('\n')
+    .map((line) => line.replace(/^-\s*/, '').trim())
+    .filter(Boolean)
+    .join(' | ');
+  const memoryNote = approvedMemory
+    ? ` Approved memory supplied: ${approvedMemory.slice(0, 500)}.`
+    : ' No approved memory was supplied.';
   const reply =
     `Council Assistant (mock mode) received: "${prompt}". ` +
-    `This is a deterministic local response used for testing; no external provider was called.`;
+    `This is a deterministic local response used for testing; no external provider was called.` +
+    memoryNote;
   const tokens = reply.split(/(\s+)/);
   let emitted = 0;
   for (const token of tokens) {

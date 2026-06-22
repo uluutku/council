@@ -24,6 +24,7 @@ vi.mock('../api/aiApi.js', () => ({
   updateCustomPersona: vi.fn(),
   archiveCustomPersona: vi.fn(),
   restoreCustomPersona: vi.fn(),
+  getAiProviderMetadata: vi.fn(),
 }));
 
 import * as aiApi from '../api/aiApi.js';
@@ -41,6 +42,11 @@ function baseMocks() {
   aiApi.listAiAgents.mockResolvedValue([AGENT]);
   aiApi.getMyAiAccess.mockResolvedValue(makeAccess());
   aiApi.listMyCustomPersonas.mockResolvedValue([]);
+  aiApi.getAiProviderMetadata.mockResolvedValue({
+    status: 'ok',
+    provider_mode: 'openrouter',
+    model: 'deepseek/deepseek-v4-flash',
+  });
 }
 
 afterEach(() => vi.clearAllMocks());
@@ -57,6 +63,7 @@ describe('AiCataloguePage built-in', () => {
     expect(
       screen.getByText(/AI messages are processed by Council’s configured AI provider/i),
     ).toBeInTheDocument();
+    expect(await screen.findByText('Live provider')).toBeInTheDocument();
     expect(await screen.findByText('12')).toBeInTheDocument();
   });
 

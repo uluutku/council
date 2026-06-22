@@ -9,32 +9,28 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { type ChatMessage, ProviderError, type ProviderUsage, runProvider } from './provider.ts';
+import { resolveProviderConfig } from './runtime-config.mjs';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY') ?? '';
-const OPENROUTER_TEXT_MODEL = Deno.env.get('OPENROUTER_TEXT_MODEL') ?? 'deepseek/deepseek-chat';
-const PROVIDER_MODE = (Deno.env.get('AI_PROVIDER_MODE') ?? 'openrouter').toLowerCase();
+const OPENROUTER_TEXT_MODEL = Deno.env.get('OPENROUTER_TEXT_MODEL') ?? '';
+const PROVIDER_MODE = Deno.env.get('AI_PROVIDER_MODE') ?? '';
 const MAX_CONTENT_LENGTH = 8000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', 'kong', 'host.docker.internal']);
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-// Mock mode is for local automated tests only and must never run against a
-// remote/production Supabase project.
-function isLocalEnvironment(): boolean {
-  try {
-    return LOCAL_HOSTS.has(new URL(SUPABASE_URL).hostname);
-  } catch (_error) {
-    return false;
-  }
-}
+const providerConfig = resolveProviderConfig({
+  providerMode: PROVIDER_MODE,
+  model: OPENROUTER_TEXT_MODEL,
+  apiKey: OPENROUTER_API_KEY,
+  supabaseUrl: SUPABASE_URL,
+}) as { mode: 'openrouter' | 'mock'; model: string; configured: boolean };
 
 const serviceClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -73,7 +69,11 @@ Deno.serve(async (req: Request) => {
   // Lightweight health response so readiness checks (e.g. test harnesses) can
   // confirm the function is serving without authenticating.
   if (req.method === 'GET') {
-    return jsonResponse(200, { status: 'ok', mode: PROVIDER_MODE });
+    return jsonResponse(200, {
+      status: providerConfig.configured ? 'ok' : 'configuration_error',
+      provider_mode: providerConfig.mode,
+      model: providerConfig.model,
+    });
   }
   if (req.method !== 'POST') {
     return jsonResponse(405, { error: 'method_not_allowed' });
@@ -112,16 +112,10 @@ Deno.serve(async (req: Request) => {
   }
 
   // Resolve provider mode with the mock safety guard.
-  let mode: 'openrouter' | 'mock';
-  if (PROVIDER_MODE === 'mock') {
-    if (!isLocalEnvironment()) {
-      return jsonResponse(500, { error: 'provider_not_configured' });
-    }
-    mode = 'mock';
-  } else {
-    mode = 'openrouter';
+  if (!providerConfig.configured) {
+    return jsonResponse(500, { error: 'provider_not_configured' });
   }
-  const model = mode === 'mock' ? 'mock/council-assistant' : OPENROUTER_TEXT_MODEL;
+  const { mode, model } = providerConfig;
 
   const stream = new ReadableStream({
     async start(controller) {

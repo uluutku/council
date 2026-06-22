@@ -1,24 +1,23 @@
 # Memory
 
-Council plans four transparent AI memory modes:
+Council implements two transparent modes per AI conversation:
 
-1. Ephemeral: current request plus a small recent window, with no persistent memory.
-2. Conversation history: recent messages and a rolling summary limited to that conversation.
-3. Curated memory: the AI proposes memories and the user approves, edits, or rejects them.
-4. Automatic persistent memory: eligible memories are saved automatically under stricter
-   sensitive-data rules.
+- `curated` (default): bounded recent history plus active memories explicitly saved by the user.
+- `conversation_only`: bounded recent history only; saved memories remain stored but inactive.
 
-Curated memory is the recommended default because it combines continuity with user control.
-Memory categories will include biography, preference, communication style, goal, project,
-constraint, relationship event, instruction, interest, and current plan.
+Council only stores memories the user explicitly saves or approves. There is no automatic
+extraction, hidden profile, embedding, semantic search, contradiction handling, or shared memory.
 
-Each AI contact will expose a ledger for pending, active, superseded, expired, and sensitive
-memories. Users will be able to inspect source context, edit, delete, pin, expire, disable
-retrieval, export, or clear memory. Contradictory facts will be retained temporarily and resolved
-through confidence checks or user confirmation.
+`ai_memories` stores owner ID, conversation ID, category, content (maximum 500 characters), optional
+source user-message ID, and timestamps. Categories are personal fact, preference, goal, project,
+constraint, instruction, interest, and other. A conversation holds at most 50 memories. RLS permits
+only owner reads; narrow RPCs create, edit, hard-delete, clear, and change mode. A source message
+must be a user message from the same AI conversation.
 
-Deleting an AI conversation must offer visible-conversation deletion or transactional deletion of
-the conversation and all derived memories. Deleted memories must not return through summaries,
-caches, or retrieval.
+The Memory dialog lists every item and supports add, edit, delete, delete-all confirmation, mode
+switching, and a confirm-before-save Remember action on the user's own AI messages. Memory query
+keys include the conversation ID and all queries are cleared on sign-out.
 
-Task 001 implements no memory storage, extraction, retrieval, or UI.
+Server context places curated memories after platform/contact/style instructions and before recent
+history. Deterministic ordering and hard deletion make changes effective on the next generation.
+Archived custom personas retain memories and history; generation remains disabled until restored.

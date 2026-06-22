@@ -17,6 +17,14 @@ vi.mock('../api/aiApi.js', () => ({
   listMyAiConversations: vi.fn(),
   listAiAgents: vi.fn(),
   getOrCreateAiConversation: vi.fn(),
+  getAiProviderMetadata: vi.fn(),
+  getAiMemorySettings: vi.fn(),
+  listAiMemories: vi.fn(),
+  createAiMemory: vi.fn(),
+  updateAiMemory: vi.fn(),
+  deleteAiMemory: vi.fn(),
+  deleteAllAiMemories: vi.fn(),
+  setAiMemoryMode: vi.fn(),
 }));
 vi.mock('../api/aiChatStream.js', () => ({ streamAiChat: vi.fn() }));
 
@@ -35,6 +43,16 @@ function renderConversation() {
 beforeEach(() => {
   aiApi.listMyAiConversations.mockResolvedValue([]);
   aiApi.getMyAiAccess.mockResolvedValue(makeAccess());
+  aiApi.getAiProviderMetadata.mockResolvedValue({
+    status: 'ok',
+    provider_mode: 'openrouter',
+    model: 'deepseek/deepseek-v4-flash',
+  });
+  aiApi.getAiMemorySettings.mockResolvedValue({
+    conversation_id: CONVERSATION_ID,
+    memory_mode: 'curated',
+  });
+  aiApi.listAiMemories.mockResolvedValue([]);
 });
 afterEach(() => vi.clearAllMocks());
 
@@ -166,5 +184,39 @@ describe('AiConversationPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
     expect(await screen.findByText('Recovered answer')).toBeInTheDocument();
+  });
+
+  it('prefills memory from a user message and saves only after confirmation', async () => {
+    const message = makeAiMessage({ id: 'd0000000-0000-4000-8000-000000000009' });
+    aiApi.listAiMessages.mockResolvedValue([message]);
+    aiApi.createAiMemory.mockResolvedValue({
+      id: 'e0000000-0000-4000-8000-000000000009',
+      conversation_id: CONVERSATION_ID,
+      category: 'preference',
+      content: message.content,
+      source_message_id: message.id,
+      created_at: '2026-06-22T10:00:00+00:00',
+      updated_at: '2026-06-22T10:00:00+00:00',
+    });
+
+    renderConversation();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Remember' }));
+    expect(screen.getByLabelText('Memory text')).toHaveValue(message.content);
+    expect(aiApi.createAiMemory).not.toHaveBeenCalled();
+
+    await userEvent.selectOptions(screen.getByLabelText('Category'), 'preference');
+    await userEvent.click(screen.getByRole('button', { name: 'Save memory' }));
+
+    await waitFor(() =>
+      expect(aiApi.createAiMemory).toHaveBeenCalledWith(
+        CONVERSATION_ID,
+        expect.objectContaining({
+          category: 'preference',
+          content: message.content,
+          source_message_id: message.id,
+        }),
+      ),
+    );
   });
 });

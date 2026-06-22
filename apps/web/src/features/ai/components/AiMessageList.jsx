@@ -13,6 +13,8 @@ export function AiMessageList({
   isLoading,
   onSelectStarter,
   composerDisabled,
+  contactName,
+  onRememberMessage,
 }) {
   const scrollRef = useRef(null);
 
@@ -56,13 +58,31 @@ export function AiMessageList({
         ) : (
           <ol className="ai-message-list" aria-label="AI conversation">
             {messages.map((message) => (
-              <AiMessageBubble key={message.id} role={message.role} content={message.content} />
+              <AiMessageBubble
+                key={message.id}
+                role={message.role}
+                content={message.content}
+                contactName={contactName}
+                onRemember={
+                  message.role === 'user' ? () => onRememberMessage?.(message) : undefined
+                }
+              />
             ))}
             {showPendingUser ? (
-              <AiMessageBubble role="user" content={pendingUserMessage.content} pending />
+              <AiMessageBubble
+                role="user"
+                content={pendingUserMessage.content}
+                pending
+                contactName={contactName}
+              />
             ) : null}
             {isStreaming ? (
-              <AiMessageBubble role="assistant" content={assistantText} streaming />
+              <AiMessageBubble
+                role="assistant"
+                content={assistantText}
+                streaming
+                contactName={contactName}
+              />
             ) : null}
           </ol>
         )}

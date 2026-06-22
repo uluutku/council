@@ -12,6 +12,7 @@ import { AiAgentCard } from '../components/AiAgentCard.jsx';
 import { AiAccessSummary } from '../components/AiAccessSummary.jsx';
 import { PersonaCard } from '../components/PersonaCard.jsx';
 import { PersonaEditor } from '../components/PersonaEditor.jsx';
+import { AiProviderBadge } from '../components/AiProviderBadge.jsx';
 
 // The AI catalogue with two sections: built-in contacts and the user's private
 // custom personas. Opening any contact creates (or reuses) its single per-user
@@ -69,7 +70,7 @@ export function AiCataloguePage() {
       </header>
 
       <p className="ai-disclosure" role="note">
-        AI messages are processed by Council’s configured AI provider.
+        AI messages are processed by Council’s configured AI provider. <AiProviderBadge />
       </p>
 
       <div className="ai-tabs" role="tablist" aria-label="AI sections">

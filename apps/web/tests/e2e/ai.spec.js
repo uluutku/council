@@ -52,6 +52,25 @@ async function newUserContext(browser, prefix) {
   return { user, context, page };
 }
 
+async function openMemory(page) {
+  await page.getByRole('button', { name: 'Memory', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Memory' })).toBeVisible();
+}
+
+async function saveMemory(page, text, category = 'other') {
+  await openMemory(page);
+  await page.getByRole('button', { name: 'Add memory' }).click();
+  await page.getByLabel('Category').selectOption(category);
+  await page.getByLabel('Memory text').fill(text);
+  await page.getByRole('button', { name: 'Save memory' }).click();
+  await expect(page.getByText(text, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+}
+
+async function lastAssistant(page) {
+  return page.locator('.ai-message-row[data-role="assistant"]').last();
+}
+
 test.describe('AI contacts and personas', () => {
   test.afterAll(async () => {
     try {
@@ -182,6 +201,67 @@ test.describe('AI contacts and personas', () => {
       await b.page.getByRole('tab', { name: 'My personas' }).click();
       await expect(b.page.getByText(/no custom personas yet/i)).toBeVisible();
       await expect(b.page.getByText('Focus Coach')).toHaveCount(0);
+    } finally {
+      await a.context.close();
+      await b.context.close();
+    }
+  });
+
+  test('save curated memory, generate with it, disable memory, then delete it', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const { context, page } = await newUserContext(browser, 'memory');
+    try {
+      await openBuiltin(page, 'Council Assistant');
+      const memory = 'My preferred name is Utku.';
+      await saveMemory(page, memory, 'personal_fact');
+
+      await sendAndAwait(page, 'What name should you use for me?');
+      await expect(await lastAssistant(page)).toContainText(memory);
+
+      await openMemory(page);
+      await page.getByLabel('Memory mode').selectOption('conversation_only');
+      await page.getByRole('button', { name: 'Close' }).click();
+      await sendAndAwait(page, 'What saved name do you have?');
+      await expect(await lastAssistant(page)).toContainText('No approved memory was supplied');
+
+      await openMemory(page);
+      page.once('dialog', (dialog) => dialog.accept());
+      await page.getByRole('button', { name: 'Delete', exact: true }).click();
+      await expect(page.getByText(/No saved memories/i)).toBeVisible();
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('memories stay isolated between AI contacts and user accounts', async ({ browser }) => {
+    test.setTimeout(150_000);
+    const a = await newUserContext(browser, 'memorya');
+    const b = await newUserContext(browser, 'memoryb');
+    try {
+      await openBuiltin(a.page, 'Council Assistant');
+      await saveMemory(a.page, 'Council-only memory.', 'project');
+
+      await openBuiltin(a.page, 'Writing Editor');
+      await openMemory(a.page);
+      await expect(a.page.getByText(/No saved memories/i)).toBeVisible();
+      await a.page.getByRole('button', { name: 'Close' }).click();
+      await saveMemory(a.page, 'Editor-only memory.', 'preference');
+      await sendAndAwait(a.page, 'What do you remember?');
+      await expect(await lastAssistant(a.page)).toContainText('Editor-only memory.');
+      await expect(await lastAssistant(a.page)).not.toContainText('Council-only memory.');
+
+      await openBuiltin(a.page, 'Council Assistant');
+      await sendAndAwait(a.page, 'What do you remember here?');
+      await expect(await lastAssistant(a.page)).toContainText('Council-only memory.');
+      await expect(await lastAssistant(a.page)).not.toContainText('Editor-only memory.');
+
+      await openBuiltin(b.page, 'Council Assistant');
+      await openMemory(b.page);
+      await expect(b.page.getByText(/No saved memories/i)).toBeVisible();
+      await expect(b.page.getByText('Council-only memory.', { exact: true })).toHaveCount(0);
+      await expect(b.page.getByText('Editor-only memory.', { exact: true })).toHaveCount(0);
     } finally {
       await a.context.close();
       await b.context.close();

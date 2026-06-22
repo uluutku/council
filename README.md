@@ -14,8 +14,9 @@ editing, deletion, reactions, and live Realtime synchronization between two peop
 now also carry private image and file attachments. There are built-in AI contacts — Council
 Assistant, Writing Editor, Study Coach, and Coding Partner — plus private custom personas you create
 yourself, all chattable with streamed DeepSeek responses through a server-owned OpenRouter
-integration, gated by a short, server-enforced credit trial. The rest of this README is
-the honest status, not a pitch.
+integration, gated by a short, server-enforced credit trial. Each AI contact also has transparent,
+user-curated memory that can be edited, deleted, or disabled without deleting conversation history.
+The rest of this README is the honest status, not a pitch.
 
 ## What works today
 
@@ -69,18 +70,23 @@ platform-safety preamble that custom instructions cannot override, OpenRouter cr
 on the server, built-in system prompts never reach the browser, and a deterministic local mock
 provider backs the automated tests.
 
+Each AI conversation defaults to Curated memory. Council includes only memories you explicitly save
+or approve; there is no automatic extraction. The Memory panel supports add/edit/delete, confirmed
+Remember-from-message, and Conversation only mode, which stores memories without sending them to
+the model.
+
 ## What it can't do yet
 
 There is no typing indicator, presence or online status, or notification delivery. The AI side is
-deliberately minimal: text only, no memory, no tools or web search, no image or file understanding,
+deliberately minimal: text plus curated memory, no automatic extraction, tools or web search, no image or file understanding,
 no AI inside human conversations, no public/shared personas, and no billing checkout (when the trial
 ends the app says so honestly rather than showing a fake upgrade). There is no mobile app, no group
 chats. None of these are faked in the UI on purpose — there are no disabled controls advertising
 features that do not exist.
 
 So Council now has working human text and attachment messaging plus a small AI-contact system —
-built-in assistants and private custom personas — on top of its account, contact, and secure
-database foundations, but not memory, tools, or billing.
+built-in assistants, private custom personas, and transparent per-contact memory — on top of its
+account, contact, and secure database foundations, but not tools or billing.
 
 ## Why it is built this way
 
@@ -153,6 +159,10 @@ Those are the only two values that belong in a Vite env file. Local Supabase tur
 confirmation so you can register without a mailer, and Mailpit at `http://127.0.0.1:54324` catches
 local recovery emails.
 
+For live AI replies, copy `supabase/functions/.env.example` to the gitignored
+`supabase/functions/.env`, add the server-only OpenRouter key, and run `npm run dev:ai`. Missing
+provider mode defaults to OpenRouter; automated tests explicitly select local-only mock mode.
+
 ## Routes
 
 | Area       | Routes                                                                        |
@@ -169,6 +179,7 @@ local recovery emails.
 | Command                    | Purpose                                                        |
 | -------------------------- | -------------------------------------------------------------- |
 | `npm run dev`              | Start the web application                                      |
+| `npm run dev:ai`           | Start `ai-chat` from `supabase/functions/.env`                 |
 | `npm run check`            | Format check, lint, unit and component tests, production build |
 | `npm run test`             | Unit and component tests                                       |
 | `npm run test:e2e`         | Playwright browser flows (needs local Supabase)                |
@@ -182,7 +193,7 @@ local recovery emails.
 
 The privacy claims above are checked at every layer, not just asserted here.
 
-- Database (pgTAP): 450 assertions over 14 files cover account/social authorization plus direct
+- Database (pgTAP): assertions cover account/social authorization plus direct
   conversation uniqueness, message sequencing and idempotency, replies, tombstones, reactions,
   receipts, pagination, relationship changes, Realtime authorization/events, RLS isolation, and
   direct-write denial.

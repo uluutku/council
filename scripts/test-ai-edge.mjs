@@ -8,6 +8,7 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
+import { resolveProviderConfig } from '../supabase/functions/ai-chat/runtime-config.mjs';
 
 const repoRoot = resolve(import.meta.dirname, '..');
 const supabaseScript = resolve(repoRoot, 'scripts', 'supabase.mjs');
@@ -80,42 +81,48 @@ async function main() {
 
   const admin = createClient(apiUrl, serviceKey, { auth: { persistSession: false } });
 
-  let serve = null;
   const manage = process.env.AI_CHAT_SERVE !== '0';
-  if (manage) {
-    serve = spawn(
+  let serve = null;
+
+  function startServe(envFile) {
+    const childEnv = { ...process.env, DO_NOT_TRACK: '1' };
+    delete childEnv.AI_PROVIDER_MODE;
+    delete childEnv.OPENROUTER_API_KEY;
+    return spawn(
       process.execPath,
-      [
-        supabaseScript,
-        'functions',
-        'serve',
-        'ai-chat',
-        '--no-verify-jwt',
-        '--env-file',
-        'supabase/functions/mock.env',
-      ],
-      { cwd: repoRoot, env: { ...process.env, DO_NOT_TRACK: '1' }, stdio: 'ignore' },
+      [supabaseScript, 'functions', 'serve', 'ai-chat', '--no-verify-jwt', '--env-file', envFile],
+      { cwd: repoRoot, env: childEnv, stdio: 'ignore' },
     );
   }
 
-  const createdUserIds = [];
-  try {
-    // Wait for the function to be reachable (an unauthenticated POST returns 401).
-    let ready = false;
+  function stopServe() {
+    if (!serve?.pid) return;
+    try {
+      execFileSync('taskkill', ['/PID', String(serve.pid), '/T', '/F'], { stdio: 'ignore' });
+    } catch {
+      serve.kill('SIGKILL');
+    }
+    serve = null;
+  }
+
+  async function waitForHealth(expectedMode) {
     for (let i = 0; i < 40; i += 1) {
       try {
-        const probe = await fetch(functionUrl, { method: 'POST', body: '{}' });
-        if (probe.status === 401 || probe.status === 400) {
-          ready = true;
-          break;
+        const probe = await fetch(functionUrl);
+        if (probe.ok) {
+          const metadata = await probe.json();
+          if (metadata.provider_mode === expectedMode) return metadata;
         }
       } catch {
         /* not up yet */
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
-    check('function is serving', ready);
+    throw new Error(`Function did not start in ${expectedMode} mode.`);
+  }
 
+  const createdUserIds = [];
+  try {
     async function makeUser(tag) {
       const email = `ai-edge-${tag}-${Date.now()}@example.test`;
       const password = 'local-test-password';
@@ -148,6 +155,54 @@ async function main() {
 
     const alice = await makeUser('a');
     const bob = await makeUser('b');
+
+    const missingConfig = resolveProviderConfig({
+      providerMode: '',
+      model: '',
+      apiKey: '',
+      supabaseUrl: apiUrl,
+    });
+    check('missing provider mode defaults to OpenRouter', missingConfig.mode === 'openrouter');
+    check(
+      'the configured OpenRouter model is reported safely',
+      missingConfig.model === 'deepseek/deepseek-v4-flash',
+    );
+    check(
+      'missing OpenRouter key reports a safe configuration error',
+      missingConfig.configured === false,
+    );
+    const remoteMock = resolveProviderConfig({
+      providerMode: 'mock',
+      model: '',
+      apiKey: '',
+      supabaseUrl: 'https://example.supabase.co',
+    });
+    check('mock mode is rejected for remote Supabase', remoteMock.configured === false);
+
+    if (manage) {
+      serve = startServe('supabase/functions/mock.env');
+      const mockMetadata = await waitForHealth('mock');
+      check(
+        'mock mode requires explicit local configuration',
+        mockMetadata.provider_mode === 'mock',
+      );
+    }
+
+    // Wait for the function to be reachable (an unauthenticated POST returns 401).
+    let ready = false;
+    for (let i = 0; i < 40; i += 1) {
+      try {
+        const probe = await fetch(functionUrl, { method: 'POST', body: '{}' });
+        if (probe.status === 401 || probe.status === 400) {
+          ready = true;
+          break;
+        }
+      } catch {
+        /* not up yet */
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    check('function is serving', ready);
 
     const { data: agents } = await alice.client.rpc('list_ai_agents');
     const agent = agents.find((a) => a.slug === 'council-assistant');
@@ -188,6 +243,52 @@ async function main() {
       /mock mode/i.test(done.message.content),
     );
     check('one credit was consumed (20 -> 19)', done.credits_remaining === 19);
+
+    const runId = events.find((event) => event.type === 'start')?.run_id;
+    const { data: memory } = await alice.client
+      .rpc('create_ai_memory', {
+        p_conversation_id: conversation.id,
+        p_category: 'preference',
+        p_content: 'I prefer concise explanations.',
+        p_source_message_id: null,
+      })
+      .single();
+    const { data: curatedContext } = await admin
+      .rpc('load_ai_run_context', { p_run_id: runId, p_max_messages: 20 })
+      .single();
+    check(
+      'curated memory is included in server-side context',
+      curatedContext.system_prompt.includes('I prefer concise explanations.'),
+    );
+    check(
+      'platform prompt retains precedence over memory',
+      curatedContext.system_prompt.indexOf('platform rules always apply') <
+        curatedContext.system_prompt.indexOf('User-approved memory'),
+    );
+
+    await alice.client.rpc('set_ai_memory_mode', {
+      p_conversation_id: conversation.id,
+      p_memory_mode: 'conversation_only',
+    });
+    const { data: conversationOnlyContext } = await admin
+      .rpc('load_ai_run_context', { p_run_id: runId, p_max_messages: 20 })
+      .single();
+    check(
+      'conversation-only mode excludes memory',
+      !conversationOnlyContext.system_prompt.includes('I prefer concise explanations.'),
+    );
+    await alice.client.rpc('set_ai_memory_mode', {
+      p_conversation_id: conversation.id,
+      p_memory_mode: 'curated',
+    });
+    await alice.client.rpc('delete_ai_memory', { p_memory_id: memory.id });
+    const { data: deletedContext } = await admin
+      .rpc('load_ai_run_context', { p_run_id: runId, p_max_messages: 20 })
+      .single();
+    check(
+      'deleted memory is excluded',
+      !deletedContext.system_prompt.includes('I prefer concise explanations.'),
+    );
 
     // Persisted history contains the user + assistant messages.
     const { data: messages } = await alice.client.rpc('list_ai_messages', {
@@ -240,6 +341,19 @@ async function main() {
       .rpc('get_or_create_ai_conversation', { p_persona_id: persona.id })
       .single();
     check('persona conversation reports the custom kind', personaConv.kind === 'custom');
+    await alice.client.rpc('create_ai_memory', {
+      p_conversation_id: personaConv.id,
+      p_category: 'project',
+      p_content: 'Memory belonging only to the persona.',
+      p_source_message_id: null,
+    });
+    const { data: isolatedContext } = await admin
+      .rpc('load_ai_run_context', { p_run_id: runId, p_max_messages: 20 })
+      .single();
+    check(
+      'memory from another conversation is excluded',
+      !isolatedContext.system_prompt.includes('Memory belonging only to the persona.'),
+    );
 
     const personaGen = await post(alice.token, {
       conversation_id: personaConv.id,
@@ -310,13 +424,7 @@ async function main() {
     console.log(`AI edge integration passed (${passed.length} checks):`);
     for (const label of passed) console.log(`  ✓ ${label}`);
   } finally {
-    if (serve && serve.pid) {
-      try {
-        execFileSync('taskkill', ['/PID', String(serve.pid), '/T', '/F'], { stdio: 'ignore' });
-      } catch {
-        serve.kill('SIGKILL');
-      }
-    }
+    stopServe();
   }
 }
 

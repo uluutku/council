@@ -1,7 +1,10 @@
 import { aiKeys } from '../../../lib/query-keys/ai.js';
 import {
   getMyAiAccess,
+  getAiMemorySettings,
+  getAiProviderMetadata,
   listAiAgents,
+  listAiMemories,
   listAiMessages,
   listMyAiConversations,
   listMyCustomPersonas,
@@ -27,6 +30,31 @@ export function aiMessagesQueryOptions(conversationId) {
   return {
     queryKey: aiKeys.messages(conversationId),
     queryFn: () => listAiMessages(conversationId),
+    enabled: Boolean(conversationId),
+  };
+}
+
+export function aiProviderQueryOptions() {
+  return {
+    queryKey: aiKeys.provider(),
+    queryFn: () => getAiProviderMetadata(),
+    staleTime: 30_000,
+    retry: 1,
+  };
+}
+
+export function aiMemorySettingsQueryOptions(conversationId) {
+  return {
+    queryKey: aiKeys.memorySettings(conversationId),
+    queryFn: () => getAiMemorySettings(conversationId),
+    enabled: Boolean(conversationId),
+  };
+}
+
+export function aiMemoriesQueryOptions(conversationId) {
+  return {
+    queryKey: aiKeys.memories(conversationId),
+    queryFn: () => listAiMemories(conversationId),
     enabled: Boolean(conversationId),
   };
 }

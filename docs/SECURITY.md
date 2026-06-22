@@ -272,6 +272,19 @@ files, credentials, hidden prompts, nonexistent tools, or the internet, and the 
 capabilities. Archived personas keep their history readable but cannot start new generations until
 restored.
 
+### Transparent AI memory (Task 011)
+
+AI memory is explicit and conversation-scoped. `ai_memories` has owner-only RLS, direct browser
+mutation is denied, and narrow security-definer RPCs derive ownership from `auth.uid()`. The
+database verifies conversation ownership, source-message scope and role, 500-character content,
+and the 50-memory limit. Anonymous and cross-user access reveal no memory existence.
+
+Memory mode is restricted to `curated` or `conversation_only`. Curated rows are loaded server-side
+after platform/contact/style instructions and are marked unable to override platform rules.
+Conversation-only mode does not retrieve them. Hard deletion removes memory from future context;
+clearing memory does not clear history. Memory content is excluded from logs, analytics, runtime
+metadata, and browser-visible assembled prompts. Sign-out clears memory query caches.
+
 ## Disclosure and assurance
 
 A responsible-disclosure process and monitored security contact must be established before
