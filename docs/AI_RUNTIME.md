@@ -129,3 +129,21 @@ to `OPENROUTER_VISION_MODEL`. Its bounded structured result is cached per user, 
 vision model, and prompt version. That private result is added to the existing server prompt and
 `OPENROUTER_TEXT_MODEL` streams the persona-consistent final answer. Signed Storage URLs never go
 to OpenRouter, and raw vision output never goes to the browser.
+
+## Task 013: confirmed human-message context
+
+Forwarding reuses `ai-chat` and the normal credit reservation/refund path. The authenticated request
+contains a destination AI conversation, source human conversation, up to 20 source message IDs, an
+optional instruction of at most 2,000 characters, and one client request UUID. The service-role
+`start_ai_generation` transaction verifies source membership and destination ownership, rejects
+deleted or attachment-only rows, enforces 20,000 copied characters, reads text from PostgreSQL, and
+stores one owner-only immutable snapshot in `ai_context_imports` and
+`ai_context_import_items`. Text-plus-attachment messages copy only text and record that attachments
+were excluded.
+
+The context import is linked to the normal AI user message. Reusing the same request UUID and
+payload replays without another import, run, message, or credit; changed selections conflict. Prompt
+assembly remains platform, contact/persona, style, curated memory, bounded AI history, then
+explicitly delimited untrusted copied context and the user instruction. Forwarded text is never
+saved as memory automatically and is never logged. PDF and document analysis remains deferred until
+the end of the project.

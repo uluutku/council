@@ -8,6 +8,7 @@ import {
   ME_ID,
   PEER_ID,
   makeConversation,
+  makeAttachment,
   makeMessage,
   makeReceipt,
   resetMessageCounter,
@@ -25,6 +26,46 @@ vi.mock('../api/messagingApi.js', () => ({
   removeMessageReaction: vi.fn(),
   markConversationDelivered: vi.fn(),
   markConversationRead: vi.fn(),
+}));
+
+vi.mock('../../ai/api/aiApi.js', () => ({
+  listAiAgents: vi.fn().mockResolvedValue([
+    {
+      id: '44444444-4444-4444-8444-444444444444',
+      slug: 'council-assistant',
+      name: 'Council Assistant',
+      description: 'General assistant',
+      avatar_key: null,
+      enabled: true,
+    },
+  ]),
+  listMyCustomPersonas: vi.fn().mockResolvedValue([
+    {
+      id: '55555555-5555-4555-8555-555555555555',
+      name: 'Active Persona',
+      description: '',
+      instructions: 'Help.',
+      tone: 'balanced',
+      verbosity: 'concise',
+      archived: false,
+      created_at: '2026-06-22T10:00:00+00:00',
+      updated_at: '2026-06-22T10:00:00+00:00',
+    },
+    {
+      id: '66666666-6666-4666-8666-666666666666',
+      name: 'Archived Persona',
+      description: '',
+      instructions: 'Help.',
+      tone: 'balanced',
+      verbosity: 'concise',
+      archived: true,
+      created_at: '2026-06-22T10:00:00+00:00',
+      updated_at: '2026-06-22T10:00:00+00:00',
+    },
+  ]),
+  getOrCreateAiConversation: vi.fn().mockResolvedValue({
+    id: '77777777-7777-4777-8777-777777777777',
+  }),
 }));
 
 let capturedConversationEvent = null;
@@ -235,6 +276,72 @@ describe('ConversationPage optimistic send', () => {
 
     const [firstCall, secondCall] = messagingApi.sendMessage.mock.calls;
     expect(firstCall[0].client_message_id).toBe(secondCall[0].client_message_id);
+  });
+});
+
+describe('ConversationPage message forwarding', () => {
+  it('selects active text, previews exact content, removes an item, and excludes attachments', async () => {
+    const user = userEvent.setup();
+    const own = makeMessage({ sender_user_id: ME_ID, content: 'Decision one' });
+    const withAttachment = makeMessage({
+      sender_user_id: PEER_ID,
+      content: 'Question two',
+      attachments: [makeAttachment()],
+    });
+    const deleted = makeMessage({
+      sender_user_id: PEER_ID,
+      content: null,
+      deleted_at: '2026-06-22T10:30:00+00:00',
+    });
+    const attachmentOnly = makeMessage({
+      sender_user_id: PEER_ID,
+      content: null,
+      attachments: [makeAttachment()],
+    });
+    installServer({ messages: [own, withAttachment, deleted, attachmentOnly] });
+    openConversation();
+
+    await screen.findByText('Decision one');
+    await user.click(screen.getByRole('button', { name: 'Select messages' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Select message from You' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Select message from Bjorn' }));
+    expect(screen.getByText('2 selected · maximum 20')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Send to AI' }));
+    const dialog = screen.getByRole('dialog', { name: 'Review messages sent to AI' });
+    expect(
+      within(dialog).getByText(/Only the messages shown here will be copied/i),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText('Decision one')).toBeInTheDocument();
+    expect(within(dialog).getByText('Question two')).toBeInTheDocument();
+    expect(within(dialog).getByText(/Attachments are excluded/i)).toBeInTheDocument();
+    expect(within(dialog).getByText('2 messages · 24 characters')).toBeInTheDocument();
+    expect(within(dialog).getByRole('option', { name: 'Active Persona' })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('option', { name: 'Archived Persona' })).toBeNull();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Remove message from Bjorn' }));
+    expect(within(dialog).queryByText('Question two')).toBeNull();
+    expect(within(dialog).getByText('1 message · 12 characters')).toBeInTheDocument();
+  });
+
+  it('enforces the twenty-message selection limit and cancel clears selection mode', async () => {
+    const user = userEvent.setup();
+    const messages = Array.from({ length: 21 }, (_, index) =>
+      makeMessage({ content: `Forwardable message ${index + 1}` }),
+    );
+    installServer({ messages });
+    openConversation();
+
+    await screen.findByText('Forwardable message 1');
+    await user.click(screen.getByRole('button', { name: 'Select messages' }));
+    const checkboxes = screen.getAllByRole('checkbox', { name: /Select message from You/ });
+    for (const checkbox of checkboxes) await user.click(checkbox);
+
+    expect(screen.getByText('20 selected · maximum 20')).toBeInTheDocument();
+    expect(screen.getByText('You can send up to 20 messages at a time.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText(/selected · maximum 20/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Select messages' })).toBeInTheDocument();
   });
 });
 

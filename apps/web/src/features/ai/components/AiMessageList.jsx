@@ -65,6 +65,7 @@ export function AiMessageList({
                 contactName={contactName}
                 conversationId={message.conversation_id}
                 attachments={message.attachments}
+                contextImport={message.context_import}
                 onRemember={
                   message.role === 'user' ? () => onRememberMessage?.(message) : undefined
                 }
@@ -78,6 +79,7 @@ export function AiMessageList({
                 contactName={contactName}
                 conversationId={pendingUserMessage.conversation_id}
                 attachments={pendingUserMessage.attachments}
+                contextImport={pendingUserMessage.context_import}
               />
             ) : null}
             {isStreaming ? (

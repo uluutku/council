@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
@@ -12,6 +12,7 @@ import { AiAccessSummary } from '../components/AiAccessSummary.jsx';
 import { AiMemoryPanel } from '../components/AiMemoryPanel.jsx';
 import { AiProviderBadge } from '../components/AiProviderBadge.jsx';
 import { useAiImageDraft } from '../hooks/useAiImageDraft.js';
+import { useUiStore } from '../../../stores/uiStore.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -31,6 +32,8 @@ function UnavailableConversation() {
 export function AiConversationPage() {
   const { conversationId } = useParams();
   const location = useLocation();
+  const pendingAiForward = useUiStore((state) => state.pendingAiForward);
+  const clearPendingAiForward = useUiStore((state) => state.clearPendingAiForward);
   const isValidId = typeof conversationId === 'string' && UUID_PATTERN.test(conversationId);
 
   const messagesQuery = useQuery({
@@ -44,6 +47,7 @@ export function AiConversationPage() {
   const [draft, setDraft] = useState('');
   const [draftKey, setDraftKey] = useState(0);
   const [memoryPanel, setMemoryPanel] = useState(null);
+  const startedForwardRef = useRef(null);
 
   const conversation = conversations.find((entry) => entry.id === conversationId);
   const displayName =
@@ -55,6 +59,20 @@ export function AiConversationPage() {
   const canGenerate = (access ? access.can_generate : true) && !isArchived;
   const composerDisabled = !canGenerate;
   const messages = messagesQuery.data ?? [];
+
+  useEffect(() => {
+    const request =
+      pendingAiForward?.conversationId === conversationId
+        ? pendingAiForward.request
+        : location.state?.forwardRequest;
+    if (!request || startedForwardRef.current === request.clientRequestId) return;
+    const timer = window.setTimeout(() => {
+      startedForwardRef.current = request.clientRequestId;
+      chat.sendForwarded(request);
+      clearPendingAiForward();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [chat, clearPendingAiForward, conversationId, location.state, pendingAiForward]);
 
   const handleSelectStarter = useCallback((prompt) => {
     setDraft(prompt);

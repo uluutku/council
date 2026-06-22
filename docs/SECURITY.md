@@ -298,6 +298,27 @@ vision provider. Structured analyses are browser-inaccessible, user-scoped cache
 logged or treated as memory. Generation payload hashes include sorted attachment IDs; provider
 failures refund the single reserved credit exactly once.
 
+### Confirmed human-message forwarding (Task 013)
+
+The AI never becomes a member of a human conversation. A forwarding user must explicitly select
+active text messages, review the exact package, choose an owned AI destination, and confirm.
+`start_ai_generation` re-authorizes source membership and destination ownership, fetches source
+content server-side, sorts it chronologically, derives only `You` or a safe display label, and
+copies no email, settings, block state, reaction, deleted content, attachment metadata, image, or
+file content.
+
+`ai_context_imports` and `ai_context_import_items` are owner-only under RLS; browser roles have
+read-only access to their own snapshots and no direct mutation grants. The other human participant
+gets no access to the import, AI conversation, run, or response. Copied item updates are rejected,
+so later source edits or deletion do not silently rewrite confirmed provenance. Request UUIDs bind
+the destination, selection, and instruction; exact retries replay without another credit, while
+changed payloads conflict.
+
+Forwarded text is plain untrusted quoted context. Platform and persona instructions retain
+precedence, copied content is not automatically written to memory, assembled prompts are not
+returned, and copied text is excluded from operational logs. PDF/document analysis and all
+attachment forwarding remain deferred until the end of the project.
+
 ## Disclosure and assurance
 
 A responsible-disclosure process and monitored security contact must be established before

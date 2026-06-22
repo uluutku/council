@@ -28,7 +28,12 @@ const MESSAGES = {
   unsupported_image: 'Only JPEG, PNG, and WebP images are supported.',
   image_unavailable: 'That private image is no longer available.',
   vision_provider_unavailable: 'Image analysis is temporarily unavailable. Try again.',
-  idempotency_conflict: 'This retry no longer matches the original image request.',
+  idempotency_conflict: 'This retry no longer matches the original request.',
+  invalid_context_import: 'The forwarded message package is invalid. Review it and try again.',
+  context_import_too_large: 'The forwarded message package is too large.',
+  context_import_unavailable: 'That forwarded context is no longer available.',
+  source_conversation_unavailable: 'The source conversation is unavailable.',
+  source_message_unavailable: 'One or more selected messages can no longer be forwarded.',
   backend_unavailable: 'Council is temporarily unavailable. Try again.',
   unknown_error: 'Something went wrong. Try again.',
 };

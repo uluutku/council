@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applicationConfigSchema,
+  aiSendInputSchema,
   blockedUserItemSchema,
   contactActionResultSchema,
   contactListItemSchema,
@@ -55,6 +56,41 @@ import {
   conversationChangedEventSchema,
   conversationCreatedEventSchema,
 } from './index.js';
+
+describe('aiSendInputSchema', () => {
+  const conversationId = '10000000-0000-4000-8000-000000000001';
+  const clientMessageId = '20000000-0000-4000-8000-000000000002';
+  const sourceMessageId = '30000000-0000-4000-8000-000000000003';
+
+  it('accepts a bounded text-only forwarded-context request with an optional instruction', () => {
+    expect(
+      aiSendInputSchema.parse({
+        conversation_id: conversationId,
+        client_message_id: clientMessageId,
+        content: '',
+        context_import: {
+          source_conversation_id: conversationId,
+          source_message_ids: [sourceMessageId],
+        },
+      }).context_import.source_message_ids,
+    ).toEqual([sourceMessageId]);
+  });
+
+  it('rejects attachments and oversized instructions on forwarded context', () => {
+    expect(
+      aiSendInputSchema.safeParse({
+        conversation_id: conversationId,
+        client_message_id: clientMessageId,
+        content: 'x'.repeat(2001),
+        attachment_ids: [sourceMessageId],
+        context_import: {
+          source_conversation_id: conversationId,
+          source_message_ids: [sourceMessageId],
+        },
+      }).success,
+    ).toBe(false);
+  });
+});
 
 describe('applicationConfigSchema', () => {
   it('accepts a complete browser-safe configuration', () => {

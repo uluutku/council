@@ -54,8 +54,13 @@ Status:
 - Private AI image understanding is complete for directly attached JPEG, PNG, and WebP images:
   private staged uploads, two-stage vision-to-DeepSeek generation, persisted thumbnails, user-scoped
   analysis caching, and provider-sharing disclosure.
+- Explicit human-message forwarding is complete for selected text only: local selection, exact
+  review/removal, built-in or active-persona destination, owner-only immutable provenance,
+  idempotent generation through the existing AI pipeline, and persistent context cards. Images,
+  files, PDFs, and document analysis are excluded; PDF/document understanding remains deferred
+  until the end of the project.
 - Automatic memory extraction, embeddings, contradiction resolution, tools, web search,
-  image/file understanding, AI inside human conversations, and public/shared personas remain
+  file/document understanding, AI inside human conversations, and public/shared personas remain
   pending.
 - Billing and entitlements (Pro checkout) is not started; the credit model exists but `pro_enabled`
   is only settable by the trusted backend hook. Every later milestone remains pending.

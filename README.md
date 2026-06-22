@@ -17,7 +17,9 @@ yourself, all chattable with streamed DeepSeek responses through a server-owned 
 integration, gated by a short, server-enforced credit trial. Each AI contact also has transparent,
 user-curated memory that can be edited, deleted, or disabled without deleting conversation history.
 Users can also attach private JPEG, PNG, or WebP images directly to an AI prompt for analysis. The
-rest of this README is the honest status, not a pitch.
+user can now explicitly select up to 20 active text messages from a human conversation, review the
+exact copied package, and send it to a built-in AI contact or active custom persona. The rest of
+this README is the honest status, not a pitch.
 
 ## What works today
 
@@ -81,11 +83,18 @@ a separate private bucket, discloses provider sharing before send, and uses a co
 model to produce structured context for the selected DeepSeek contact. Images and responses persist
 on reload and remain scoped to the account and AI conversation.
 
+Human-message forwarding is text-only and confirmation-gated. The review dialog shows sender
+labels, timestamps, destination, optional instruction, provider disclosure, and attachment
+exclusions. The server re-fetches selected text, creates an immutable owner-only snapshot, and
+starts the normal idempotent AI generation flow. The AI never joins or observes the human
+conversation, and the other participant cannot access the copied context or AI response.
+
 ## What it can't do yet
 
 There is no typing indicator, presence or online status, or notification delivery. The AI side is
-deliberately focused: text, curated memory, and directly attached image understanding; no automatic
-extraction, tools, web search, PDFs or general file understanding,
+deliberately focused: text, curated memory, directly attached image understanding, and explicit
+text-only human-message forwarding; no automatic extraction, tools, web search, PDFs or general
+file/document understanding,
 no AI inside human conversations, no public/shared personas, and no billing checkout (when the trial
 ends the app says so honestly rather than showing a fake upgrade). There is no mobile app, no group
 chats. None of these are faked in the UI on purpose — there are no disabled controls advertising

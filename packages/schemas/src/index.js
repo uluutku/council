@@ -788,6 +788,35 @@ export const finalizedAiImageSchema = z
     height: z.number().int().positive(),
   })
   .strict();
+export const MAX_FORWARDED_MESSAGES = 20;
+export const MAX_FORWARDED_TEXT_LENGTH = 20_000;
+export const MAX_FORWARD_INSTRUCTION_LENGTH = 2_000;
+export const aiContextImportItemSchema = z
+  .object({
+    id: uuidSchema,
+    source_sender_label: z.string().min(1).max(80),
+    copied_content: z.string().min(1).max(8000),
+    source_created_at: timestampSchema,
+    position: z.number().int().min(1).max(MAX_FORWARDED_MESSAGES),
+    attachments_excluded: z.boolean(),
+  })
+  .strict();
+export const aiContextImportSchema = z
+  .object({
+    id: uuidSchema,
+    message_count: z.number().int().min(1).max(MAX_FORWARDED_MESSAGES),
+    copied_character_count: z.number().int().min(1).max(MAX_FORWARDED_TEXT_LENGTH),
+    instruction: z.string().min(1).max(MAX_FORWARD_INSTRUCTION_LENGTH).nullable(),
+    created_at: timestampSchema,
+    items: z.array(aiContextImportItemSchema).min(1).max(MAX_FORWARDED_MESSAGES),
+  })
+  .strict();
+export const aiContextForwardInputSchema = z
+  .object({
+    source_conversation_id: uuidSchema,
+    source_message_ids: z.array(uuidSchema).min(1).max(MAX_FORWARDED_MESSAGES),
+  })
+  .strict();
 export const aiMessageSchema = z
   .object({
     id: uuidSchema,
@@ -797,6 +826,7 @@ export const aiMessageSchema = z
     client_message_id: uuidSchema,
     created_at: timestampSchema,
     attachments: z.array(aiImageAttachmentSchema).max(MAX_AI_IMAGES_PER_MESSAGE).default([]),
+    context_import: aiContextImportSchema.nullable().default(null),
   })
   .strict();
 export const aiMessageListSchema = z.array(aiMessageSchema);
@@ -861,10 +891,37 @@ export const aiSendInputSchema = z
   .object({
     conversation_id: uuidSchema,
     client_message_id: uuidSchema,
-    content: z.string().trim().min(1).max(8000),
+    content: z.string().trim().max(8000),
     attachment_ids: z.array(uuidSchema).max(MAX_AI_IMAGES_PER_MESSAGE).default([]),
+    context_import: aiContextForwardInputSchema.nullable().default(null),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.context_import) {
+      if (value.content.length > MAX_FORWARD_INSTRUCTION_LENGTH) {
+        context.addIssue({
+          code: 'too_big',
+          maximum: MAX_FORWARD_INSTRUCTION_LENGTH,
+          origin: 'string',
+          path: ['content'],
+          message: `Instruction must be at most ${MAX_FORWARD_INSTRUCTION_LENGTH} characters.`,
+        });
+      }
+      if (value.attachment_ids.length > 0) {
+        context.addIssue({
+          code: 'custom',
+          path: ['attachment_ids'],
+          message: 'Forwarded context cannot include attachments.',
+        });
+      }
+    } else if (value.content.length < 1) {
+      context.addIssue({
+        code: 'custom',
+        path: ['content'],
+        message: 'Message content is required.',
+      });
+    }
+  });
 
 // Events of the small SSE protocol, validated in the browser before any use.
 export const aiStreamEventSchema = z.discriminatedUnion('type', [
@@ -920,6 +977,11 @@ export const aiErrorCategorySchema = z.enum([
   'image_unavailable',
   'vision_provider_unavailable',
   'idempotency_conflict',
+  'invalid_context_import',
+  'context_import_too_large',
+  'context_import_unavailable',
+  'source_conversation_unavailable',
+  'source_message_unavailable',
   'session_expired',
   'backend_unavailable',
   'unknown_error',

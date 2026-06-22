@@ -41,6 +41,7 @@ export async function streamAiChat({
   clientMessageId,
   content,
   attachmentIds = [],
+  contextImport = null,
   signal,
   onEvent,
 }) {
@@ -49,6 +50,7 @@ export async function streamAiChat({
     client_message_id: clientMessageId,
     content,
     attachment_ids: attachmentIds,
+    context_import: contextImport,
   });
 
   const client = getSupabaseClient();
@@ -72,6 +74,7 @@ export async function streamAiChat({
         client_message_id: input.client_message_id,
         content: input.content,
         attachment_ids: input.attachment_ids,
+        context_import: input.context_import,
       }),
       signal,
     });

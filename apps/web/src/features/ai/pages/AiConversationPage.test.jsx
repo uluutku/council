@@ -70,6 +70,49 @@ describe('AiConversationPage', () => {
     expect(screen.getByText('Here is a plan.')).toBeInTheDocument();
   });
 
+  it('renders a persistent plain-text forwarded context card', async () => {
+    aiApi.listAiMessages.mockResolvedValue([
+      makeAiMessage({
+        id: 'd1000000-0000-4000-8000-000000000001',
+        role: 'user',
+        content: 'Summarize this.',
+        context_import: {
+          id: 'd2000000-0000-4000-8000-000000000002',
+          message_count: 2,
+          copied_character_count: 24,
+          instruction: 'Summarize this.',
+          created_at: '2026-06-22T10:00:00+00:00',
+          items: [
+            {
+              id: 'd3000000-0000-4000-8000-000000000003',
+              source_sender_label: 'You',
+              copied_content: 'Decision one',
+              source_created_at: '2026-06-22T09:00:00+00:00',
+              position: 1,
+              attachments_excluded: false,
+            },
+            {
+              id: 'd4000000-0000-4000-8000-000000000004',
+              source_sender_label: 'Bjorn',
+              copied_content: 'Question two',
+              source_created_at: '2026-06-22T09:01:00+00:00',
+              position: 2,
+              attachments_excluded: true,
+            },
+          ],
+        },
+      }),
+    ]);
+
+    renderConversation();
+
+    const summary = await screen.findByText('Forwarded context · 2 messages');
+    await userEvent.click(summary);
+    expect(screen.getByText('Decision one')).toBeInTheDocument();
+    expect(screen.getByText('Question two')).toBeInTheDocument();
+    expect(screen.getByText('Attachment excluded')).toBeInTheDocument();
+  });
+
   it('shows the custom persona identity', async () => {
     aiApi.listAiMessages.mockResolvedValue([]);
     aiApi.listMyAiConversations.mockResolvedValue([

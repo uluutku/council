@@ -25,6 +25,8 @@ const OPENROUTER_TEXT_MODEL = Deno.env.get('OPENROUTER_TEXT_MODEL') ?? '';
 const OPENROUTER_VISION_MODEL = Deno.env.get('OPENROUTER_VISION_MODEL') ?? '';
 const PROVIDER_MODE = Deno.env.get('AI_PROVIDER_MODE') ?? '';
 const MAX_CONTENT_LENGTH = 8000;
+const MAX_FORWARD_INSTRUCTION_LENGTH = 2000;
+const MAX_FORWARDED_MESSAGES = 20;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const CORS_HEADERS = {
@@ -79,6 +81,11 @@ const KNOWN_CATEGORIES = new Set([
   'unsupported_image',
   'image_unavailable',
   'idempotency_conflict',
+  'invalid_context_import',
+  'context_import_too_large',
+  'context_import_unavailable',
+  'source_conversation_unavailable',
+  'source_message_unavailable',
 ]);
 
 function categoryFromRpcError(message: string | undefined): string {
@@ -126,15 +133,31 @@ Deno.serve(async (req: Request) => {
   const clientMessageId = body.client_message_id;
   const content = typeof body.content === 'string' ? body.content : '';
   const attachmentIds = Array.isArray(body.attachment_ids) ? body.attachment_ids : [];
+  const contextImport =
+    body.context_import && typeof body.context_import === 'object'
+      ? (body.context_import as Record<string, unknown>)
+      : null;
+  const sourceConversationId = contextImport?.source_conversation_id;
+  const sourceMessageIds = Array.isArray(contextImport?.source_message_ids)
+    ? contextImport.source_message_ids
+    : [];
+  const isForwarding = contextImport !== null;
   if (
     typeof conversationId !== 'string' ||
     !UUID_RE.test(conversationId) ||
     typeof clientMessageId !== 'string' ||
     !UUID_RE.test(clientMessageId) ||
-    content.trim().length === 0 ||
-    content.length > MAX_CONTENT_LENGTH ||
+    (!isForwarding && content.trim().length === 0) ||
+    content.length > (isForwarding ? MAX_FORWARD_INSTRUCTION_LENGTH : MAX_CONTENT_LENGTH) ||
     attachmentIds.length > 2 ||
-    attachmentIds.some((id) => typeof id !== 'string' || !UUID_RE.test(id))
+    attachmentIds.some((id) => typeof id !== 'string' || !UUID_RE.test(id)) ||
+    (isForwarding &&
+      (attachmentIds.length > 0 ||
+        typeof sourceConversationId !== 'string' ||
+        !UUID_RE.test(sourceConversationId) ||
+        sourceMessageIds.length < 1 ||
+        sourceMessageIds.length > MAX_FORWARDED_MESSAGES ||
+        sourceMessageIds.some((id) => typeof id !== 'string' || !UUID_RE.test(id))))
   ) {
     return jsonResponse(400, { error: 'invalid_request' });
   }
@@ -161,6 +184,8 @@ Deno.serve(async (req: Request) => {
             p_user_content: content,
             p_model: model,
             p_attachment_ids: attachmentIds,
+            p_source_conversation_id: isForwarding ? sourceConversationId : null,
+            p_source_message_ids: isForwarding ? sourceMessageIds : [],
           })
           .single();
 

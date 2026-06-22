@@ -43,7 +43,13 @@ export function useAiChat(conversationId) {
   const queryClient = useQueryClient();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const abortRef = useRef(null);
-  const lastRef = useRef({ clientMessageId: null, content: null, attachments: [] });
+  const lastRef = useRef({
+    clientMessageId: null,
+    content: null,
+    attachments: [],
+    contextImport: null,
+    contextCard: null,
+  });
 
   useEffect(() => {
     abortRef.current?.abort();
@@ -54,10 +60,18 @@ export function useAiChat(conversationId) {
   }, [conversationId]);
 
   const run = useCallback(
-    async (clientMessageId, content, attachments = []) => {
+    async (
+      clientMessageId,
+      content,
+      attachments = [],
+      contextImport = null,
+      contextCard = null,
+    ) => {
       const controller = new AbortController();
       abortRef.current = controller;
-      lastRef.current = { clientMessageId, content, attachments };
+      lastRef.current = { clientMessageId, content, attachments, contextImport, contextCard };
+      const visibleContent =
+        contextImport && content.trim() === '' ? 'Please review the forwarded context.' : content;
       const messageAttachments = attachments.map((attachment) => ({
         id: attachment.attachmentId,
         storage_bucket: attachment.storageBucket,
@@ -77,10 +91,11 @@ export function useAiChat(conversationId) {
           id: clientMessageId,
           conversation_id: conversationId,
           role: 'user',
-          content,
+          content: visibleContent,
           client_message_id: clientMessageId,
           created_at: new Date().toISOString(),
           attachments: messageAttachments,
+          context_import: contextCard,
         },
       });
 
@@ -90,6 +105,7 @@ export function useAiChat(conversationId) {
           clientMessageId,
           content,
           attachmentIds: attachments.map((attachment) => attachment.attachmentId),
+          contextImport,
           signal: controller.signal,
           onEvent: (event) => {
             if (event.type === 'delta') {
@@ -103,10 +119,11 @@ export function useAiChat(conversationId) {
                   id: clientMessageId,
                   conversation_id: conversationId,
                   role: 'user',
-                  content,
+                  content: visibleContent,
                   client_message_id: clientMessageId,
                   created_at: new Date().toISOString(),
                   attachments: messageAttachments.map(({ preview_url: _preview, ...item }) => item),
+                  context_import: contextCard,
                 },
                 {
                   ...event.message,
@@ -164,10 +181,37 @@ export function useAiChat(conversationId) {
     [run, state.status],
   );
 
+  const sendForwarded = useCallback(
+    ({
+      clientRequestId,
+      instruction = '',
+      sourceConversationId,
+      sourceMessageIds,
+      contextCard,
+    }) => {
+      if (state.status === 'streaming') return false;
+      const trimmed = typeof instruction === 'string' ? instruction.trim() : '';
+      run(
+        clientRequestId,
+        trimmed,
+        [],
+        {
+          source_conversation_id: sourceConversationId,
+          source_message_ids: sourceMessageIds,
+        },
+        contextCard,
+      );
+      return true;
+    },
+    [run, state.status],
+  );
+
   const retry = useCallback(() => {
     if (state.status === 'streaming') return;
-    const { clientMessageId, content, attachments } = lastRef.current;
-    if (clientMessageId && content) run(clientMessageId, content, attachments);
+    const { clientMessageId, content, attachments, contextImport, contextCard } = lastRef.current;
+    if (clientMessageId && (content || contextImport)) {
+      run(clientMessageId, content, attachments, contextImport, contextCard);
+    }
   }, [run, state.status]);
 
   const stop = useCallback(() => abortRef.current?.abort(), []);
@@ -179,6 +223,7 @@ export function useAiChat(conversationId) {
     assistantText: state.assistantText,
     errorCategory: state.errorCategory,
     send,
+    sendForwarded,
     retry,
     stop,
   };

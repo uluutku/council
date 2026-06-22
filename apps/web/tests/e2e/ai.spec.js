@@ -4,7 +4,13 @@ import {
   getLocalUserIdByEmail,
   setLocalAiCredits,
 } from './helpers/localSupabase.js';
-import { registerAndOnboard } from './helpers/contactsFlow.js';
+import { makeContacts, registerAndOnboard } from './helpers/contactsFlow.js';
+import {
+  attachImage as attachHumanImage,
+  clickSend as clickHumanSend,
+  openConversationFromContacts,
+  sendMessage as sendHumanMessage,
+} from './helpers/messagingFlow.js';
 
 // These scenarios run against the ai-chat Edge Function in deterministic mock
 // mode (served by the Playwright webServer), so no external provider is called.
@@ -344,6 +350,115 @@ test.describe('AI contacts and personas', () => {
       await openBuiltin(b.page, 'Council Assistant');
       await expect(b.page.getByAltText('private.png')).toHaveCount(0);
       await expect(b.page.getByText('Analyze privately.', { exact: true })).toHaveCount(0);
+    } finally {
+      await a.context.close();
+      await b.context.close();
+    }
+  });
+
+  test('selects human messages, forwards to Council Assistant, streams, and persists the card', async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000);
+    const a = await newUserContext(browser, 'forwarda');
+    const b = await newUserContext(browser, 'forwardb');
+    try {
+      await makeContacts(a.page, b.page, a.user, b.user);
+      await openConversationFromContacts(a.page);
+      await openConversationFromContacts(b.page);
+      await sendHumanMessage(a.page, 'Decision: ship the focused flow.');
+      await sendHumanMessage(b.page, 'Question: what remains unresolved?');
+      await expect(
+        a.page
+          .getByRole('list', { name: 'Messages' })
+          .getByText('Question: what remains unresolved?', { exact: true }),
+      ).toBeVisible({
+        timeout: 15_000,
+      });
+
+      await a.page.getByRole('button', { name: 'Select messages' }).click();
+      for (const text of [
+        'Decision: ship the focused flow.',
+        'Question: what remains unresolved?',
+      ]) {
+        await a.page
+          .locator('.message-row', { has: a.page.locator('.message-text', { hasText: text }) })
+          .getByRole('checkbox')
+          .check();
+      }
+      await a.page.getByRole('button', { name: 'Send to AI' }).click();
+      const dialog = a.page.getByRole('dialog', { name: 'Review messages sent to AI' });
+      await dialog.getByLabel('AI contact').selectOption({ label: 'Council Assistant' });
+      await dialog
+        .getByLabel('Question or instruction (optional)')
+        .fill('Summarize the decisions and list the unresolved questions.');
+      await dialog.getByRole('button', { name: 'Confirm and send' }).click();
+
+      await a.page.waitForURL(/\/app\/ai\/[0-9a-f-]{36}/);
+      await expect(a.page.getByText('Forwarded context · 2 messages')).toBeVisible();
+      await expect(await lastAssistant(a.page)).toContainText('mock mode', { timeout: 30_000 });
+      await expect(a.page.getByRole('button', { name: 'Stop' })).toHaveCount(0, {
+        timeout: 30_000,
+      });
+
+      await a.page.reload();
+      await expect(a.page.getByText('Forwarded context · 2 messages')).toBeVisible({
+        timeout: 20_000,
+      });
+      await a.page.getByText('Forwarded context · 2 messages').click();
+      await expect(
+        a.page.getByText('Decision: ship the focused flow.', { exact: true }),
+      ).toBeVisible();
+      await expect(
+        a.page.getByText('Question: what remains unresolved?', { exact: true }),
+      ).toBeVisible();
+    } finally {
+      await a.context.close();
+      await b.context.close();
+    }
+  });
+
+  test('excludes human attachments and denies the other participant access to the AI import', async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000);
+    const a = await newUserContext(browser, 'pforwarda');
+    const b = await newUserContext(browser, 'pforwardb');
+    try {
+      await makeContacts(a.page, b.page, a.user, b.user);
+      await openConversationFromContacts(a.page);
+      await attachHumanImage(a.page, 'human-private.png');
+      await a.page.getByLabel('Message', { exact: true }).fill('Only this text may be forwarded.');
+      await clickHumanSend(a.page);
+      await expect(
+        a.page.getByText('Only this text may be forwarded.', { exact: true }),
+      ).toBeVisible();
+
+      await a.page.getByRole('button', { name: 'Select messages' }).click();
+      await a.page
+        .locator('.message-row', {
+          has: a.page.locator('.message-text', { hasText: 'Only this text may be forwarded.' }),
+        })
+        .getByRole('checkbox')
+        .check();
+      await a.page.getByRole('button', { name: 'Send to AI' }).click();
+      const dialog = a.page.getByRole('dialog', { name: 'Review messages sent to AI' });
+      await expect(dialog.getByText(/Attachments are excluded/i)).toBeVisible();
+      await dialog.getByLabel('AI contact').selectOption({ label: 'Council Assistant' });
+      await dialog.getByRole('button', { name: 'Confirm and send' }).click();
+
+      await a.page.waitForURL(/\/app\/ai\/[0-9a-f-]{36}/);
+      const aiPath = new URL(a.page.url()).pathname;
+      await expect(a.page.getByText('Forwarded context · 1 message')).toBeVisible();
+      await a.page.getByText('Forwarded context · 1 message').click();
+      await expect(a.page.getByText('Attachment excluded')).toBeVisible();
+      await expect(a.page.getByAltText('human-private.png')).toHaveCount(0);
+
+      await b.page.goto(aiPath);
+      await expect(b.page.getByText('This AI conversation is unavailable.')).toBeVisible();
+      await expect(
+        b.page.getByText('Only this text may be forwarded.', { exact: true }),
+      ).toHaveCount(0);
     } finally {
       await a.context.close();
       await b.context.close();
