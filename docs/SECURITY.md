@@ -285,6 +285,19 @@ Conversation-only mode does not retrieve them. Hard deletion removes memory from
 clearing memory does not clear history. Memory content is excluded from logs, analytics, runtime
 metadata, and browser-visible assembled prompts. Sign-out clears memory query caches.
 
+### Private AI images (Task 012)
+
+AI images use the private `ai-chat-images` bucket and owner-scoped metadata. The browser reserves a
+validated path through a narrow RPC, uploads only to that path, and finalizes before generation.
+RLS denies metadata and object access to other users and anonymous callers. Signed URLs are
+short-lived, memory-only, conversation-keyed, and cleared on sign-out.
+
+The Edge Function rechecks ownership/state/count/size, downloads bytes with trusted access,
+validates MIME signatures, computes SHA-256, and sends base64—not a signed URL—to the configured
+vision provider. Structured analyses are browser-inaccessible, user-scoped cache rows and are never
+logged or treated as memory. Generation payload hashes include sorted attachment IDs; provider
+failures refund the single reserved credit exactly once.
+
 ## Disclosure and assurance
 
 A responsible-disclosure process and monitored security contact must be established before

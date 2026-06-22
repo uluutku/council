@@ -120,3 +120,12 @@ ordered deterministically, capped at 50 per conversation, and marked as untruste
 cannot override platform instructions. `conversation_only` leaves rows stored but excludes them
 from generation. Deleted rows disappear from the next context load. Prompts and memory content are
 never returned to the browser or logged.
+
+## Task 012: private image understanding
+
+Image prompts use two configured models. The Edge Function downloads up to two authorized private
+JPEG/PNG/WebP objects (5 MB each, 8 MB combined), validates their signatures, and sends base64 bytes
+to `OPENROUTER_VISION_MODEL`. Its bounded structured result is cached per user, image SHA-256,
+vision model, and prompt version. That private result is added to the existing server prompt and
+`OPENROUTER_TEXT_MODEL` streams the persona-consistent final answer. Signed Storage URLs never go
+to OpenRouter, and raw vision output never goes to the browser.

@@ -73,6 +73,7 @@ export function makeAiMessage(overrides = {}) {
     content: 'Hello',
     client_message_id: 'cl000000-0000-4000-8000-000000000004',
     created_at: '2026-06-22T10:00:00+00:00',
+    attachments: [],
     ...overrides,
   };
 }

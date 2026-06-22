@@ -23,6 +23,12 @@ const MESSAGES = {
   invalid_memory: 'Check the memory details and try again.',
   invalid_memory_source: 'That message cannot be used as a memory source.',
   invalid_memory_mode: 'That memory mode is not available.',
+  invalid_image: 'That image could not be read. Choose a valid JPEG, PNG, or WebP image.',
+  image_too_large: 'The selected images exceed Council’s size limit.',
+  unsupported_image: 'Only JPEG, PNG, and WebP images are supported.',
+  image_unavailable: 'That private image is no longer available.',
+  vision_provider_unavailable: 'Image analysis is temporarily unavailable. Try again.',
+  idempotency_conflict: 'This retry no longer matches the original image request.',
   backend_unavailable: 'Council is temporarily unavailable. Try again.',
   unknown_error: 'Something went wrong. Try again.',
 };

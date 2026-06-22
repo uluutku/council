@@ -16,7 +16,8 @@ Assistant, Writing Editor, Study Coach, and Coding Partner — plus private cust
 yourself, all chattable with streamed DeepSeek responses through a server-owned OpenRouter
 integration, gated by a short, server-enforced credit trial. Each AI contact also has transparent,
 user-curated memory that can be edited, deleted, or disabled without deleting conversation history.
-The rest of this README is the honest status, not a pitch.
+Users can also attach private JPEG, PNG, or WebP images directly to an AI prompt for analysis. The
+rest of this README is the honest status, not a pitch.
 
 ## What works today
 
@@ -75,10 +76,16 @@ or approve; there is no automatic extraction. The Memory panel supports add/edit
 Remember-from-message, and Conversation only mode, which stores memories without sending them to
 the model.
 
+AI prompts may include up to two private images (5 MB each, 8 MB combined). Council uploads them to
+a separate private bucket, discloses provider sharing before send, and uses a configured vision
+model to produce structured context for the selected DeepSeek contact. Images and responses persist
+on reload and remain scoped to the account and AI conversation.
+
 ## What it can't do yet
 
 There is no typing indicator, presence or online status, or notification delivery. The AI side is
-deliberately minimal: text plus curated memory, no automatic extraction, tools or web search, no image or file understanding,
+deliberately focused: text, curated memory, and directly attached image understanding; no automatic
+extraction, tools, web search, PDFs or general file understanding,
 no AI inside human conversations, no public/shared personas, and no billing checkout (when the trial
 ends the app says so honestly rather than showing a fake upgrade). There is no mobile app, no group
 chats. None of these are faked in the UI on purpose — there are no disabled controls advertising

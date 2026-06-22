@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react';
+import { AiImageDraftList } from './AiImageDraftList.jsx';
+import { AI_IMAGE_ACCEPT, aiImageRejectionMessage } from '../utils/aiImages.js';
 
 const MAX_LENGTH = 8000;
 
@@ -14,19 +16,36 @@ export function AiComposer({
   disabled,
   initialValue = '',
   contactName = 'the assistant',
+  images,
 }) {
   const [value, setValue] = useState(initialValue);
   const composingRef = useRef(false);
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [rejections, setRejections] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   const trimmed = value.trim();
-  const canSend = !disabled && !isStreaming && trimmed.length >= 1 && trimmed.length <= MAX_LENGTH;
+  const imagesBlocking = images.hasAny && !images.allReady;
+  const canSend =
+    !disabled &&
+    !isStreaming &&
+    !imagesBlocking &&
+    trimmed.length >= 1 &&
+    trimmed.length <= MAX_LENGTH;
 
   function submit() {
     if (!canSend) return;
-    onSend(trimmed);
+    const selected = images.consume();
+    onSend(trimmed, selected);
     setValue('');
+    setRejections([]);
     textareaRef.current?.focus();
+  }
+
+  function handleFiles(files) {
+    const { rejected } = images.addFiles(files);
+    setRejections(rejected);
   }
 
   function handleKeyDown(event) {
@@ -43,8 +62,64 @@ export function AiComposer({
         event.preventDefault();
         submit();
       }}
+      data-dragging={isDragging ? 'true' : undefined}
+      onDragOver={(event) => {
+        if (event.dataTransfer?.types?.includes('Files')) {
+          event.preventDefault();
+          setIsDragging(true);
+        }
+      }}
+      onDragLeave={(event) => {
+        if (event.target === event.currentTarget) setIsDragging(false);
+      }}
+      onDrop={(event) => {
+        if (event.dataTransfer?.files?.length) {
+          event.preventDefault();
+          setIsDragging(false);
+          handleFiles(event.dataTransfer.files);
+        }
+      }}
     >
+      <AiImageDraftList
+        drafts={images.drafts}
+        onRemove={images.removeDraft}
+        onRetry={images.retryDraft}
+      />
+      {images.hasAny ? (
+        <p className="ai-image-disclosure" role="note">
+          Images attached here will be sent to Council’s configured AI provider for analysis.
+        </p>
+      ) : null}
+      {rejections.length > 0 ? (
+        <ul className="attachment-rejections" role="alert">
+          {rejections.map((rejection, index) => (
+            <li key={index}>{aiImageRejectionMessage(rejection)}</li>
+          ))}
+        </ul>
+      ) : null}
       <div className="ai-composer-row">
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="sr-only"
+          multiple
+          accept={AI_IMAGE_ACCEPT}
+          aria-hidden="true"
+          tabIndex={-1}
+          onChange={(event) => {
+            handleFiles(event.target.files);
+            event.target.value = '';
+          }}
+        />
+        <button
+          type="button"
+          className="button button--secondary ai-composer-attach"
+          aria-label="Attach images"
+          disabled={disabled || isStreaming}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          Attach
+        </button>
         <label className="sr-only" htmlFor="ai-composer-input">
           Message the assistant
         </label>
@@ -80,6 +155,11 @@ export function AiComposer({
           </button>
         )}
       </div>
+      {images.isUploading ? (
+        <p className="ai-composer-hint" role="status">
+          Preparing images…
+        </p>
+      ) : null}
     </form>
   );
 }

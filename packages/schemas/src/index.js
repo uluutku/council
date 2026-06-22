@@ -745,6 +745,49 @@ export const aiPersonaInputSchema = z
   .strict();
 
 export const aiMessageRoleSchema = z.enum(['user', 'assistant']);
+export const MAX_AI_IMAGES_PER_MESSAGE = 2;
+export const MAX_AI_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_AI_IMAGE_COMBINED_BYTES = 8 * 1024 * 1024;
+export const aiImageMimeTypeSchema = z.enum(['image/jpeg', 'image/png', 'image/webp']);
+export const aiImageAttachmentSchema = z
+  .object({
+    id: uuidSchema,
+    storage_bucket: z.literal('ai-chat-images'),
+    storage_path: attachmentStoragePathSchema,
+    original_filename: z.string().min(1).max(255),
+    mime_type: aiImageMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_AI_IMAGE_BYTES),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    created_at: timestampSchema,
+  })
+  .strict();
+export const aiImageUploadInputSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    original_filename: z.string().trim().min(1).max(255),
+    mime_type: aiImageMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_AI_IMAGE_BYTES),
+  })
+  .strict();
+export const aiImageUploadTargetSchema = z
+  .object({
+    attachment_id: uuidSchema,
+    storage_bucket: z.literal('ai-chat-images'),
+    storage_path: attachmentStoragePathSchema,
+  })
+  .strict();
+export const finalizedAiImageSchema = z
+  .object({
+    attachment_id: uuidSchema,
+    status: z.literal('ready'),
+    mime_type: aiImageMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_AI_IMAGE_BYTES),
+    original_filename: z.string().min(1).max(255),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+  })
+  .strict();
 export const aiMessageSchema = z
   .object({
     id: uuidSchema,
@@ -753,6 +796,7 @@ export const aiMessageSchema = z
     content: z.string().min(1).max(40000),
     client_message_id: uuidSchema,
     created_at: timestampSchema,
+    attachments: z.array(aiImageAttachmentSchema).max(MAX_AI_IMAGES_PER_MESSAGE).default([]),
   })
   .strict();
 export const aiMessageListSchema = z.array(aiMessageSchema);
@@ -791,6 +835,7 @@ export const aiProviderMetadataSchema = z
     status: z.enum(['ok', 'configuration_error']),
     provider_mode: z.enum(['openrouter', 'mock']),
     model: z.string().min(1).max(200),
+    vision_model: z.string().min(1).max(200),
   })
   .strict();
 
@@ -817,6 +862,7 @@ export const aiSendInputSchema = z
     conversation_id: uuidSchema,
     client_message_id: uuidSchema,
     content: z.string().trim().min(1).max(8000),
+    attachment_ids: z.array(uuidSchema).max(MAX_AI_IMAGES_PER_MESSAGE).default([]),
   })
   .strict();
 
@@ -868,6 +914,12 @@ export const aiErrorCategorySchema = z.enum([
   'invalid_memory',
   'invalid_memory_source',
   'invalid_memory_mode',
+  'invalid_image',
+  'image_too_large',
+  'unsupported_image',
+  'image_unavailable',
+  'vision_provider_unavailable',
+  'idempotency_conflict',
   'session_expired',
   'backend_unavailable',
   'unknown_error',

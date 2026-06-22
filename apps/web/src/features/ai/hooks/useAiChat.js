@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { aiKeys } from '../../../lib/query-keys/ai.js';
 import { streamAiChat } from '../api/aiChatStream.js';
 import { appendAiMessages, setAiAccessCredits } from '../queries/aiMessageCache.js';
+import { revokeAiImagePreview } from '../utils/aiImages.js';
 
 // Owns the in-flight exchange for one AI conversation: the optimistic user
 // message, the streaming assistant text, and a retryable error state. The
@@ -42,18 +43,33 @@ export function useAiChat(conversationId) {
   const queryClient = useQueryClient();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const abortRef = useRef(null);
-  const lastRef = useRef({ clientMessageId: null, content: null });
+  const lastRef = useRef({ clientMessageId: null, content: null, attachments: [] });
 
   useEffect(() => {
     abortRef.current?.abort();
+    for (const attachment of lastRef.current.attachments) {
+      revokeAiImagePreview(attachment.previewUrl);
+    }
     dispatch({ type: 'reset' });
   }, [conversationId]);
 
   const run = useCallback(
-    async (clientMessageId, content) => {
+    async (clientMessageId, content, attachments = []) => {
       const controller = new AbortController();
       abortRef.current = controller;
-      lastRef.current = { clientMessageId, content };
+      lastRef.current = { clientMessageId, content, attachments };
+      const messageAttachments = attachments.map((attachment) => ({
+        id: attachment.attachmentId,
+        storage_bucket: attachment.storageBucket,
+        storage_path: attachment.storagePath,
+        original_filename: attachment.filename,
+        mime_type: attachment.mimeType,
+        size_bytes: attachment.sizeBytes,
+        width: attachment.width,
+        height: attachment.height,
+        created_at: new Date().toISOString(),
+        preview_url: attachment.previewUrl,
+      }));
 
       dispatch({
         type: 'start',
@@ -64,6 +80,7 @@ export function useAiChat(conversationId) {
           content,
           client_message_id: clientMessageId,
           created_at: new Date().toISOString(),
+          attachments: messageAttachments,
         },
       });
 
@@ -72,6 +89,7 @@ export function useAiChat(conversationId) {
           conversationId,
           clientMessageId,
           content,
+          attachmentIds: attachments.map((attachment) => attachment.attachmentId),
           signal: controller.signal,
           onEvent: (event) => {
             if (event.type === 'delta') {
@@ -88,6 +106,7 @@ export function useAiChat(conversationId) {
                   content,
                   client_message_id: clientMessageId,
                   created_at: new Date().toISOString(),
+                  attachments: messageAttachments.map(({ preview_url: _preview, ...item }) => item),
                 },
                 {
                   ...event.message,
@@ -95,6 +114,10 @@ export function useAiChat(conversationId) {
                   client_message_id: event.message.id,
                 },
               ]);
+              for (const attachment of attachments) {
+                revokeAiImagePreview(attachment.previewUrl);
+              }
+              lastRef.current.attachments = [];
               dispatch({ type: 'reset' });
               queryClient.invalidateQueries({ queryKey: aiKeys.messages(conversationId) });
               queryClient.invalidateQueries({ queryKey: aiKeys.access() });
@@ -102,6 +125,7 @@ export function useAiChat(conversationId) {
             } else if (event.type === 'error') {
               setAiAccessCredits(queryClient, event.credits_remaining);
               queryClient.invalidateQueries({ queryKey: aiKeys.access() });
+              queryClient.invalidateQueries({ queryKey: aiKeys.messages(conversationId) });
               dispatch({ type: 'error', category: event.category });
             }
           },
@@ -112,6 +136,10 @@ export function useAiChat(conversationId) {
         if (category === 'cancelled') {
           // The server cancels and refunds; pull the truthful history back.
           dispatch({ type: 'reset' });
+          for (const attachment of attachments) {
+            revokeAiImagePreview(attachment.previewUrl);
+          }
+          lastRef.current.attachments = [];
           queryClient.invalidateQueries({ queryKey: aiKeys.messages(conversationId) });
         } else {
           dispatch({ type: 'error', category });
@@ -124,18 +152,22 @@ export function useAiChat(conversationId) {
   );
 
   const send = useCallback(
-    (content) => {
+    (content, attachments = []) => {
       const trimmed = typeof content === 'string' ? content.trim() : '';
       if (trimmed === '' || state.status === 'streaming') return;
-      run(globalThis.crypto.randomUUID(), trimmed);
+      for (const previous of lastRef.current.attachments) {
+        revokeAiImagePreview(previous.previewUrl);
+      }
+      run(globalThis.crypto.randomUUID(), trimmed, attachments);
+      return true;
     },
     [run, state.status],
   );
 
   const retry = useCallback(() => {
     if (state.status === 'streaming') return;
-    const { clientMessageId, content } = lastRef.current;
-    if (clientMessageId && content) run(clientMessageId, content);
+    const { clientMessageId, content, attachments } = lastRef.current;
+    if (clientMessageId && content) run(clientMessageId, content, attachments);
   }, [run, state.status]);
 
   const stop = useCallback(() => abortRef.current?.abort(), []);

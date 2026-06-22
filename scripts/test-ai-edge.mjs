@@ -9,6 +9,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { resolveProviderConfig } from '../supabase/functions/ai-chat/runtime-config.mjs';
+import { createHash } from 'node:crypto';
 
 const repoRoot = resolve(import.meta.dirname, '..');
 const supabaseScript = resolve(repoRoot, 'scripts', 'supabase.mjs');
@@ -70,6 +71,12 @@ const SAFE_CATEGORIES = new Set([
   'provider_not_configured',
   'cancelled',
   'backend_unavailable',
+  'invalid_image',
+  'image_too_large',
+  'unsupported_image',
+  'image_unavailable',
+  'vision_provider_unavailable',
+  'idempotency_conflict',
 ]);
 
 async function main() {
@@ -168,6 +175,10 @@ async function main() {
       missingConfig.model === 'deepseek/deepseek-v4-flash',
     );
     check(
+      'the configured vision model is selected',
+      missingConfig.visionModel === 'google/gemini-2.5-flash',
+    );
+    check(
       'missing OpenRouter key reports a safe configuration error',
       missingConfig.configured === false,
     );
@@ -186,6 +197,8 @@ async function main() {
         'mock mode requires explicit local configuration',
         mockMetadata.provider_mode === 'mock',
       );
+      check('mock vision mode is explicit', mockMetadata.vision_model === 'mock/council-vision');
+      await new Promise((resolveReady) => setTimeout(resolveReady, 1000));
     }
 
     // Wait for the function to be reachable (an unauthenticated POST returns 401).
@@ -365,6 +378,171 @@ async function main() {
     check('custom persona generation completes', Boolean(personaDone));
     check('credits are shared across contacts (19 -> 18)', personaDone.credits_remaining === 18);
 
+    const uploadedPaths = [];
+    const validPng = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    );
+
+    async function prepareImage({ bytes, filename, mimeType }) {
+      const { data: target, error: reserveError } = await alice.client
+        .rpc('create_ai_image_upload', {
+          p_conversation_id: conversation.id,
+          p_original_filename: filename,
+          p_mime_type: mimeType,
+          p_size_bytes: bytes.length,
+        })
+        .single();
+      if (reserveError) throw reserveError;
+      const { error: uploadError } = await alice.client.storage
+        .from('ai-chat-images')
+        .upload(target.storage_path, bytes, { contentType: mimeType, upsert: false });
+      if (uploadError) throw uploadError;
+      uploadedPaths.push(target.storage_path);
+      const { error: finalizeError } = await alice.client.rpc('finalize_ai_image_upload', {
+        p_attachment_id: target.attachment_id,
+        p_width: 1,
+        p_height: 1,
+      });
+      if (finalizeError) throw finalizeError;
+      return target;
+    }
+
+    const validImage = await prepareImage({
+      bytes: validPng,
+      filename: 'pixel.png',
+      mimeType: 'image/png',
+    });
+    const imageResponse = await post(alice.token, {
+      conversation_id: conversation.id,
+      client_message_id: crypto.randomUUID(),
+      content: 'Describe this image',
+      attachment_ids: [validImage.attachment_id],
+    });
+    const imageEvents = await readSse(imageResponse);
+    const imageDone = imageEvents.find((event) => event.type === 'done');
+    check('valid image pipeline completes', Boolean(imageDone));
+    const { data: imageHistory } = await alice.client.rpc('list_ai_messages', {
+      p_conversation_id: conversation.id,
+      p_limit: 100,
+    });
+    check(
+      'image is attached to the persisted user message',
+      imageHistory?.some((message) => message.attachments?.length === 1),
+    );
+    const imageRunId = imageEvents.find((event) => event.type === 'start')?.run_id;
+    const { data: loadedImageAttachments, error: loadedImageError } = await admin.rpc(
+      'load_ai_run_attachments',
+      { p_run_id: imageRunId },
+    );
+    check(
+      'service context loader returns the private image',
+      !loadedImageError && loadedImageAttachments?.length === 1,
+    );
+    check(
+      'private image was loaded and vision context reached the final text model',
+      imageDone?.message?.content.includes('Vision analysis was supplied'),
+    );
+    check(
+      'raw intermediate vision analysis is not streamed',
+      !imageEvents.some((event) => JSON.stringify(event).includes('Mock visible text')),
+    );
+    check(
+      'image generation consumes one shared credit (18 -> 17)',
+      imageDone.credits_remaining === 17,
+    );
+
+    const retryPng = Buffer.concat([validPng, Buffer.from([1])]);
+    const failingImage = await prepareImage({
+      bytes: retryPng,
+      filename: 'retry.png',
+      mimeType: 'image/png',
+    });
+    const failingClientId = crypto.randomUUID();
+    const failBody = {
+      conversation_id: conversation.id,
+      client_message_id: failingClientId,
+      content: '[text-fail] analyze for retry',
+      attachment_ids: [failingImage.attachment_id],
+    };
+    const failedFinal = await readSse(await post(alice.token, failBody));
+    check(
+      'final text failure after vision returns a safe category',
+      failedFinal.find((event) => event.type === 'error')?.category === 'provider_unavailable',
+    );
+    check(
+      'final text failure refunds the image generation credit',
+      failedFinal.find((event) => event.type === 'error')?.credits_remaining === 17,
+    );
+    const imageSha = createHash('sha256').update(retryPng).digest('hex');
+    const { data: cacheBefore } = await admin
+      .from('ai_image_analyses')
+      .select('id,created_at')
+      .eq('user_id', alice.id)
+      .eq('image_sha256', imageSha)
+      .eq('vision_model', 'mock/council-vision');
+    check('completed vision analysis is cached privately', cacheBefore?.length === 1);
+    const failedRetry = await readSse(await post(alice.token, failBody));
+    check(
+      'failed generation retry still uses the safe final-provider error',
+      failedRetry.find((event) => event.type === 'error')?.category === 'provider_unavailable',
+    );
+    const { data: cacheAfter } = await admin
+      .from('ai_image_analyses')
+      .select('id,created_at')
+      .eq('user_id', alice.id)
+      .eq('image_sha256', imageSha)
+      .eq('vision_model', 'mock/council-vision');
+    check(
+      'retry reuses the single cached vision analysis',
+      cacheAfter?.length === 1 && cacheAfter[0].id === cacheBefore[0].id,
+    );
+
+    const visionFailureImage = await prepareImage({
+      bytes: Buffer.concat([validPng, Buffer.from([2])]),
+      filename: 'vision-fail.png',
+      mimeType: 'image/png',
+    });
+    const visionFailureEvents = await readSse(
+      await post(alice.token, {
+        conversation_id: conversation.id,
+        client_message_id: crypto.randomUUID(),
+        content: '[vision-fail] inspect',
+        attachment_ids: [visionFailureImage.attachment_id],
+      }),
+    );
+    check(
+      'vision failure exposes only the safe category',
+      visionFailureEvents.find((event) => event.type === 'error')?.category ===
+        'vision_provider_unavailable',
+    );
+    check(
+      'vision failure refunds the reserved credit',
+      visionFailureEvents.find((event) => event.type === 'error')?.credits_remaining === 17,
+    );
+
+    const invalidImage = await prepareImage({
+      bytes: Buffer.from('not-a-real-png'),
+      filename: 'invalid.png',
+      mimeType: 'image/png',
+    });
+    const invalidImageEvents = await readSse(
+      await post(alice.token, {
+        conversation_id: conversation.id,
+        client_message_id: crypto.randomUUID(),
+        content: 'inspect invalid image',
+        attachment_ids: [invalidImage.attachment_id],
+      }),
+    );
+    check(
+      'invalid image bytes are rejected safely',
+      invalidImageEvents.find((event) => event.type === 'error')?.category === 'invalid_image',
+    );
+    check(
+      'invalid image rejection refunds the reserved credit',
+      invalidImageEvents.find((event) => event.type === 'error')?.credits_remaining === 17,
+    );
+
     // 5c. A different user cannot generate on the persona's conversation.
     const personaIntruder = await post(bob.token, {
       conversation_id: personaConv.id,
@@ -410,6 +588,10 @@ async function main() {
       ...replayEvents,
       ...personaIntruderEvents,
       ...archivedEvents,
+      ...failedFinal,
+      ...failedRetry,
+      ...visionFailureEvents,
+      ...invalidImageEvents,
     ]
       .filter((e) => e.type === 'error')
       .map((e) => e.category);
@@ -418,6 +600,7 @@ async function main() {
       allErrors.every((c) => SAFE_CATEGORIES.has(c)),
     );
 
+    await admin.storage.from('ai-chat-images').remove(uploadedPaths);
     // Cleanup users.
     await Promise.all(createdUserIds.map((id) => admin.auth.admin.deleteUser(id).catch(() => {})));
 

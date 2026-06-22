@@ -36,11 +36,19 @@ export function createAiStreamParser() {
 // Calls the ai-chat Edge Function and invokes onEvent for each validated stream
 // event. Resolves when the stream ends. Non-stream error responses and missing
 // sessions are raised as AiApiError so the caller can show a safe category.
-export async function streamAiChat({ conversationId, clientMessageId, content, signal, onEvent }) {
+export async function streamAiChat({
+  conversationId,
+  clientMessageId,
+  content,
+  attachmentIds = [],
+  signal,
+  onEvent,
+}) {
   const input = aiSendInputSchema.parse({
     conversation_id: conversationId,
     client_message_id: clientMessageId,
     content,
+    attachment_ids: attachmentIds,
   });
 
   const client = getSupabaseClient();
@@ -63,6 +71,7 @@ export async function streamAiChat({ conversationId, clientMessageId, content, s
         conversation_id: input.conversation_id,
         client_message_id: input.client_message_id,
         content: input.content,
+        attachment_ids: input.attachment_ids,
       }),
       signal,
     });

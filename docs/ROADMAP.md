@@ -51,6 +51,9 @@ Status:
   coverage. Transparent curated memory is complete: per-contact save/edit/delete/clear,
   Remember-from-message confirmation, curated/conversation-only modes, server-side inclusion,
   provider-state disclosure, and cross-user/contact isolation.
+- Private AI image understanding is complete for directly attached JPEG, PNG, and WebP images:
+  private staged uploads, two-stage vision-to-DeepSeek generation, persisted thumbnails, user-scoped
+  analysis caching, and provider-sharing disclosure.
 - Automatic memory extraction, embeddings, contradiction resolution, tools, web search,
   image/file understanding, AI inside human conversations, and public/shared personas remain
   pending.

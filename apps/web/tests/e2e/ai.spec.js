@@ -71,7 +71,24 @@ async function lastAssistant(page) {
   return page.locator('.ai-message-row[data-role="assistant"]').last();
 }
 
+const tinyPng = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+);
+
+async function attachImage(page, name = 'screen.png') {
+  await page.locator('.ai-composer input[type="file"]').setInputFiles({
+    name,
+    mimeType: 'image/png',
+    buffer: tinyPng,
+  });
+  await expect(page.getByAltText(name)).toBeVisible();
+  await expect(page.getByText(/will be sent to Council’s configured AI provider/i)).toBeVisible();
+  await expect(page.getByText('Ready', { exact: true })).toBeVisible({ timeout: 20_000 });
+}
+
 test.describe('AI contacts and personas', () => {
+  test.describe.configure({ mode: 'default' });
   test.afterAll(async () => {
     try {
       await deleteLocalUsersByEmail(createdEmails);
@@ -262,6 +279,71 @@ test.describe('AI contacts and personas', () => {
       await expect(b.page.getByText(/No saved memories/i)).toBeVisible();
       await expect(b.page.getByText('Council-only memory.', { exact: true })).toHaveCount(0);
       await expect(b.page.getByText('Editor-only memory.', { exact: true })).toHaveCount(0);
+    } finally {
+      await a.context.close();
+      await b.context.close();
+    }
+  });
+
+  test('an AI image prompt streams a response and persists after reload', async ({ browser }) => {
+    test.setTimeout(120_000);
+    const { context, page } = await newUserContext(browser, 'image');
+    try {
+      await openBuiltin(page, 'Council Assistant');
+      await attachImage(page);
+      await page.getByLabel('Message the assistant').fill('What is in this image?');
+      await page.getByRole('button', { name: 'Send' }).click();
+      await expect(await lastAssistant(page)).toContainText('Vision analysis was supplied', {
+        timeout: 30_000,
+      });
+      await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0, {
+        timeout: 30_000,
+      });
+
+      await page.reload();
+      await expect(page.getByText('What is in this image?', { exact: true })).toBeVisible();
+      await expect(page.getByAltText('screen.png')).toBeVisible({ timeout: 20_000 });
+      await expect(await lastAssistant(page)).toContainText('Vision analysis was supplied', {
+        timeout: 20_000,
+      });
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('invalid image selection is rejected and images stay isolated between users', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const a = await newUserContext(browser, 'imagea');
+    const b = await newUserContext(browser, 'imageb');
+    try {
+      await openBuiltin(a.page, 'Council Assistant');
+      const input = a.page.locator('.ai-composer input[type="file"]');
+      await input.setInputFiles({
+        name: 'document.pdf',
+        mimeType: 'application/pdf',
+        buffer: Buffer.from('not an image'),
+      });
+      await expect(a.page.getByText(/must be a JPEG, PNG, or WebP/i)).toBeVisible();
+
+      await input.setInputFiles({
+        name: 'large.png',
+        mimeType: 'image/png',
+        buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
+      });
+      await expect(a.page.getByText(/larger than 5 MB/i)).toBeVisible();
+
+      await attachImage(a.page, 'private.png');
+      await a.page.getByLabel('Message the assistant').fill('Analyze privately.');
+      await a.page.getByRole('button', { name: 'Send' }).click();
+      await expect(await lastAssistant(a.page)).toContainText('Vision analysis was supplied', {
+        timeout: 30_000,
+      });
+
+      await openBuiltin(b.page, 'Council Assistant');
+      await expect(b.page.getByAltText('private.png')).toHaveCount(0);
+      await expect(b.page.getByText('Analyze privately.', { exact: true })).toHaveCount(0);
     } finally {
       await a.context.close();
       await b.context.close();

@@ -8,12 +8,13 @@ function isLocalSupabase(supabaseUrl) {
   }
 }
 
-export function resolveProviderConfig({ providerMode, model, apiKey, supabaseUrl }) {
+export function resolveProviderConfig({ providerMode, model, visionModel, apiKey, supabaseUrl }) {
   const requestedMode = (providerMode || 'openrouter').toLowerCase();
   if (requestedMode === 'mock') {
     return {
       mode: 'mock',
       model: 'mock/council-assistant',
+      visionModel: 'mock/council-vision',
       configured: isLocalSupabase(supabaseUrl),
     };
   }
@@ -21,6 +22,7 @@ export function resolveProviderConfig({ providerMode, model, apiKey, supabaseUrl
   return {
     mode: 'openrouter',
     model: model || 'deepseek/deepseek-v4-flash',
+    visionModel: visionModel || 'google/gemini-2.5-flash',
     configured: Boolean(apiKey),
   };
 }
