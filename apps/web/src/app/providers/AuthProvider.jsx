@@ -4,6 +4,7 @@ import { getSupabaseClient } from '../../lib/supabase.js';
 import { accountKeys } from '../../lib/query-keys/account.js';
 import { getMyProfile, getMySettings } from '../../features/profile/api/profileApi.js';
 import { signOutSession } from '../../features/auth/api/authApi.js';
+import { clearAttachmentUrlCache } from '../../features/messaging/queries/attachmentUrlCache.js';
 import { AuthContext } from './AuthContext.js';
 
 const RECOVERY_KEY = 'council.password-recovery';
@@ -42,7 +43,10 @@ export function AuthProvider({ children, client = getSupabaseClient() }) {
       }
 
       if (event === 'SIGNED_OUT') {
-        queryClient.removeQueries({ queryKey: accountKeys.all });
+        // Drop every cached query so no private data (messages, previews,
+        // receipts, contacts) survives a session change.
+        queryClient.clear();
+        clearAttachmentUrlCache();
       }
     });
 
@@ -96,7 +100,10 @@ export function AuthProvider({ children, client = getSupabaseClient() }) {
   const signOut = useCallback(
     async (scope = 'local') => {
       await signOutSession(scope, client);
-      queryClient.removeQueries({ queryKey: accountKeys.all });
+      // Clear all cached queries on explicit sign-out so private message
+      // content and previews never persist across sessions.
+      queryClient.clear();
+      clearAttachmentUrlCache();
     },
     [client, queryClient],
   );
