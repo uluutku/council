@@ -15,6 +15,9 @@ const MESSAGES = {
   provider_error: 'The AI provider returned an unexpected response. Try again.',
   provider_not_configured: 'The AI provider is not configured. Try again later.',
   cancelled: 'Generation was stopped.',
+  persona_not_found: 'That persona is no longer available.',
+  persona_limit_reached: 'You can have up to 10 active personas. Archive one to add another.',
+  invalid_persona: 'Check the persona details and try again.',
   backend_unavailable: 'Council is temporarily unavailable. Try again.',
   unknown_error: 'Something went wrong. Try again.',
 };

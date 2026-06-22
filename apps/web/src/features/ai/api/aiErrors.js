@@ -15,6 +15,9 @@ const KNOWN_CATEGORIES = new Set([
   'provider_error',
   'provider_not_configured',
   'cancelled',
+  'persona_not_found',
+  'persona_limit_reached',
+  'invalid_persona',
 ]);
 
 export function mapAiError(error) {

@@ -254,6 +254,24 @@ deterministic mock provider is for local automated tests only and refuses to run
 non-local Supabase project. The local Playwright/edge test helpers refuse non-loopback Supabase URLs
 and use no committed service-role secret.
 
+### AI contacts and custom personas (Task 010)
+
+Built-in contacts keep their private prompts in `ai_agent_prompt_versions`, which no browser role
+can read. Custom personas (`ai_personas`) are owner-scoped by RLS: another user cannot discover,
+read, edit, open, or chat with them, and anonymous access is denied. The owner's own instructions
+are returned only to that owner for editing. All persona mutations go through narrow security-definer
+RPCs; direct table mutation is denied. A conversation is bound to exactly one built-in agent or one
+owned persona, and `start_ai_generation` re-verifies that binding (and ownership) on every
+generation, so a conversation id cannot be used to reach another user's persona.
+
+The provider prompt is assembled entirely on the server. The browser sends only the conversation id,
+client id, and message content — never raw system instructions. Council's platform safety preamble
+is always prepended and cannot be replaced or overridden by built-in prompts or custom instructions;
+personas may shape style but cannot grant themselves access to human conversations, other users,
+files, credentials, hidden prompts, nonexistent tools, or the internet, and the UI never claims such
+capabilities. Archived personas keep their history readable but cannot start new generations until
+restored.
+
 ## Disclosure and assurance
 
 A responsible-disclosure process and monitored security contact must be established before

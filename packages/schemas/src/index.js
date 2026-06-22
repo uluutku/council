@@ -676,18 +676,62 @@ export const aiAgentSchema = z
   .strict();
 export const aiAgentListSchema = z.array(aiAgentSchema);
 
+export const aiContactKindSchema = z.enum(['builtin', 'custom']);
+
 export const aiConversationSchema = z
   .object({
     id: uuidSchema,
-    agent_id: uuidSchema,
-    agent_slug: z.string().min(1).max(50),
-    agent_name: z.string().min(1).max(80),
+    kind: aiContactKindSchema,
+    agent_id: uuidSchema.nullable(),
+    persona_id: uuidSchema.nullable(),
+    display_name: z.string().min(1).max(80),
+    description: z.string().max(400).nullable(),
+    archived: z.boolean(),
     created_at: timestampSchema,
     updated_at: timestampSchema,
     last_message_at: timestampSchema.nullable(),
   })
   .strict();
 export const aiConversationListSchema = z.array(aiConversationSchema);
+
+export const aiPersonaToneSchema = z.enum(['warm', 'balanced', 'direct', 'playful', 'formal']);
+export const aiPersonaVerbositySchema = z.enum(['concise', 'balanced', 'detailed']);
+
+export const aiPersonaSchema = z
+  .object({
+    id: uuidSchema,
+    name: z.string().min(2).max(50),
+    description: z.string().max(160),
+    instructions: z.string().min(1).max(4000),
+    tone: aiPersonaToneSchema,
+    verbosity: aiPersonaVerbositySchema,
+    archived: z.boolean(),
+    created_at: timestampSchema,
+    updated_at: timestampSchema,
+  })
+  .strict();
+export const aiPersonaListSchema = z.array(aiPersonaSchema);
+
+export const aiPersonaInputSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(2, 'Name must be 2–50 characters.')
+      .max(50, 'Name must be 2–50 characters.'),
+    description: z.preprocess(
+      (value) => (typeof value === 'string' ? value.trim() : value),
+      z.string().max(160, 'Description must be at most 160 characters.'),
+    ),
+    instructions: z
+      .string()
+      .trim()
+      .min(1, 'Instructions are required.')
+      .max(4000, 'Instructions must be at most 4000 characters.'),
+    tone: aiPersonaToneSchema,
+    verbosity: aiPersonaVerbositySchema,
+  })
+  .strict();
 
 export const aiMessageRoleSchema = z.enum(['user', 'assistant']);
 export const aiMessageSchema = z
@@ -768,6 +812,9 @@ export const aiErrorCategorySchema = z.enum([
   'provider_error',
   'provider_not_configured',
   'cancelled',
+  'persona_not_found',
+  'persona_limit_reached',
+  'invalid_persona',
   'session_expired',
   'backend_unavailable',
   'unknown_error',

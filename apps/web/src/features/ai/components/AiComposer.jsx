@@ -7,7 +7,14 @@ const MAX_LENGTH = 8000;
 // or when AI access is unavailable. A Stop control aborts an active request.
 // `initialValue` seeds the field (used by starter prompts); the parent remounts
 // the composer via a key to apply a new starter without a state-sync effect.
-export function AiComposer({ onSend, onStop, isStreaming, disabled, initialValue = '' }) {
+export function AiComposer({
+  onSend,
+  onStop,
+  isStreaming,
+  disabled,
+  initialValue = '',
+  contactName = 'the assistant',
+}) {
   const [value, setValue] = useState(initialValue);
   const composingRef = useRef(false);
   const textareaRef = useRef(null);
@@ -39,7 +46,7 @@ export function AiComposer({ onSend, onStop, isStreaming, disabled, initialValue
     >
       <div className="ai-composer-row">
         <label className="sr-only" htmlFor="ai-composer-input">
-          Message Council Assistant
+          Message the assistant
         </label>
         <textarea
           id="ai-composer-input"
@@ -48,7 +55,7 @@ export function AiComposer({ onSend, onStop, isStreaming, disabled, initialValue
           value={value}
           rows={1}
           maxLength={MAX_LENGTH}
-          placeholder={disabled ? 'AI is unavailable' : 'Message Council Assistant'}
+          placeholder={disabled ? 'AI is unavailable' : `Message ${contactName}`}
           disabled={disabled || isStreaming}
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={handleKeyDown}

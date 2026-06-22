@@ -40,13 +40,14 @@ export function AiConversationPage() {
   const [draft, setDraft] = useState('');
   const [draftKey, setDraftKey] = useState(0);
 
-  const agentName =
-    conversations.find((conversation) => conversation.id === conversationId)?.agent_name ??
-    location.state?.agentName ??
-    'Council Assistant';
-  usePageTitle(agentName);
+  const conversation = conversations.find((entry) => entry.id === conversationId);
+  const displayName =
+    conversation?.display_name ?? location.state?.displayName ?? 'Council Assistant';
+  const kind = conversation?.kind ?? null;
+  const isArchived = conversation?.archived ?? false;
+  usePageTitle(displayName);
 
-  const canGenerate = access ? access.can_generate : true;
+  const canGenerate = (access ? access.can_generate : true) && !isArchived;
   const composerDisabled = !canGenerate;
   const messages = messagesQuery.data ?? [];
 
@@ -63,11 +64,15 @@ export function AiConversationPage() {
   }
 
   return (
-    <section className="ai-conversation" aria-label={`Conversation with ${agentName}`}>
+    <section className="ai-conversation" aria-label={`Conversation with ${displayName}`}>
       <header className="ai-conversation-header">
         <div>
           <h1>
-            {agentName} <span className="ai-badge">AI</span>
+            {displayName}{' '}
+            <span className="ai-badge" data-kind={kind ?? undefined}>
+              {kind === 'custom' ? 'Custom' : 'AI'}
+            </span>
+            {isArchived ? <span className="ai-archived-tag"> · Archived</span> : null}
           </h1>
           <p className="ai-disclosure-inline">
             AI messages are processed by Council’s configured AI provider.
@@ -103,7 +108,14 @@ export function AiConversationPage() {
 
       {composerDisabled ? (
         <div className="ai-composer ai-composer--disabled">
-          <AiAccessSummary access={access} />
+          {isArchived ? (
+            <p className="ai-archived-note" role="status">
+              This persona is archived, so new messages are paused. Its history stays readable, and
+              restoring it from “My personas” re-enables chatting.
+            </p>
+          ) : (
+            <AiAccessSummary access={access} />
+          )}
         </div>
       ) : (
         <AiComposer
@@ -113,6 +125,7 @@ export function AiConversationPage() {
           isStreaming={chat.isStreaming}
           disabled={composerDisabled}
           initialValue={draft}
+          contactName={displayName}
         />
       )}
     </section>

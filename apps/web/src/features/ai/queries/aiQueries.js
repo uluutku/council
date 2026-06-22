@@ -4,6 +4,7 @@ import {
   listAiAgents,
   listAiMessages,
   listMyAiConversations,
+  listMyCustomPersonas,
 } from '../api/aiApi.js';
 
 export function aiAgentsQueryOptions() {
@@ -16,6 +17,10 @@ export function aiAccessQueryOptions() {
 
 export function aiConversationsQueryOptions() {
   return { queryKey: aiKeys.conversations(), queryFn: () => listMyAiConversations() };
+}
+
+export function aiPersonasQueryOptions() {
+  return { queryKey: aiKeys.personas(), queryFn: () => listMyCustomPersonas() };
 }
 
 export function aiMessagesQueryOptions(conversationId) {

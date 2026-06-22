@@ -226,6 +226,57 @@ async function main() {
       intruderError.category === 'ai_conversation_not_found',
     );
 
+    // 5b. A custom persona shares the same per-user credit pool.
+    const { data: persona } = await alice.client
+      .rpc('create_custom_persona', {
+        p_name: 'Edge Persona',
+        p_description: 'integration test',
+        p_instructions: 'Be brief and direct.',
+        p_tone: 'direct',
+        p_verbosity: 'concise',
+      })
+      .single();
+    const { data: personaConv } = await alice.client
+      .rpc('get_or_create_ai_conversation', { p_persona_id: persona.id })
+      .single();
+    check('persona conversation reports the custom kind', personaConv.kind === 'custom');
+
+    const personaGen = await post(alice.token, {
+      conversation_id: personaConv.id,
+      client_message_id: crypto.randomUUID(),
+      content: 'hello persona',
+    });
+    const personaEvents = await readSse(personaGen);
+    const personaDone = personaEvents.find((e) => e.type === 'done');
+    check('custom persona generation completes', Boolean(personaDone));
+    check('credits are shared across contacts (19 -> 18)', personaDone.credits_remaining === 18);
+
+    // 5c. A different user cannot generate on the persona's conversation.
+    const personaIntruder = await post(bob.token, {
+      conversation_id: personaConv.id,
+      client_message_id: crypto.randomUUID(),
+      content: 'mine now',
+    });
+    const personaIntruderEvents = await readSse(personaIntruder);
+    check(
+      'cross-user persona conversation is rejected',
+      personaIntruderEvents.find((e) => e.type === 'error')?.category ===
+        'ai_conversation_not_found',
+    );
+
+    // 5d. An archived persona blocks new generation but history remains readable.
+    await alice.client.rpc('archive_custom_persona', { p_persona_id: persona.id });
+    const archivedGen = await post(alice.token, {
+      conversation_id: personaConv.id,
+      client_message_id: crypto.randomUUID(),
+      content: 'after archive',
+    });
+    const archivedEvents = await readSse(archivedGen);
+    check(
+      'archived persona blocks new generation',
+      archivedEvents.find((e) => e.type === 'error')?.category === 'ai_agent_unavailable',
+    );
+
     // 6. Credit exhaustion is enforced server-side.
     await admin.rpc('admin_set_ai_credits', { p_user_id: alice.id, p_trial_credits_remaining: 0 });
     const exhausted = await post(alice.token, {
@@ -238,7 +289,14 @@ async function main() {
     check('exhausted trial is blocked', exhaustedError?.category === 'credits_exhausted');
 
     // 7. No raw provider error categories leaked anywhere.
-    const allErrors = [...intruderEvents, ...exhaustedEvents, ...events, ...replayEvents]
+    const allErrors = [
+      ...intruderEvents,
+      ...exhaustedEvents,
+      ...events,
+      ...replayEvents,
+      ...personaIntruderEvents,
+      ...archivedEvents,
+    ]
       .filter((e) => e.type === 'error')
       .map((e) => e.category);
     check(

@@ -3,7 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route, Routes } from 'react-router-dom';
 import { AiConversationPage } from './AiConversationPage.jsx';
-import { CONVERSATION_ID, makeAccess, makeAiMessage, renderWithAi } from '../test/renderWithAi.jsx';
+import {
+  CONVERSATION_ID,
+  makeAccess,
+  makeAiMessage,
+  makeConversation,
+  renderWithAi,
+} from '../test/renderWithAi.jsx';
 
 vi.mock('../api/aiApi.js', () => ({
   listAiMessages: vi.fn(),
@@ -45,6 +51,46 @@ describe('AiConversationPage', () => {
     expect(screen.getByText('Here is a plan.')).toBeInTheDocument();
   });
 
+  it('shows the custom persona identity', async () => {
+    aiApi.listAiMessages.mockResolvedValue([]);
+    aiApi.listMyAiConversations.mockResolvedValue([
+      makeConversation({
+        id: CONVERSATION_ID,
+        kind: 'custom',
+        agent_id: null,
+        persona_id: 'p0000000-0000-4000-8000-000000000005',
+        display_name: 'My Coach',
+      }),
+    ]);
+
+    renderConversation();
+
+    expect(await screen.findByRole('heading', { name: /My Coach/ })).toBeInTheDocument();
+    expect(screen.getByText('Custom')).toBeInTheDocument();
+  });
+
+  it('disables generation for an archived persona but keeps history', async () => {
+    aiApi.listAiMessages.mockResolvedValue([
+      makeAiMessage({ id: 'm1', role: 'user', content: 'earlier message' }),
+    ]);
+    aiApi.listMyAiConversations.mockResolvedValue([
+      makeConversation({
+        id: CONVERSATION_ID,
+        kind: 'custom',
+        agent_id: null,
+        persona_id: 'p0000000-0000-4000-8000-000000000005',
+        display_name: 'My Coach',
+        archived: true,
+      }),
+    ]);
+
+    renderConversation();
+
+    expect(await screen.findByText('earlier message')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Message the assistant')).not.toBeInTheDocument();
+    expect(screen.getByText(/archived, so new messages are paused/i)).toBeInTheDocument();
+  });
+
   it('streams a response, then persists and decrements credits', async () => {
     const server = [];
     let credits = 19;
@@ -77,7 +123,7 @@ describe('AiConversationPage', () => {
 
     renderConversation();
 
-    const composer = await screen.findByLabelText('Message Council Assistant');
+    const composer = await screen.findByLabelText('Message the assistant');
     await userEvent.type(composer, 'Say hello');
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
 
@@ -112,7 +158,7 @@ describe('AiConversationPage', () => {
 
     renderConversation();
 
-    const composer = await screen.findByLabelText('Message Council Assistant');
+    const composer = await screen.findByLabelText('Message the assistant');
     await userEvent.type(composer, 'Hi');
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
 

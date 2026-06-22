@@ -71,3 +71,40 @@ the authoritative persisted message on `done`, and leaves a retryable state on `
 errors are never forwarded — only a fixed set of safe categories. Only the most recent bounded
 window (20 messages) plus the system prompt is sent to the provider; there is no summarization,
 semantic memory, or inclusion of human conversations, files, or images.
+
+## Task 010: more built-in contacts and private custom personas
+
+Council now exposes four built-in contacts — Council Assistant, Writing Editor, Study Coach, and
+Coding Partner — each a global `ai_agents` row with a private active prompt version. These are
+prompt-based only and claim no tools, internet, repository, or execution access.
+
+Users can also create private custom personas (`ai_personas`, owner-scoped): name, description,
+instructions (≤4000 chars), `tone` (warm/balanced/direct/playful/formal), and `verbosity`
+(concise/balanced/detailed). Limits: name 2–50, description ≤160, up to 10 active personas per user.
+Personas are visible only to their owner (RLS), can be edited, archived (history stays readable, new
+generation disabled), and restored. They are managed through narrow security-definer RPCs
+(`list_my_custom_personas`, `create_custom_persona`, `update_custom_persona`,
+`archive_custom_persona`, `restore_custom_persona`); direct table mutation is denied.
+
+### Conversation model
+
+`ai_conversations` references exactly one target: a built-in `agent_id` or a custom `persona_id`
+(a CHECK enforces exactly one; partial-unique indexes keep one conversation per user/agent and per
+user/persona). `get_or_create_ai_conversation(p_agent_id, p_persona_id)` and
+`list_my_ai_conversations` return a unified shape (`kind`, `display_name`, `description`, `archived`,
+…). Credits remain per user, shared across all contacts. Existing Council Assistant conversations
+stay valid.
+
+### Server-side prompt assembly
+
+`load_ai_run_context` (service-role) assembles the system prompt in a fixed order: (1) Council's
+private platform safety/integrity preamble (`private.ai_platform_instructions()`), (2) the built-in
+prompt or the persona's instructions, (3) for personas, structured tone/verbosity guidance, then the
+bounded recent history and the new user message. The platform preamble always comes first and
+custom instructions cannot replace it; personas cannot be granted access to human conversations,
+other users, files, credentials, hidden prompts, tools, or the internet. `start_ai_generation`
+rejects generation for a disabled built-in or an archived persona. The browser only ever sends the
+conversation id, client id, and message content — never raw system instructions.
+
+The configured model (`OPENROUTER_TEXT_MODEL`, e.g. `deepseek/deepseek-v4-flash`) is passed through
+to the provider; mock mode remains for automated tests.

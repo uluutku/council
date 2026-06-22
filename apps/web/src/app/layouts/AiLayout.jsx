@@ -31,8 +31,10 @@ export function AiLayout() {
               {conversations.map((conversation) => (
                 <li key={conversation.id}>
                   <NavLink to={`/app/ai/${conversation.id}`} className="ai-conversation-link">
-                    <span className="ai-conversation-name">{conversation.agent_name}</span>
-                    <span className="ai-badge">AI</span>
+                    <span className="ai-conversation-name">{conversation.display_name}</span>
+                    <span className="ai-badge" data-kind={conversation.kind}>
+                      {conversation.kind === 'custom' ? 'Custom' : 'AI'}
+                    </span>
                   </NavLink>
                 </li>
               ))}

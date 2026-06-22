@@ -32,6 +32,39 @@ export function makeAccess(overrides = {}) {
   };
 }
 
+export const PERSONA_ID = 'p0000000-0000-4000-8000-000000000005';
+
+export function makePersona(overrides = {}) {
+  return {
+    id: PERSONA_ID,
+    name: 'My Coach',
+    description: 'A personal coach',
+    instructions: 'Be encouraging and ask one guiding question.',
+    tone: 'warm',
+    verbosity: 'concise',
+    archived: false,
+    created_at: '2026-06-22T10:00:00+00:00',
+    updated_at: '2026-06-22T10:00:00+00:00',
+    ...overrides,
+  };
+}
+
+export function makeConversation(overrides = {}) {
+  return {
+    id: CONVERSATION_ID,
+    kind: 'builtin',
+    agent_id: AGENT_ID,
+    persona_id: null,
+    display_name: 'Council Assistant',
+    description: 'A thoughtful general-purpose assistant.',
+    archived: false,
+    created_at: '2026-06-22T10:00:00+00:00',
+    updated_at: '2026-06-22T10:00:00+00:00',
+    last_message_at: null,
+    ...overrides,
+  };
+}
+
 export function makeAiMessage(overrides = {}) {
   return {
     id: 'm0000000-0000-4000-8000-000000000003',
