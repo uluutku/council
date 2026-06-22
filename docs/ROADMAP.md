@@ -39,4 +39,13 @@ Status:
   idempotency, member-only signed-URL access, message rendering with an accessible image viewer,
   deletion that revokes attachment access, and database, component, and end-to-end tests. Message
   search, richer galleries, and AI understanding of files remain pending.
-- Every later milestone after attachments remains pending. Billing and AI are not started.
+- Basic AI contacts: a first vertical slice is complete — one built-in AI contact (Council
+  Assistant), private AI conversations with persistent text history, a server-owned OpenRouter
+  integration with a configurable DeepSeek model, SSE streaming responses, a seven-day credit
+  trial with atomic server-side reservation and refund, an idempotent and retryable generation
+  path through the `ai-chat` Edge Function, a deterministic local mock provider for tests, and
+  database, edge-integration, component, and end-to-end coverage. Custom personas, memory, tools,
+  web search, image/file understanding, AI inside human conversations, and billing checkout remain
+  pending.
+- Billing and entitlements (Pro checkout) is not started; the credit model exists but `pro_enabled`
+  is only settable by the trusted backend hook. Every later milestone remains pending.

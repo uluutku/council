@@ -1,0 +1,31 @@
+import { AiApiError } from './aiErrors.js';
+
+const MESSAGES = {
+  authentication_required: 'Your session has expired. Sign in again.',
+  session_expired: 'Your session has expired. Sign in again.',
+  invalid_request: 'That request could not be sent. Try again.',
+  ai_conversation_not_found: 'This AI conversation is unavailable.',
+  ai_agent_unavailable: 'This assistant is currently unavailable.',
+  ai_run_in_progress: 'A response is already being generated. Wait for it to finish.',
+  trial_expired: 'Your AI trial has ended. Pro billing is not available in this build yet.',
+  credits_exhausted:
+    'Your AI trial credits are used up. Pro billing is not available in this build yet.',
+  rate_limited: 'Too many requests. Wait briefly and try again.',
+  provider_unavailable: 'The AI provider is temporarily unavailable. Try again.',
+  provider_error: 'The AI provider returned an unexpected response. Try again.',
+  provider_not_configured: 'The AI provider is not configured. Try again later.',
+  cancelled: 'Generation was stopped.',
+  backend_unavailable: 'Council is temporarily unavailable. Try again.',
+  unknown_error: 'Something went wrong. Try again.',
+};
+
+export function aiErrorMessage(error) {
+  const category =
+    error instanceof AiApiError ? error.category : (error?.category ?? 'unknown_error');
+  return MESSAGES[category] ?? MESSAGES.unknown_error;
+}
+
+export function isAiAccessError(error) {
+  const category = error instanceof AiApiError ? error.category : error?.category;
+  return category === 'trial_expired' || category === 'credits_exhausted';
+}

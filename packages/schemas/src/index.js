@@ -663,6 +663,116 @@ export const realtimeEventEnvelopeSchema = z.discriminatedUnion('event', [
   messagingAvailabilityChangedEventSchema,
 ]);
 
+// ---- AI contacts (Task 009) ----
+export const aiAgentSchema = z
+  .object({
+    id: uuidSchema,
+    slug: z.string().min(1).max(50),
+    name: z.string().min(1).max(80),
+    description: z.string().min(1).max(400),
+    avatar_key: z.string().max(512).nullable(),
+    enabled: z.boolean(),
+  })
+  .strict();
+export const aiAgentListSchema = z.array(aiAgentSchema);
+
+export const aiConversationSchema = z
+  .object({
+    id: uuidSchema,
+    agent_id: uuidSchema,
+    agent_slug: z.string().min(1).max(50),
+    agent_name: z.string().min(1).max(80),
+    created_at: timestampSchema,
+    updated_at: timestampSchema,
+    last_message_at: timestampSchema.nullable(),
+  })
+  .strict();
+export const aiConversationListSchema = z.array(aiConversationSchema);
+
+export const aiMessageRoleSchema = z.enum(['user', 'assistant']);
+export const aiMessageSchema = z
+  .object({
+    id: uuidSchema,
+    conversation_id: uuidSchema,
+    role: aiMessageRoleSchema,
+    content: z.string().min(1).max(40000),
+    client_message_id: uuidSchema,
+    created_at: timestampSchema,
+  })
+  .strict();
+export const aiMessageListSchema = z.array(aiMessageSchema);
+
+export const aiAccessStateSchema = z.enum([
+  'trial_available',
+  'trial_active',
+  'trial_expired',
+  'credits_exhausted',
+  'pro',
+]);
+export const aiAccessSchema = z
+  .object({
+    trial_started_at: timestampSchema.nullable(),
+    trial_expires_at: timestampSchema.nullable(),
+    trial_credits_remaining: z.number().int().nonnegative(),
+    pro_enabled: z.boolean(),
+    access_state: aiAccessStateSchema,
+    can_generate: z.boolean(),
+  })
+  .strict();
+
+export const aiSendInputSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    client_message_id: uuidSchema,
+    content: z.string().trim().min(1).max(8000),
+  })
+  .strict();
+
+// Events of the small SSE protocol, validated in the browser before any use.
+export const aiStreamEventSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('start'), run_id: uuidSchema }).strict(),
+  z.object({ type: z.literal('delta'), text: z.string() }).strict(),
+  z
+    .object({
+      type: z.literal('done'),
+      message: z
+        .object({
+          id: uuidSchema,
+          role: z.literal('assistant'),
+          content: z.string().min(1).max(40000),
+          created_at: timestampSchema,
+        })
+        .strict(),
+      credits_remaining: z.number().int().nonnegative().nullable().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('error'),
+      category: z.string().min(1).max(64),
+      credits_remaining: z.number().int().nonnegative().nullable().optional(),
+    })
+    .strict(),
+]);
+
+export const aiErrorCategorySchema = z.enum([
+  'authentication_required',
+  'invalid_request',
+  'ai_conversation_not_found',
+  'ai_agent_unavailable',
+  'ai_run_in_progress',
+  'trial_expired',
+  'credits_exhausted',
+  'rate_limited',
+  'provider_unavailable',
+  'provider_error',
+  'provider_not_configured',
+  'cancelled',
+  'session_expired',
+  'backend_unavailable',
+  'unknown_error',
+]);
+
 export const emailSchema = z
   .string()
   .trim()

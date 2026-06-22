@@ -1,0 +1,52 @@
+// Maps provider/database failures and stream error categories to a stable set of
+// application categories. Raw provider errors, SQL, and internal details are
+// never surfaced.
+
+const KNOWN_CATEGORIES = new Set([
+  'authentication_required',
+  'invalid_request',
+  'ai_conversation_not_found',
+  'ai_agent_unavailable',
+  'ai_run_in_progress',
+  'trial_expired',
+  'credits_exhausted',
+  'rate_limited',
+  'provider_unavailable',
+  'provider_error',
+  'provider_not_configured',
+  'cancelled',
+]);
+
+export function mapAiError(error) {
+  const message = typeof error?.message === 'string' ? error.message : '';
+  const category = typeof error?.category === 'string' ? error.category : '';
+
+  if (KNOWN_CATEGORIES.has(category)) return category;
+  if (KNOWN_CATEGORIES.has(message)) return message;
+
+  if (error?.code === 'PGRST301' || /jwt|session|authentication required/i.test(message)) {
+    return 'session_expired';
+  }
+  if (error?.status === 429 || /rate limit/i.test(message)) return 'rate_limited';
+  if (
+    error?.code === 'NETWORK_ERROR' ||
+    error?.code === 'ECONNREFUSED' ||
+    /failed to fetch|network|timeout/i.test(message)
+  ) {
+    return 'backend_unavailable';
+  }
+  return 'unknown_error';
+}
+
+export class AiApiError extends Error {
+  constructor(category, cause) {
+    super(category, { cause });
+    this.name = 'AiApiError';
+    this.category = category;
+  }
+}
+
+export function toAiApiError(error) {
+  if (error instanceof AiApiError) return error;
+  return new AiApiError(mapAiError(error), error);
+}

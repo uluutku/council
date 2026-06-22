@@ -228,6 +228,32 @@ family. A separate vision-capable model may receive an image only after the user
 directly to an AI message or explicitly forwards it. AI features require a server-verified trial
 or Pro entitlement.
 
+### First AI contact (Task 009)
+
+`OPENROUTER_API_KEY` and `OPENROUTER_TEXT_MODEL` are server-only and read only by the `ai-chat`
+Edge Function; they are never placed in a `VITE_*` variable, returned to the browser, or logged. The
+private system prompt lives in `ai_agent_prompt_versions`, which no browser role can read; only
+service-role generation paths load it. Public agent identity (`ai_agents`) is the only AI metadata
+exposed to authenticated users.
+
+AI message and run creation never go through a public insert RPC. The browser cannot insert, update,
+or delete AI messages, runs, or credit balances; assistant messages cannot be forged. All privileged
+writes are performed by the Edge Function through service-role-only functions that derive nothing
+sensitive from client input beyond the validated conversation id, client id, and bounded content.
+
+Access is enforced server-side. A credit is reserved atomically before a generation and refunded
+exactly once on provider failure (guarded so a balance can never inflate). The trial starts once,
+expires after seven days, and is denied when exhausted or expired — the UI shows an honest message
+and never a fake upgrade checkout. Only the service-role `admin_set_ai_credits` hook (future billing)
+may change balances or Pro status.
+
+Prompts, message content, responses, API keys, JWTs, and provider request bodies are never logged;
+operational logs carry only run id, status category, model id, token counts, cost, and duration. Raw
+provider errors are reduced to a fixed set of safe categories before reaching the browser. The
+deterministic mock provider is for local automated tests only and refuses to run against a
+non-local Supabase project. The local Playwright/edge test helpers refuse non-loopback Supabase URLs
+and use no committed service-role secret.
+
 ## Disclosure and assurance
 
 A responsible-disclosure process and monitored security contact must be established before

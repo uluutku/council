@@ -11,8 +11,10 @@ be honest that the server can read your messages.
 It is a work in progress. The account and contact layers are finished and tested, and human text
 messaging now works end to end: an inbox, a real conversation screen, optimistic sending, replies,
 editing, deletion, reactions, and live Realtime synchronization between two people. Messages can
-now also carry private image and file attachments. The AI side still comes later. The rest of this
-README is the honest status, not a pitch.
+now also carry private image and file attachments. There is a first built-in AI contact — Council
+Assistant — that you can actually chat with: streamed DeepSeek responses through a server-owned
+OpenRouter integration, gated by a short, server-enforced credit trial. The rest of this README is
+the honest status, not a pitch.
 
 ## What works today
 
@@ -54,15 +56,24 @@ through a staged, validated flow, render as bounded thumbnails or file cards, an
 through short-lived signed URLs that conversation members request on demand. Deleting a message
 removes its attachment metadata and revokes access.
 
+The AI section (`/app/ai`) has one built-in contact, Council Assistant. Opening it starts a private
+AI conversation; sending a prompt streams a DeepSeek response token-by-token and persists it. AI
+access is a server-enforced trial: 20 text-generation credits that start on your first message and
+expire seven days later. Each completed generation spends one credit; a failed provider request
+refunds it. OpenRouter credentials live only on the server, the private system prompt never reaches
+the browser, and a deterministic local mock provider backs the automated tests.
+
 ## What it can't do yet
 
-There is no typing indicator, presence or online status, notification delivery, or AI contact.
-There is no mobile app, no group chats, and no billing. There is no AI understanding of attached
-images or files — they are stored and shared, not interpreted. None of these are faked in the UI on
-purpose — there are no disabled controls advertising features that do not exist.
+There is no typing indicator, presence or online status, or notification delivery. The AI side is
+deliberately minimal: one built-in assistant, text only, no custom personas, no memory, no tools or
+web search, no image or file understanding, no AI inside human conversations, and no billing
+checkout (when the trial ends the app says so honestly rather than showing a fake upgrade). There is
+no mobile app, no group chats. None of these are faked in the UI on purpose — there are no disabled
+controls advertising features that do not exist.
 
-So Council now has working human text and attachment messaging on top of its account, contact, and
-secure database foundations, but not presence or AI.
+So Council now has working human text and attachment messaging plus a first real AI contact on top
+of its account, contact, and secure database foundations, but not personas, memory, or billing.
 
 ## Why it is built this way
 
