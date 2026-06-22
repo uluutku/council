@@ -13,6 +13,7 @@
   "scripts": {
     "dev": "npm run dev:web",
     "dev:web": "npm run dev --workspace @council/web",
+    "dev:ai": "node scripts/dev-ai.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -20,6 +21,7 @@
     "test:watch": "npm run test:watch --workspace @council/web",
     "test:e2e": "npm run test:e2e --workspace @council/web",
     "test:concurrency": "node scripts/test-concurrency.mjs",
+    "test:ai-edge": "node scripts/test-ai-edge.mjs",
     "build": "npm run build --workspace @council/web",
     "check": "npm run format:check && npm run lint && npm run test && npm run build",
     "supabase:start": "node scripts/supabase.mjs start",

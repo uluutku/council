@@ -663,6 +663,268 @@ export const realtimeEventEnvelopeSchema = z.discriminatedUnion('event', [
   messagingAvailabilityChangedEventSchema,
 ]);
 
+// ---- AI contacts (Task 009) ----
+export const aiAgentSchema = z
+  .object({
+    id: uuidSchema,
+    slug: z.string().min(1).max(50),
+    name: z.string().min(1).max(80),
+    description: z.string().min(1).max(400),
+    avatar_key: z.string().max(512).nullable(),
+    enabled: z.boolean(),
+  })
+  .strict();
+export const aiAgentListSchema = z.array(aiAgentSchema);
+
+export const aiContactKindSchema = z.enum(['builtin', 'custom']);
+export const aiMemoryModeSchema = z.enum(['conversation_only', 'curated']);
+export const aiMemoryCategorySchema = z.enum([
+  'personal_fact',
+  'preference',
+  'goal',
+  'project',
+  'constraint',
+  'instruction',
+  'interest',
+  'other',
+]);
+
+export const aiConversationSchema = z
+  .object({
+    id: uuidSchema,
+    kind: aiContactKindSchema,
+    agent_id: uuidSchema.nullable(),
+    persona_id: uuidSchema.nullable(),
+    display_name: z.string().min(1).max(80),
+    description: z.string().max(400).nullable(),
+    archived: z.boolean(),
+    created_at: timestampSchema,
+    updated_at: timestampSchema,
+    last_message_at: timestampSchema.nullable(),
+  })
+  .strict();
+export const aiConversationListSchema = z.array(aiConversationSchema);
+
+export const aiPersonaToneSchema = z.enum(['warm', 'balanced', 'direct', 'playful', 'formal']);
+export const aiPersonaVerbositySchema = z.enum(['concise', 'balanced', 'detailed']);
+
+export const aiPersonaSchema = z
+  .object({
+    id: uuidSchema,
+    name: z.string().min(2).max(50),
+    description: z.string().max(160),
+    instructions: z.string().min(1).max(4000),
+    tone: aiPersonaToneSchema,
+    verbosity: aiPersonaVerbositySchema,
+    archived: z.boolean(),
+    created_at: timestampSchema,
+    updated_at: timestampSchema,
+  })
+  .strict();
+export const aiPersonaListSchema = z.array(aiPersonaSchema);
+
+export const aiPersonaInputSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(2, 'Name must be 2–50 characters.')
+      .max(50, 'Name must be 2–50 characters.'),
+    description: z.preprocess(
+      (value) => (typeof value === 'string' ? value.trim() : value),
+      z.string().max(160, 'Description must be at most 160 characters.'),
+    ),
+    instructions: z
+      .string()
+      .trim()
+      .min(1, 'Instructions are required.')
+      .max(4000, 'Instructions must be at most 4000 characters.'),
+    tone: aiPersonaToneSchema,
+    verbosity: aiPersonaVerbositySchema,
+  })
+  .strict();
+
+export const aiMessageRoleSchema = z.enum(['user', 'assistant']);
+export const MAX_AI_IMAGES_PER_MESSAGE = 2;
+export const MAX_AI_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_AI_IMAGE_COMBINED_BYTES = 8 * 1024 * 1024;
+export const aiImageMimeTypeSchema = z.enum(['image/jpeg', 'image/png', 'image/webp']);
+export const aiImageAttachmentSchema = z
+  .object({
+    id: uuidSchema,
+    storage_bucket: z.literal('ai-chat-images'),
+    storage_path: attachmentStoragePathSchema,
+    original_filename: z.string().min(1).max(255),
+    mime_type: aiImageMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_AI_IMAGE_BYTES),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    created_at: timestampSchema,
+  })
+  .strict();
+export const aiImageUploadInputSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    original_filename: z.string().trim().min(1).max(255),
+    mime_type: aiImageMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_AI_IMAGE_BYTES),
+  })
+  .strict();
+export const aiImageUploadTargetSchema = z
+  .object({
+    attachment_id: uuidSchema,
+    storage_bucket: z.literal('ai-chat-images'),
+    storage_path: attachmentStoragePathSchema,
+  })
+  .strict();
+export const finalizedAiImageSchema = z
+  .object({
+    attachment_id: uuidSchema,
+    status: z.literal('ready'),
+    mime_type: aiImageMimeTypeSchema,
+    size_bytes: z.number().int().positive().max(MAX_AI_IMAGE_BYTES),
+    original_filename: z.string().min(1).max(255),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+  })
+  .strict();
+export const aiMessageSchema = z
+  .object({
+    id: uuidSchema,
+    conversation_id: uuidSchema,
+    role: aiMessageRoleSchema,
+    content: z.string().min(1).max(40000),
+    client_message_id: uuidSchema,
+    created_at: timestampSchema,
+    attachments: z.array(aiImageAttachmentSchema).max(MAX_AI_IMAGES_PER_MESSAGE).default([]),
+  })
+  .strict();
+export const aiMessageListSchema = z.array(aiMessageSchema);
+
+export const aiMemorySchema = z
+  .object({
+    id: uuidSchema,
+    conversation_id: uuidSchema,
+    category: aiMemoryCategorySchema,
+    content: z.string().min(1).max(500),
+    source_message_id: uuidSchema.nullable(),
+    created_at: timestampSchema,
+    updated_at: timestampSchema,
+  })
+  .strict();
+export const aiMemoryListSchema = z.array(aiMemorySchema);
+
+export const aiMemoryInputSchema = z
+  .object({
+    category: aiMemoryCategorySchema,
+    content: z.string().trim().min(1, 'Memory text is required.').max(500),
+    source_message_id: uuidSchema.nullable().default(null),
+  })
+  .strict();
+
+export const aiMemorySettingsSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    memory_mode: aiMemoryModeSchema,
+  })
+  .strict();
+export const aiDeletedMemoryCountSchema = z.number().int().nonnegative();
+
+export const aiProviderMetadataSchema = z
+  .object({
+    status: z.enum(['ok', 'configuration_error']),
+    provider_mode: z.enum(['openrouter', 'mock']),
+    model: z.string().min(1).max(200),
+    vision_model: z.string().min(1).max(200),
+  })
+  .strict();
+
+export const aiAccessStateSchema = z.enum([
+  'trial_available',
+  'trial_active',
+  'trial_expired',
+  'credits_exhausted',
+  'pro',
+]);
+export const aiAccessSchema = z
+  .object({
+    trial_started_at: timestampSchema.nullable(),
+    trial_expires_at: timestampSchema.nullable(),
+    trial_credits_remaining: z.number().int().nonnegative(),
+    pro_enabled: z.boolean(),
+    access_state: aiAccessStateSchema,
+    can_generate: z.boolean(),
+  })
+  .strict();
+
+export const aiSendInputSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    client_message_id: uuidSchema,
+    content: z.string().trim().min(1).max(8000),
+    attachment_ids: z.array(uuidSchema).max(MAX_AI_IMAGES_PER_MESSAGE).default([]),
+  })
+  .strict();
+
+// Events of the small SSE protocol, validated in the browser before any use.
+export const aiStreamEventSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('start'), run_id: uuidSchema }).strict(),
+  z.object({ type: z.literal('delta'), text: z.string() }).strict(),
+  z
+    .object({
+      type: z.literal('done'),
+      message: z
+        .object({
+          id: uuidSchema,
+          role: z.literal('assistant'),
+          content: z.string().min(1).max(40000),
+          created_at: timestampSchema,
+        })
+        .strict(),
+      credits_remaining: z.number().int().nonnegative().nullable().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('error'),
+      category: z.string().min(1).max(64),
+      credits_remaining: z.number().int().nonnegative().nullable().optional(),
+    })
+    .strict(),
+]);
+
+export const aiErrorCategorySchema = z.enum([
+  'authentication_required',
+  'invalid_request',
+  'ai_conversation_not_found',
+  'ai_agent_unavailable',
+  'ai_run_in_progress',
+  'trial_expired',
+  'credits_exhausted',
+  'rate_limited',
+  'provider_unavailable',
+  'provider_error',
+  'provider_not_configured',
+  'cancelled',
+  'persona_not_found',
+  'persona_limit_reached',
+  'invalid_persona',
+  'memory_not_found',
+  'memory_limit_reached',
+  'invalid_memory',
+  'invalid_memory_source',
+  'invalid_memory_mode',
+  'invalid_image',
+  'image_too_large',
+  'unsupported_image',
+  'image_unavailable',
+  'vision_provider_unavailable',
+  'idempotency_conflict',
+  'session_expired',
+  'backend_unavailable',
+  'unknown_error',
+]);
+
 export const emailSchema = z
   .string()
   .trim()

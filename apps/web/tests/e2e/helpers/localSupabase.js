@@ -74,6 +74,26 @@ export async function generateLocalRecoveryLink(email, redirectTo) {
   return assertLocalUrl(data.properties.action_link);
 }
 
+export async function getLocalUserIdByEmail(email) {
+  const admin = createLocalAdminClient();
+  const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (error) throw error;
+  return data.users.find((user) => user.email === email)?.id ?? null;
+}
+
+// Adjusts a user's AI trial/credit state through the sanctioned service-role
+// function (the same hook future billing uses). Local-only by construction.
+export async function setLocalAiCredits(userId, { credits, trialStartedAt, trialExpiresAt } = {}) {
+  const admin = createLocalAdminClient();
+  const { error } = await admin.rpc('admin_set_ai_credits', {
+    p_user_id: userId,
+    p_trial_credits_remaining: credits ?? null,
+    p_trial_started_at: trialStartedAt ?? null,
+    p_trial_expires_at: trialExpiresAt ?? null,
+  });
+  if (error) throw error;
+}
+
 export async function deleteLocalUsersByEmail(emails) {
   const admin = createLocalAdminClient();
   const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });

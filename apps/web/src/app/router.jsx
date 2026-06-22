@@ -4,6 +4,7 @@ import { AuthenticatedLayout } from './layouts/AuthenticatedLayout.jsx';
 import { SettingsLayout } from './layouts/SettingsLayout.jsx';
 import { ContactsLayout } from './layouts/ContactsLayout.jsx';
 import { MessagingLayout } from './layouts/MessagingLayout.jsx';
+import { AiLayout } from './layouts/AiLayout.jsx';
 import { GuestRoute } from './router/GuestRoute.jsx';
 import { ProtectedRoute } from './router/ProtectedRoute.jsx';
 import { OnboardingRoute } from './router/OnboardingRoute.jsx';
@@ -25,6 +26,8 @@ import { ContactRequestsPage } from '../features/contacts/pages/ContactRequestsP
 import { BlockedUsersPage } from '../features/contacts/pages/BlockedUsersPage.jsx';
 import { InboxPage } from '../features/messaging/pages/InboxPage.jsx';
 import { ConversationPage } from '../features/messaging/pages/ConversationPage.jsx';
+import { AiCataloguePage } from '../features/ai/pages/AiCataloguePage.jsx';
+import { AiConversationPage } from '../features/ai/pages/AiConversationPage.jsx';
 
 export const routes = [
   {
@@ -61,6 +64,14 @@ export const routes = [
             children: [
               { index: true, element: <InboxPage /> },
               { path: ':conversationId', element: <ConversationPage /> },
+            ],
+          },
+          {
+            path: 'ai',
+            element: <AiLayout />,
+            children: [
+              { index: true, element: <AiCataloguePage /> },
+              { path: ':conversationId', element: <AiConversationPage /> },
             ],
           },
           {

@@ -5,6 +5,7 @@ import { accountKeys } from '../../lib/query-keys/account.js';
 import { getMyProfile, getMySettings } from '../../features/profile/api/profileApi.js';
 import { signOutSession } from '../../features/auth/api/authApi.js';
 import { clearAttachmentUrlCache } from '../../features/messaging/queries/attachmentUrlCache.js';
+import { clearAiImageUrlCache } from '../../features/ai/queries/aiImageUrlCache.js';
 import { AuthContext } from './AuthContext.js';
 
 const RECOVERY_KEY = 'council.password-recovery';
@@ -47,6 +48,7 @@ export function AuthProvider({ children, client = getSupabaseClient() }) {
         // receipts, contacts) survives a session change.
         queryClient.clear();
         clearAttachmentUrlCache();
+        clearAiImageUrlCache();
       }
     });
 
@@ -104,6 +106,7 @@ export function AuthProvider({ children, client = getSupabaseClient() }) {
       // content and previews never persist across sessions.
       queryClient.clear();
       clearAttachmentUrlCache();
+      clearAiImageUrlCache();
     },
     [client, queryClient],
   );

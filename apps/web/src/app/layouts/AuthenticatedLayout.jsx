@@ -50,6 +50,7 @@ export function AuthenticatedLayout() {
               </span>
             ) : null}
           </NavLink>
+          <NavLink to="/app/ai">AI</NavLink>
           <NavLink to="/app/contacts">
             Contacts
             {pendingRequests > 0 ? (
