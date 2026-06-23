@@ -23,14 +23,9 @@ describe('createAiStreamParser', () => {
     expect(events).toEqual([{ type: 'delta', text: 'world' }]);
   });
 
-  it('drops malformed JSON and events that fail the contract', () => {
+  it('rejects malformed JSON and events that fail the contract', () => {
     const parser = createAiStreamParser();
-    const events = parser.push(
-      'data: not-json\n\n' +
-        `data: ${JSON.stringify({ type: 'delta' })}\n\n` + // missing text
-        `data: ${JSON.stringify({ type: 'bogus', foo: 1 })}\n\n`,
-    );
-    expect(events).toHaveLength(0);
+    expect(() => parser.push('data: not-json\n\n')).toThrow('invalid_stream');
   });
 
   it('validates the done event shape', () => {
@@ -49,5 +44,52 @@ describe('createAiStreamParser', () => {
     );
     expect(events[0].type).toBe('done');
     expect(events[0].credits_remaining).toBe(18);
+  });
+
+  it('parses a final terminal event without a trailing newline', () => {
+    const parser = createAiStreamParser();
+    const terminal = JSON.stringify({
+      type: 'error',
+      category: 'provider_unavailable',
+      credits_remaining: 19,
+    });
+    expect(parser.finish(`data: ${terminal}`)).toEqual([
+      { type: 'error', category: 'provider_unavailable', credits_remaining: 19 },
+    ]);
+  });
+
+  it('rejects partial JSON at EOF', () => {
+    const parser = createAiStreamParser();
+    parser.push('data: {"type":"done"');
+    expect(() => parser.finish()).toThrow('invalid_stream');
+  });
+
+  it('rejects EOF without a terminal event', () => {
+    const parser = createAiStreamParser();
+    parser.push(`data: ${JSON.stringify({ type: 'delta', text: 'partial' })}\n\n`);
+    expect(() => parser.finish()).toThrow('invalid_stream');
+  });
+
+  it('rejects a second terminal event', () => {
+    const parser = createAiStreamParser();
+    const error = JSON.stringify({ type: 'error', category: 'provider_unavailable' });
+    parser.push(`data: ${error}\n\n`);
+    expect(() => parser.finish(`data: ${error}`)).toThrow('invalid_stream');
+  });
+
+  it('preserves fragmented multibyte UTF-8 through decoder flushing', () => {
+    const decoder = new TextDecoder();
+    const bytes = new TextEncoder().encode(
+      `data: ${JSON.stringify({ type: 'delta', text: 'İstanbul' })}\n\n`,
+    );
+    const parser = createAiStreamParser();
+    const split = bytes.length - 3;
+    const events = [
+      ...parser.push(decoder.decode(bytes.slice(0, split), { stream: true })),
+      ...parser.push(decoder.decode(bytes.slice(split), { stream: true })),
+    ];
+    parser.push(`data: ${JSON.stringify({ type: 'error', category: 'provider_unavailable' })}\n\n`);
+    parser.finish(decoder.decode());
+    expect(events[0].text).toBe('İstanbul');
   });
 });

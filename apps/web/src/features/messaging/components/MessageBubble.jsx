@@ -46,6 +46,10 @@ export function MessageBubble({
   onToggleReaction,
   onJumpToReply,
   onOpenImage,
+  selectionMode = false,
+  selectable = false,
+  selected = false,
+  onSelect,
 }) {
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const isDeleted = message.deleted_at !== null;
@@ -63,9 +67,28 @@ export function MessageBubble({
     <li
       className="message-row"
       data-own={isOwn ? 'true' : undefined}
+      data-selected={selected ? 'true' : undefined}
       id={`message-${message.id}`}
       tabIndex={-1}
     >
+      {selectionMode ? (
+        <label className="message-select-control">
+          <input
+            type="checkbox"
+            checked={selected}
+            disabled={!selectable}
+            onChange={(event) => onSelect?.(event.target.checked)}
+            aria-label={
+              selectable
+                ? `${selected ? 'Remove' : 'Select'} message from ${isOwn ? 'You' : senderName}`
+                : 'This message cannot be forwarded'
+            }
+          />
+          <span className="sr-only">
+            {selectable ? 'Include this text message' : 'No active text to forward'}
+          </span>
+        </label>
+      ) : null}
       <div className="message-bubble" data-own={isOwn ? 'true' : undefined}>
         {showSender && !isOwn ? <p className="message-sender">{senderName}</p> : null}
 
@@ -129,7 +152,7 @@ export function MessageBubble({
         ) : null}
       </div>
 
-      {!isEditing ? (
+      {!isEditing && !selectionMode ? (
         <MessageActions
           isOwn={isOwn}
           canSend={canSend}

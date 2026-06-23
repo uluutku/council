@@ -56,6 +56,9 @@ export function MessageList({
   onRetry,
   onRemoveFailed,
   onOpenImage,
+  selectionMode = false,
+  selectedMessageIds = new Set(),
+  onSelectMessage,
 }) {
   const scrollRef = useRef(null);
   const nearBottomRef = useRef(true);
@@ -212,6 +215,10 @@ export function MessageList({
         onToggleReaction={(emoji, reactedByMe) => onToggleReaction(message, emoji, reactedByMe)}
         onJumpToReply={() => jumpToMessage(message.reply_to_message_id)}
         onOpenImage={onOpenImage}
+        selectionMode={selectionMode}
+        selectable={message.deleted_at === null && Boolean(message.content?.trim())}
+        selected={selectedMessageIds.has(message.id)}
+        onSelect={(selected) => onSelectMessage?.(message, selected)}
       />,
     );
   }

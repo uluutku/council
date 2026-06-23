@@ -29,7 +29,18 @@ export function aiPersonasQueryOptions() {
 export function aiMessagesQueryOptions(conversationId) {
   return {
     queryKey: aiKeys.messages(conversationId),
-    queryFn: () => listAiMessages(conversationId),
+    queryFn: ({ pageParam }) =>
+      listAiMessages(conversationId, {
+        beforeCreatedAt: pageParam?.createdAt ?? null,
+        beforeId: pageParam?.id ?? null,
+        limit: 100,
+      }),
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.length < 100) return undefined;
+      const oldest = lastPage[0];
+      return oldest ? { createdAt: oldest.created_at, id: oldest.id } : undefined;
+    },
     enabled: Boolean(conversationId),
   };
 }

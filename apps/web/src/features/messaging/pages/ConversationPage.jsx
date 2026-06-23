@@ -10,6 +10,7 @@ import { MessageComposer } from '../components/MessageComposer.jsx';
 import { MessagingUnavailableBanner } from '../components/MessagingUnavailableBanner.jsx';
 import { MessagingError } from '../components/MessagingFeedback.jsx';
 import { ImageViewer } from '../components/ImageViewer.jsx';
+import { ForwardToAiDialog } from '../components/ForwardToAiDialog.jsx';
 import { useConversationSummary } from '../hooks/useConversationSummary.js';
 import { useConversationMessages } from '../hooks/useConversationMessages.js';
 import { useConversationRealtime } from '../hooks/useConversationRealtime.js';
@@ -36,8 +37,7 @@ function UnavailableConversation() {
   );
 }
 
-export function ConversationPage() {
-  const { conversationId } = useParams();
+function ConversationPageContent({ conversationId }) {
   const location = useLocation();
   const { user } = useAuth();
   const currentUserId = user?.id ?? null;
@@ -57,6 +57,9 @@ export function ConversationPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [actionError, setActionError] = useState('');
   const [viewerAttachment, setViewerAttachment] = useState(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState(() => new Set());
+  const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
 
   const handlePeerReceipt = useCallback((receipt) => {
     setPeerReceipt((current) => mergePeerReceipt(current, receipt));
@@ -69,6 +72,16 @@ export function ConversationPage() {
   });
 
   const messages = messagesState.messages;
+  const selectedMessages = useMemo(
+    () => messages.filter((message) => selectedMessageIds.has(message.id)),
+    [messages, selectedMessageIds],
+  );
+  const selectableMessageCount = useMemo(
+    () =>
+      messages.filter((message) => message.deleted_at === null && Boolean(message.content?.trim()))
+        .length,
+    [messages],
+  );
   const targetSequence = useMemo(() => highestLoadedSequence(messages), [messages]);
 
   useConversationReceipts({
@@ -105,6 +118,29 @@ export function ConversationPage() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [conversationId, isValidId]);
+
+  const cancelSelection = useCallback(() => {
+    setForwardDialogOpen(false);
+    setSelectionMode(false);
+    setSelectedMessageIds(new Set());
+  }, []);
+
+  const handleSelectMessage = useCallback((message, selected) => {
+    setActionError('');
+    setSelectedMessageIds((current) => {
+      const next = new Set(current);
+      if (selected) {
+        if (next.size >= 20) {
+          setActionError('You can send up to 20 messages at a time.');
+          return current;
+        }
+        next.add(message.id);
+      } else {
+        next.delete(message.id);
+      }
+      return next;
+    });
+  }, []);
 
   const replyReferenceForComposer = useMemo(() => {
     if (!replyTarget) return null;
@@ -187,10 +223,43 @@ export function ConversationPage() {
 
   return (
     <section className="conversation-page" aria-label={`Conversation with ${name}`}>
-      <ConversationHeader peer={peer} realtimeStatus={realtimeStatus} />
+      <ConversationHeader peer={peer} realtimeStatus={realtimeStatus}>
+        {!selectionMode ? (
+          <button
+            type="button"
+            className="button button--secondary button--small"
+            onClick={() => setSelectionMode(true)}
+            disabled={selectableMessageCount === 0}
+          >
+            Select messages
+          </button>
+        ) : null}
+      </ConversationHeader>
 
       {showUnavailable ? <MessagingUnavailableBanner /> : null}
       <FormStatus message={actionError} tone="error" />
+      {selectionMode ? (
+        <div className="message-selection-toolbar" role="region" aria-label="Message selection">
+          <span>{selectedMessageIds.size} selected · maximum 20</span>
+          <div>
+            <button
+              type="button"
+              className="button button--secondary button--small"
+              onClick={cancelSelection}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="button button--small"
+              onClick={() => setForwardDialogOpen(true)}
+              disabled={selectedMessageIds.size === 0}
+            >
+              Send to AI
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {messagesState.isError && !isConversationAccessError(messagesState.error) ? (
         <MessagingError
@@ -226,10 +295,13 @@ export function ConversationPage() {
           onRetry={sender.retry}
           onRemoveFailed={sender.remove}
           onOpenImage={setViewerAttachment}
+          selectionMode={selectionMode}
+          selectedMessageIds={selectedMessageIds}
+          onSelectMessage={handleSelectMessage}
         />
       )}
 
-      {showUnavailable ? null : (
+      {showUnavailable || selectionMode ? null : (
         <MessageComposer
           replyReference={replyReferenceForComposer}
           onCancelReply={() => setReplyTarget(null)}
@@ -256,6 +328,23 @@ export function ConversationPage() {
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {forwardDialogOpen ? (
+        <ForwardToAiDialog
+          open
+          sourceConversationId={conversationId}
+          messages={selectedMessages}
+          currentUserId={currentUserId}
+          contactName={name}
+          onCancel={() => setForwardDialogOpen(false)}
+          onForwardingStarted={cancelSelection}
+        />
+      ) : null}
     </section>
   );
+}
+
+export function ConversationPage() {
+  const { conversationId } = useParams();
+  return <ConversationPageContent key={conversationId} conversationId={conversationId} />;
 }

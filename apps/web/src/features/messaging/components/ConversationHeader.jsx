@@ -5,7 +5,7 @@ import { peerName } from '../utils/peer.js';
 
 // Peer identity header for the active conversation. The back link returns to the
 // inbox and is the primary navigation on narrow screens.
-export function ConversationHeader({ peer, realtimeStatus }) {
+export function ConversationHeader({ peer, realtimeStatus, children = null }) {
   const name = peerName(peer);
 
   return (
@@ -19,6 +19,7 @@ export function ConversationHeader({ peer, realtimeStatus }) {
         {peer?.username ? <p className="conversation-header-username">@{peer.username}</p> : null}
       </div>
       <RealtimeStatusIndicator status={realtimeStatus} />
+      {children}
     </header>
   );
 }

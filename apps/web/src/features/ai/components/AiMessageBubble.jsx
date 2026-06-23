@@ -1,6 +1,8 @@
 // A single AI conversation message rendered as plain text (no Markdown, no raw
 // HTML). White-space is preserved so multi-line answers read naturally.
 import { AiImageAttachments } from './AiImageAttachments.jsx';
+import { AiContextCard } from './AiContextCard.jsx';
+import { AiDocumentAttachments } from './AiDocumentAttachments.jsx';
 
 export function AiMessageBubble({
   role,
@@ -11,6 +13,8 @@ export function AiMessageBubble({
   onRemember,
   conversationId,
   attachments = [],
+  contextImport = null,
+  documents = [],
 }) {
   const isAssistant = role === 'assistant';
   return (
@@ -21,12 +25,16 @@ export function AiMessageBubble({
         data-pending={pending ? 'true' : undefined}
       >
         {isAssistant ? <p className="ai-message-author">{contactName} · AI</p> : null}
+        {!isAssistant ? <AiContextCard contextImport={contextImport} /> : null}
         <p className="ai-message-text">
           {content}
           {streaming ? <span className="ai-stream-caret" aria-hidden="true" /> : null}
         </p>
         {!isAssistant ? (
-          <AiImageAttachments conversationId={conversationId} attachments={attachments} />
+          <>
+            <AiImageAttachments conversationId={conversationId} attachments={attachments} />
+            <AiDocumentAttachments conversationId={conversationId} documents={documents} />
+          </>
         ) : null}
         {!isAssistant && !pending && onRemember ? (
           <button type="button" className="ai-message-remember" onClick={onRemember}>

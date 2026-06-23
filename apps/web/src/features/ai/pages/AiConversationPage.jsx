@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
 import { aiConversationsQueryOptions, aiMessagesQueryOptions } from '../queries/aiQueries.js';
 import { useAiChat } from '../hooks/useAiChat.js';
@@ -12,6 +12,8 @@ import { AiAccessSummary } from '../components/AiAccessSummary.jsx';
 import { AiMemoryPanel } from '../components/AiMemoryPanel.jsx';
 import { AiProviderBadge } from '../components/AiProviderBadge.jsx';
 import { useAiImageDraft } from '../hooks/useAiImageDraft.js';
+import { useUiStore } from '../../../stores/uiStore.js';
+import { useAiDocumentDraft } from '../hooks/useAiDocumentDraft.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -31,9 +33,11 @@ function UnavailableConversation() {
 export function AiConversationPage() {
   const { conversationId } = useParams();
   const location = useLocation();
+  const pendingAiForward = useUiStore((state) => state.pendingAiForward);
+  const clearPendingAiForward = useUiStore((state) => state.clearPendingAiForward);
   const isValidId = typeof conversationId === 'string' && UUID_PATTERN.test(conversationId);
 
-  const messagesQuery = useQuery({
+  const messagesQuery = useInfiniteQuery({
     ...aiMessagesQueryOptions(isValidId ? conversationId : null),
     enabled: isValidId,
   });
@@ -41,9 +45,11 @@ export function AiConversationPage() {
   const { data: access } = useAiAccess();
   const chat = useAiChat(conversationId);
   const images = useAiImageDraft(conversationId);
+  const documents = useAiDocumentDraft(conversationId);
   const [draft, setDraft] = useState('');
   const [draftKey, setDraftKey] = useState(0);
   const [memoryPanel, setMemoryPanel] = useState(null);
+  const startedForwardRef = useRef(null);
 
   const conversation = conversations.find((entry) => entry.id === conversationId);
   const displayName =
@@ -54,7 +60,24 @@ export function AiConversationPage() {
 
   const canGenerate = (access ? access.can_generate : true) && !isArchived;
   const composerDisabled = !canGenerate;
-  const messages = messagesQuery.data ?? [];
+  const messages = (messagesQuery.data?.pages ?? [])
+    .flat()
+    .filter((message, index, all) => all.findIndex((item) => item.id === message.id) === index)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
+
+  useEffect(() => {
+    const request =
+      pendingAiForward?.conversationId === conversationId
+        ? pendingAiForward.request
+        : location.state?.forwardRequest;
+    if (!request || startedForwardRef.current === request.clientRequestId) return;
+    const timer = window.setTimeout(() => {
+      startedForwardRef.current = request.clientRequestId;
+      chat.sendForwarded(request);
+      clearPendingAiForward();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [chat, clearPendingAiForward, conversationId, location.state, pendingAiForward]);
 
   const handleSelectStarter = useCallback((prompt) => {
     setDraft(prompt);
@@ -114,6 +137,9 @@ export function AiConversationPage() {
         composerDisabled={composerDisabled}
         contactName={displayName}
         onRememberMessage={handleRememberMessage}
+        hasOlderMessages={messagesQuery.hasNextPage}
+        isLoadingOlder={messagesQuery.isFetchingNextPage}
+        onLoadOlder={() => messagesQuery.fetchNextPage()}
       />
 
       {chat.errorCategory ? (
@@ -152,6 +178,7 @@ export function AiConversationPage() {
           initialValue={draft}
           contactName={displayName}
           images={images}
+          documents={documents}
         />
       )}
 

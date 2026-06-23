@@ -6,6 +6,8 @@ import { getMyProfile, getMySettings } from '../../features/profile/api/profileA
 import { signOutSession } from '../../features/auth/api/authApi.js';
 import { clearAttachmentUrlCache } from '../../features/messaging/queries/attachmentUrlCache.js';
 import { clearAiImageUrlCache } from '../../features/ai/queries/aiImageUrlCache.js';
+import { useUiStore } from '../../stores/uiStore.js';
+import { clearAiDocumentUrlCache } from '../../features/ai/queries/aiDocumentUrlCache.js';
 import { AuthContext } from './AuthContext.js';
 
 const RECOVERY_KEY = 'council.password-recovery';
@@ -49,6 +51,8 @@ export function AuthProvider({ children, client = getSupabaseClient() }) {
         queryClient.clear();
         clearAttachmentUrlCache();
         clearAiImageUrlCache();
+        clearAiDocumentUrlCache();
+        useUiStore.getState().clearPendingAiForward();
       }
     });
 
@@ -107,6 +111,8 @@ export function AuthProvider({ children, client = getSupabaseClient() }) {
       queryClient.clear();
       clearAttachmentUrlCache();
       clearAiImageUrlCache();
+      clearAiDocumentUrlCache();
+      useUiStore.getState().clearPendingAiForward();
     },
     [client, queryClient],
   );

@@ -15,6 +15,9 @@ export function AiMessageList({
   composerDisabled,
   contactName,
   onRememberMessage,
+  hasOlderMessages,
+  isLoadingOlder,
+  onLoadOlder,
 }) {
   const scrollRef = useRef(null);
 
@@ -47,6 +50,16 @@ export function AiMessageList({
         {isStreaming ? 'Council Assistant is generating a response.' : ''}
       </p>
       <div className="ai-message-scroll" ref={scrollRef}>
+        {hasOlderMessages ? (
+          <button
+            type="button"
+            className="button button--secondary button--small ai-load-older"
+            onClick={onLoadOlder}
+            disabled={isLoadingOlder}
+          >
+            {isLoadingOlder ? 'Loading…' : 'Load older messages'}
+          </button>
+        ) : null}
         {isEmpty ? (
           <div className="ai-empty-state">
             <p className="ai-empty-title">Start a conversation with Council Assistant.</p>
@@ -65,6 +78,8 @@ export function AiMessageList({
                 contactName={contactName}
                 conversationId={message.conversation_id}
                 attachments={message.attachments}
+                documents={message.documents}
+                contextImport={message.context_import}
                 onRemember={
                   message.role === 'user' ? () => onRememberMessage?.(message) : undefined
                 }
@@ -78,6 +93,8 @@ export function AiMessageList({
                 contactName={contactName}
                 conversationId={pendingUserMessage.conversation_id}
                 attachments={pendingUserMessage.attachments}
+                documents={pendingUserMessage.documents}
+                contextImport={pendingUserMessage.context_import}
               />
             ) : null}
             {isStreaming ? (

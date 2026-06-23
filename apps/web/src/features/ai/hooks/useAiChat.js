@@ -43,7 +43,14 @@ export function useAiChat(conversationId) {
   const queryClient = useQueryClient();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const abortRef = useRef(null);
-  const lastRef = useRef({ clientMessageId: null, content: null, attachments: [] });
+  const lastRef = useRef({
+    clientMessageId: null,
+    content: null,
+    attachments: [],
+    documents: [],
+    contextImport: null,
+    contextCard: null,
+  });
 
   useEffect(() => {
     abortRef.current?.abort();
@@ -54,10 +61,26 @@ export function useAiChat(conversationId) {
   }, [conversationId]);
 
   const run = useCallback(
-    async (clientMessageId, content, attachments = []) => {
+    async (
+      clientMessageId,
+      content,
+      attachments = [],
+      documents = [],
+      contextImport = null,
+      contextCard = null,
+    ) => {
       const controller = new AbortController();
       abortRef.current = controller;
-      lastRef.current = { clientMessageId, content, attachments };
+      lastRef.current = {
+        clientMessageId,
+        content,
+        attachments,
+        documents,
+        contextImport,
+        contextCard,
+      };
+      const visibleContent =
+        contextImport && content.trim() === '' ? 'Please review the forwarded context.' : content;
       const messageAttachments = attachments.map((attachment) => ({
         id: attachment.attachmentId,
         storage_bucket: attachment.storageBucket,
@@ -70,6 +93,15 @@ export function useAiChat(conversationId) {
         created_at: new Date().toISOString(),
         preview_url: attachment.previewUrl,
       }));
+      const messageDocuments = documents.map((document) => ({
+        id: document.attachmentId,
+        original_filename: document.filename,
+        mime_type: document.mimeType,
+        size_bytes: document.sizeBytes,
+        page_count: null,
+        status: 'attached',
+        created_at: new Date().toISOString(),
+      }));
 
       dispatch({
         type: 'start',
@@ -77,10 +109,12 @@ export function useAiChat(conversationId) {
           id: clientMessageId,
           conversation_id: conversationId,
           role: 'user',
-          content,
+          content: visibleContent,
           client_message_id: clientMessageId,
           created_at: new Date().toISOString(),
           attachments: messageAttachments,
+          documents: messageDocuments,
+          context_import: contextCard,
         },
       });
 
@@ -90,6 +124,8 @@ export function useAiChat(conversationId) {
           clientMessageId,
           content,
           attachmentIds: attachments.map((attachment) => attachment.attachmentId),
+          documentAttachmentIds: documents.map((document) => document.attachmentId),
+          contextImport,
           signal: controller.signal,
           onEvent: (event) => {
             if (event.type === 'delta') {
@@ -103,10 +139,12 @@ export function useAiChat(conversationId) {
                   id: clientMessageId,
                   conversation_id: conversationId,
                   role: 'user',
-                  content,
+                  content: visibleContent,
                   client_message_id: clientMessageId,
                   created_at: new Date().toISOString(),
                   attachments: messageAttachments.map(({ preview_url: _preview, ...item }) => item),
+                  documents: messageDocuments,
+                  context_import: contextCard,
                 },
                 {
                   ...event.message,
@@ -152,13 +190,39 @@ export function useAiChat(conversationId) {
   );
 
   const send = useCallback(
-    (content, attachments = []) => {
+    (content, attachments = [], documents = []) => {
       const trimmed = typeof content === 'string' ? content.trim() : '';
       if (trimmed === '' || state.status === 'streaming') return;
       for (const previous of lastRef.current.attachments) {
         revokeAiImagePreview(previous.previewUrl);
       }
-      run(globalThis.crypto.randomUUID(), trimmed, attachments);
+      run(globalThis.crypto.randomUUID(), trimmed, attachments, documents);
+      return true;
+    },
+    [run, state.status],
+  );
+
+  const sendForwarded = useCallback(
+    ({
+      clientRequestId,
+      instruction = '',
+      sourceConversationId,
+      sourceMessageIds,
+      contextCard,
+    }) => {
+      if (state.status === 'streaming') return false;
+      const trimmed = typeof instruction === 'string' ? instruction.trim() : '';
+      run(
+        clientRequestId,
+        trimmed,
+        [],
+        [],
+        {
+          source_conversation_id: sourceConversationId,
+          source_message_ids: sourceMessageIds,
+        },
+        contextCard,
+      );
       return true;
     },
     [run, state.status],
@@ -166,8 +230,11 @@ export function useAiChat(conversationId) {
 
   const retry = useCallback(() => {
     if (state.status === 'streaming') return;
-    const { clientMessageId, content, attachments } = lastRef.current;
-    if (clientMessageId && content) run(clientMessageId, content, attachments);
+    const { clientMessageId, content, attachments, documents, contextImport, contextCard } =
+      lastRef.current;
+    if (clientMessageId && (content || contextImport)) {
+      run(clientMessageId, content, attachments, documents, contextImport, contextCard);
+    }
   }, [run, state.status]);
 
   const stop = useCallback(() => abortRef.current?.abort(), []);
@@ -179,6 +246,7 @@ export function useAiChat(conversationId) {
     assistantText: state.assistantText,
     errorCategory: state.errorCategory,
     send,
+    sendForwarded,
     retry,
     stop,
   };
