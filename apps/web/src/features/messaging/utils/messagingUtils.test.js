@@ -7,6 +7,8 @@ import { summarizeReactions } from './reactions.js';
 import { peerInitials, peerName } from './peer.js';
 import { isConversationAccessError, messagingErrorMessage } from '../api/messagingErrorMessages.js';
 import { MessagingApiError } from '../api/messagingErrors.js';
+import { filterConversations } from '../queries/conversationsQuery.js';
+import { makeConversation } from '../test/fixtures.js';
 
 describe('tokenizeMessageContent', () => {
   it('returns plain text tokens for content without links', () => {
@@ -162,5 +164,24 @@ describe('messagingErrorMessage', () => {
   it('flags access errors distinctly from recoverable errors', () => {
     expect(isConversationAccessError(new MessagingApiError('conversation_not_found'))).toBe(true);
     expect(isConversationAccessError(new MessagingApiError('backend_unavailable'))).toBe(false);
+  });
+});
+
+describe('inbox filters', () => {
+  it('filters unread and muted conversations', () => {
+    const all = [
+      makeConversation({ conversation_id: '30000000-0000-4000-8000-000000000001' }),
+      makeConversation({
+        conversation_id: '30000000-0000-4000-8000-000000000002',
+        unread_count: 2,
+      }),
+      makeConversation({
+        conversation_id: '30000000-0000-4000-8000-000000000003',
+        is_muted: true,
+      }),
+    ];
+    expect(filterConversations(all, 'all')).toHaveLength(3);
+    expect(filterConversations(all, 'unread')).toEqual([all[1]]);
+    expect(filterConversations(all, 'muted')).toEqual([all[2]]);
   });
 });

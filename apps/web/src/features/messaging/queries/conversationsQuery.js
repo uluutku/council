@@ -64,3 +64,13 @@ export function totalUnread(data) {
     0,
   );
 }
+
+export function filterConversations(conversations, filter) {
+  if (filter === 'unread') {
+    return conversations.filter((conversation) => conversation.unread_count > 0);
+  }
+  if (filter === 'muted') {
+    return conversations.filter((conversation) => conversation.is_muted);
+  }
+  return conversations;
+}

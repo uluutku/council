@@ -4,6 +4,7 @@ import { userInboxRealtimeTopic } from './topics.js';
 const INBOX_EVENTS = [
   'conversation.created',
   'conversation.changed',
+  'message.incoming',
   'messaging.availability_changed',
 ];
 

@@ -14,13 +14,24 @@ export function AiAccessSummary({ access, variant = 'full' }) {
     access_state: state,
     trial_credits_remaining: credits,
     trial_expires_at: expiresAt,
+    pro_credits_remaining: proCredits,
+    pro_expires_at: proExpiresAt,
   } = access;
   const expiry = formatExpiry(expiresAt);
 
   if (state === 'pro') {
+    if (typeof proCredits !== 'number') {
+      return (
+        <p className="ai-access" data-variant={variant} data-state="pro">
+          Pro access is enabled.
+        </p>
+      );
+    }
     return (
       <p className="ai-access" data-variant={variant} data-state="pro">
-        Pro access is enabled.
+        <span className="ai-access-credits">{proCredits}</span> Premium credit
+        {proCredits === 1 ? '' : 's'} remaining
+        {formatExpiry(proExpiresAt) ? ` · access ends ${formatExpiry(proExpiresAt)}` : ''}
       </p>
     );
   }
@@ -28,7 +39,7 @@ export function AiAccessSummary({ access, variant = 'full' }) {
   if (state === 'trial_expired') {
     return (
       <p className="ai-access" data-variant={variant} data-state="expired" role="status">
-        Your AI trial has ended. Pro billing is not available in this build yet.
+        Your AI trial has ended. A manually issued Premium code can add access.
       </p>
     );
   }
@@ -36,7 +47,8 @@ export function AiAccessSummary({ access, variant = 'full' }) {
   if (state === 'credits_exhausted') {
     return (
       <p className="ai-access" data-variant={variant} data-state="exhausted" role="status">
-        Your AI trial credits are used up. Pro billing is not available in this build yet.
+        Your AI trial credits are used up. Pro billing is not available in this build; manually
+        issued Premium codes can add access.
       </p>
     );
   }

@@ -59,6 +59,7 @@ export function MessageList({
   selectionMode = false,
   selectedMessageIds = new Set(),
   onSelectMessage,
+  highlightMessageId = null,
 }) {
   const scrollRef = useRef(null);
   const nearBottomRef = useRef(true);
@@ -68,6 +69,7 @@ export function MessageList({
   const prevOutgoingCountRef = useRef(0);
   const olderFetchHeightRef = useRef(null);
   const [showNewIndicator, setShowNewIndicator] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null);
 
   const messageById = new Map(messages.map((message) => [message.id, message]));
   const newestOwn = [...messages]
@@ -143,10 +145,19 @@ export function MessageList({
     const element = document.getElementById(`message-${messageId}`);
     if (!element) return;
     element.scrollIntoView({ block: 'center' });
-    element.classList.add('message-row--highlight');
+    setHighlightedMessageId(messageId);
     element.focus({ preventScroll: true });
-    window.setTimeout(() => element.classList.remove('message-row--highlight'), 1600);
+    window.setTimeout(
+      () => setHighlightedMessageId((current) => (current === messageId ? null : current)),
+      4_000,
+    );
   }, []);
+
+  useEffect(() => {
+    if (highlightMessageId && messages.some((message) => message.id === highlightMessageId)) {
+      window.requestAnimationFrame(() => jumpToMessage(highlightMessageId));
+    }
+  }, [highlightMessageId, jumpToMessage, messages]);
 
   // Announce arriving messages without stealing focus.
   useEffect(() => {
@@ -219,6 +230,7 @@ export function MessageList({
         selectable={message.deleted_at === null && Boolean(message.content?.trim())}
         selected={selectedMessageIds.has(message.id)}
         onSelect={(selected) => onSelectMessage?.(message, selected)}
+        highlighted={message.id === highlightedMessageId}
       />,
     );
   }

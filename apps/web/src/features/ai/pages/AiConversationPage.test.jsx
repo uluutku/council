@@ -27,14 +27,17 @@ vi.mock('../api/aiApi.js', () => ({
   setAiMemoryMode: vi.fn(),
 }));
 vi.mock('../api/aiChatStream.js', () => ({ streamAiChat: vi.fn() }));
+vi.mock('../../artifacts/api/artifactsApi.js', () => ({ createArtifact: vi.fn() }));
 
 import * as aiApi from '../api/aiApi.js';
 import { streamAiChat } from '../api/aiChatStream.js';
+import { createArtifact } from '../../artifacts/api/artifactsApi.js';
 
 function renderConversation() {
   return renderWithAi(
     <Routes>
       <Route path="/app/ai/:conversationId" element={<AiConversationPage />} />
+      <Route path="/app/artifacts/:artifactId" element={<p>Artifact opened</p>} />
     </Routes>,
     { initialEntries: [`/app/ai/${CONVERSATION_ID}`] },
   );
@@ -287,6 +290,48 @@ describe('AiConversationPage', () => {
           source_message_id: message.id,
         }),
       ),
+    );
+  });
+
+  it('saves an assistant response as an artifact and opens it', async () => {
+    const assistant = makeAiMessage({
+      id: 'f1000000-0000-4000-8000-000000000001',
+      role: 'assistant',
+      content: 'A weekly plan',
+    });
+    aiApi.listAiMessages.mockResolvedValue([assistant]);
+    createArtifact.mockResolvedValue({
+      id: 'f2000000-0000-4000-8000-000000000002',
+      ai_conversation_id: CONVERSATION_ID,
+      agent_id: 'a0000000-0000-4000-8000-000000000001',
+      persona_id: null,
+      type: 'plan',
+      title: 'Weekly plan',
+      current_version_number: 1,
+      current_content: 'A weekly plan',
+      ai_contact_name: 'Council Assistant',
+      ai_revision_available: true,
+      created_at: '2026-06-23T10:00:00+00:00',
+      updated_at: '2026-06-23T10:00:00+00:00',
+      archived_at: null,
+      versions: [],
+    });
+    renderConversation();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Save as artifact' }));
+    await userEvent.selectOptions(screen.getByLabelText('Artifact type'), 'plan');
+    await userEvent.clear(screen.getByLabelText('Title'));
+    await userEvent.type(screen.getByLabelText('Title'), 'Weekly plan');
+    await userEvent.click(screen.getByRole('button', { name: 'Save artifact' }));
+
+    expect(await screen.findByText('Artifact opened')).toBeInTheDocument();
+    expect(createArtifact).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source_ai_message_id: assistant.id,
+        type: 'plan',
+        title: 'Weekly plan',
+        content: assistant.content,
+      }),
     );
   });
 });

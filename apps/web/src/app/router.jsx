@@ -26,8 +26,12 @@ import { ContactRequestsPage } from '../features/contacts/pages/ContactRequestsP
 import { BlockedUsersPage } from '../features/contacts/pages/BlockedUsersPage.jsx';
 import { InboxPage } from '../features/messaging/pages/InboxPage.jsx';
 import { ConversationPage } from '../features/messaging/pages/ConversationPage.jsx';
+import { MessageSearchPage } from '../features/messaging/pages/MessageSearchPage.jsx';
 import { AiCataloguePage } from '../features/ai/pages/AiCataloguePage.jsx';
 import { AiConversationPage } from '../features/ai/pages/AiConversationPage.jsx';
+import { ArtifactsPage } from '../features/artifacts/pages/ArtifactsPage.jsx';
+import { ArtifactDetailPage } from '../features/artifacts/pages/ArtifactDetailPage.jsx';
+import { AccessSettingsPage } from '../features/access/pages/AccessSettingsPage.jsx';
 
 export const routes = [
   {
@@ -63,6 +67,7 @@ export const routes = [
             element: <MessagingLayout />,
             children: [
               { index: true, element: <InboxPage /> },
+              { path: 'search', element: <MessageSearchPage /> },
               { path: ':conversationId', element: <ConversationPage /> },
             ],
           },
@@ -83,6 +88,8 @@ export const routes = [
               { path: 'requests', element: <ContactRequestsPage /> },
             ],
           },
+          { path: 'artifacts', element: <ArtifactsPage /> },
+          { path: 'artifacts/:artifactId', element: <ArtifactDetailPage /> },
           {
             path: 'settings',
             element: <SettingsLayout />,
@@ -90,6 +97,7 @@ export const routes = [
               { index: true, element: <ProfileSettingsPage /> },
               { path: 'profile', element: <ProfileSettingsPage /> },
               { path: 'preferences', element: <PreferencesSettingsPage /> },
+              { path: 'access', element: <AccessSettingsPage /> },
               { path: 'security', element: <SecuritySettingsPage /> },
               { path: 'blocked', element: <BlockedUsersPage /> },
             ],

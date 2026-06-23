@@ -18,6 +18,11 @@ import { useSendMessage } from '../hooks/useSendMessage.js';
 import { useAttachmentDraft } from '../hooks/useAttachmentDraft.js';
 import { useMessageMutations } from '../hooks/useMessageMutations.js';
 import { useConversationReceipts } from '../hooks/useConversationReceipts.js';
+import { useTypingIndicator } from '../hooks/useTypingIndicator.js';
+import { usePresence } from '../hooks/usePresence.js';
+import { getMessageWindow, setConversationMute } from '../api/messagingApi.js';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { messagingKeys } from '../../../lib/query-keys/messaging.js';
 import { conversationPeer, peerName } from '../utils/peer.js';
 import { highestLoadedSequence } from '../utils/messageList.js';
 import { previewExcerpt } from '../utils/messageContent.js';
@@ -40,6 +45,7 @@ function UnavailableConversation() {
 function ConversationPageContent({ conversationId }) {
   const location = useLocation();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const currentUserId = user?.id ?? null;
 
   const isValidId = typeof conversationId === 'string' && UUID_PATTERN.test(conversationId);
@@ -49,6 +55,7 @@ function ConversationPageContent({ conversationId }) {
   const mutations = useMessageMutations(conversationId);
   const sender = useSendMessage(conversationId);
   const attachmentDraft = useAttachmentDraft(conversationId);
+  const typing = useTypingIndicator(isValidId ? conversationId : null);
 
   const [peerReceipt, setPeerReceipt] = useState({ readSequence: 0, deliveredSequence: 0 });
   const [replyTarget, setReplyTarget] = useState(null);
@@ -60,6 +67,8 @@ function ConversationPageContent({ conversationId }) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState(() => new Set());
   const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
+  const targetMessageId =
+    location.state?.messageId ?? new URLSearchParams(location.search).get('message');
 
   const handlePeerReceipt = useCallback((receipt) => {
     setPeerReceipt((current) => mergePeerReceipt(current, receipt));
@@ -96,6 +105,17 @@ function ConversationPageContent({ conversationId }) {
     () => conversationPeer(summary) ?? location.state?.peer ?? null,
     [summary, location.state],
   );
+  const presenceMap = usePresence(peer?.id ? [peer.id] : []);
+  const presence = peer?.id ? (presenceMap.get(peer.id) ?? null) : null;
+  const mute = useMutation({
+    mutationFn: ({ durationSeconds, forever }) =>
+      setConversationMute({
+        conversation_id: conversationId,
+        duration_seconds: durationSeconds,
+        forever,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: messagingKeys.conversations() }),
+  });
   const name = peer ? peerName(peer) : 'Conversation';
   usePageTitle(name === 'Conversation' ? 'Messages' : name);
 
@@ -118,6 +138,18 @@ function ConversationPageContent({ conversationId }) {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [conversationId, isValidId]);
+
+  useEffect(() => {
+    if (!isValidId || !targetMessageId) return;
+    getMessageWindow(conversationId, targetMessageId)
+      .then((windowMessages) => {
+        queryClient.setQueryData(messagingKeys.messages(conversationId), {
+          pages: [windowMessages],
+          pageParams: [null],
+        });
+      })
+      .catch(() => {});
+  }, [conversationId, isValidId, queryClient, targetMessageId]);
 
   const cancelSelection = useCallback(() => {
     setForwardDialogOpen(false);
@@ -157,12 +189,13 @@ function ConversationPageContent({ conversationId }) {
 
   const handleSend = useCallback(
     (content) => {
+      typing.stop();
       const drafts = attachmentDraft.hasAny ? attachmentDraft.consume() : [];
       const clientMessageId = sender.send(content, replyTarget?.id ?? null, drafts);
       if (clientMessageId) setReplyTarget(null);
       return clientMessageId;
     },
-    [sender, replyTarget, attachmentDraft],
+    [sender, replyTarget, attachmentDraft, typing],
   );
 
   // Derive the visible viewer attachment so a deleted (or paged-out) message
@@ -223,7 +256,34 @@ function ConversationPageContent({ conversationId }) {
 
   return (
     <section className="conversation-page" aria-label={`Conversation with ${name}`}>
-      <ConversationHeader peer={peer} realtimeStatus={realtimeStatus}>
+      <ConversationHeader
+        peer={peer}
+        realtimeStatus={realtimeStatus}
+        presence={presence}
+        isTyping={typing.peerTyping}
+      >
+        <label className="conversation-mute-control">
+          <span className="sr-only">Mute conversation</span>
+          <select
+            aria-label="Mute conversation"
+            value={summary?.is_muted ? 'muted' : ''}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value === 'hour') mute.mutate({ durationSeconds: 3600, forever: false });
+              if (value === 'eight') mute.mutate({ durationSeconds: 28800, forever: false });
+              if (value === 'week') mute.mutate({ durationSeconds: 604800, forever: false });
+              if (value === 'forever') mute.mutate({ durationSeconds: null, forever: true });
+              if (value === '') mute.mutate({ durationSeconds: null, forever: false });
+            }}
+          >
+            <option value="">{summary?.is_muted ? 'Unmute' : 'Notifications on'}</option>
+            <option value="hour">Mute 1 hour</option>
+            <option value="eight">Mute 8 hours</option>
+            <option value="week">Mute 1 week</option>
+            <option value="forever">Mute forever</option>
+            {summary?.is_muted ? <option value="muted">Muted</option> : null}
+          </select>
+        </label>
         {!selectionMode ? (
           <button
             type="button"
@@ -298,6 +358,7 @@ function ConversationPageContent({ conversationId }) {
           selectionMode={selectionMode}
           selectedMessageIds={selectedMessageIds}
           onSelectMessage={handleSelectMessage}
+          highlightMessageId={targetMessageId}
         />
       )}
 
@@ -308,6 +369,8 @@ function ConversationPageContent({ conversationId }) {
           onSend={handleSend}
           autoFocusKey={conversationId}
           attachments={attachmentDraft}
+          onTypingChange={typing.update}
+          onBlur={typing.stop}
         />
       )}
 

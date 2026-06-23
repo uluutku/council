@@ -109,8 +109,8 @@ select ok(
 );
 
 select ok(
-  not has_table_privilege('authenticated', 'realtime.messages', 'INSERT'),
-  'authenticated clients cannot insert arbitrary broadcasts'
+  has_table_privilege('authenticated', 'realtime.messages', 'INSERT'),
+  'authenticated clients can attempt policy-limited ephemeral broadcasts'
 );
 select ok(
   not has_table_privilege('authenticated', 'realtime.messages', 'UPDATE'),

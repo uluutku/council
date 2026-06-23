@@ -40,6 +40,10 @@ const KNOWN_CATEGORIES = new Set([
   'document_unreadable',
   'document_text_too_long',
   'pdf_parser_unavailable',
+  'artifact_not_found',
+  'artifact_archived',
+  'artifact_limit_reached',
+  'artifact_version_conflict',
 ]);
 
 export function mapAiError(error) {

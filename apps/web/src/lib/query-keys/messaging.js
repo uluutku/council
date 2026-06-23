@@ -7,4 +7,6 @@ export const messagingKeys = {
   all: ['messaging'],
   conversations: () => [...messagingKeys.all, 'conversations'],
   messages: (conversationId) => [...messagingKeys.all, 'messages', conversationId],
+  presence: (userIds) => [...messagingKeys.all, 'presence', ...userIds],
+  search: (query) => [...messagingKeys.all, 'search', query],
 };

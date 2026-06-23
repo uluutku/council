@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   deleteLocalUsersByEmail,
+  createLocalPremiumCode,
   getLocalUserIdByEmail,
   setLocalAiCredits,
 } from './helpers/localSupabase.js';
@@ -140,6 +141,65 @@ test.describe('AI contacts and personas', () => {
       await expect(page.getByText('message for council', { exact: true })).toBeVisible({
         timeout: 20_000,
       });
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('renders streamed AI Markdown safely with tables and copyable code', async ({ browser }) => {
+    test.setTimeout(90_000);
+    const { context, page } = await newUserContext(browser, 'markdown');
+    try {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+      await openBuiltin(page, 'Council Assistant');
+      await page
+        .getByLabel('Message the assistant')
+        .fill(
+          'Reply with a heading, checklist, Markdown table, blockquote and JavaScript code block.',
+        );
+      await page.getByRole('button', { name: 'Send' }).click();
+      const assistant = page.locator('.ai-message-row[data-role="assistant"]').last();
+      await expect(assistant.getByRole('heading', { name: 'Safe Markdown demo' })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(assistant.getByRole('checkbox')).toHaveCount(2);
+      await expect(assistant.getByRole('table')).toBeVisible();
+      await expect(assistant.getByRole('link', { name: 'Council' })).toHaveAttribute(
+        'rel',
+        'noopener noreferrer',
+      );
+      await expect(assistant.getByText('javascript', { exact: true })).toBeVisible();
+      await assistant.getByRole('button', { name: 'Copy code' }).click();
+      await expect(assistant.getByRole('status')).toHaveText('Code copied.');
+      await expect(assistant.locator('img')).toHaveCount(0);
+      await expect(assistant.locator('script')).toHaveCount(0);
+      await expect(assistant.getByRole('link', { name: 'Unsafe' })).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('redeems a local Premium code and consumes the Premium credit pool', async ({ browser }) => {
+    test.setTimeout(120_000);
+    const { context, page } = await newUserContext(browser, 'premium');
+    try {
+      const code = await createLocalPremiumCode({ days: 30, credits: 100 });
+      await page.goto('/app/settings/access');
+      await page.getByLabel('Premium access code').fill(code);
+      await page.getByRole('button', { name: 'Redeem code' }).click();
+      await expect(page.getByText('Premium access added.')).toBeVisible();
+      await expect(page.getByRole('definition').filter({ hasText: '100' })).toBeVisible();
+
+      await openBuiltin(page, 'Council Assistant');
+      await sendAndAwait(page, 'Use one Premium credit.');
+      await expect(page.getByText(/99 Premium credits remaining/i).first()).toBeVisible({
+        timeout: 20_000,
+      });
+
+      await page.goto('/app/settings/access');
+      await page.getByLabel('Premium access code').fill(code);
+      await page.getByRole('button', { name: 'Redeem code' }).click();
+      await expect(page.getByText('This access code is invalid or unavailable.')).toBeVisible();
     } finally {
       await context.close();
     }
@@ -552,6 +612,78 @@ test.describe('AI contacts and personas', () => {
     } finally {
       await a.context.close();
       await b.context.close();
+    }
+  });
+
+  test('saves, edits, revises, reloads, and restores an AI artifact', async ({ browser }) => {
+    test.setTimeout(150_000);
+    const { context, page } = await newUserContext(browser, 'artifactflow');
+    try {
+      await openBuiltin(page, 'Council Assistant');
+      await page.getByLabel('Message the assistant').fill('Create a weekly plan.');
+      await page.getByRole('button', { name: 'Send' }).click();
+      await expect(await lastAssistant(page)).toContainText('Council Assistant', {
+        timeout: 30_000,
+      });
+      await page.getByRole('button', { name: 'Save as artifact' }).last().click();
+      await page.getByLabel('Artifact type').selectOption('plan');
+      await page.getByLabel('Title').fill('Weekly launch plan');
+      await page.getByRole('button', { name: 'Save artifact' }).click();
+      await page.waitForURL(/\/app\/artifacts\/[0-9a-f-]{36}/);
+
+      const editor = page.getByLabel('Current saved content');
+      await editor.fill('Manual version of the weekly launch plan.');
+      await page.getByRole('button', { name: 'Save manual revision' }).click();
+      await expect(page.getByText(/Version 2/)).toBeVisible();
+
+      const revisionInstruction = page.getByLabel('Revision instruction');
+      await expect(revisionInstruction).toBeEditable();
+      await revisionInstruction.fill('Make the plan more concise.');
+      await page.getByRole('button', { name: 'Propose revision' }).click();
+      await expect(page.getByRole('heading', { name: 'Proposed revision' })).toBeVisible();
+      await page.getByRole('button', { name: 'Save revision' }).click();
+      await expect(page.getByText(/Version 3/)).toBeVisible();
+
+      await page.reload();
+      await expect(page.getByText('Weekly launch plan', { exact: false })).toBeVisible();
+      const restoreButtons = page.getByRole('button', { name: 'Restore' });
+      await restoreButtons.last().click();
+      await expect(page.getByText(/Version 4/)).toBeVisible();
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('exports a saved artifact and denies access to another user', async ({ browser }) => {
+    test.setTimeout(150_000);
+    const owner = await newUserContext(browser, 'artifactowner');
+    const other = await newUserContext(browser, 'artifactother');
+    try {
+      await openBuiltin(owner.page, 'Writing Editor');
+      await owner.page.getByLabel('Message the assistant').fill('Create a short checklist.');
+      await owner.page.getByRole('button', { name: 'Send' }).click();
+      await expect(await lastAssistant(owner.page)).toContainText('Council Assistant', {
+        timeout: 30_000,
+      });
+      await owner.page.getByRole('button', { name: 'Save as artifact' }).last().click();
+      await owner.page.getByLabel('Artifact type').selectOption('checklist');
+      await owner.page.getByLabel('Title').fill('Release checklist');
+      await owner.page.getByLabel('Content preview').fill('- [ ] Review\n- [x] Test');
+      await owner.page.getByRole('button', { name: 'Save artifact' }).click();
+      await owner.page.waitForURL(/\/app\/artifacts\/[0-9a-f-]{36}/);
+      const artifactPath = new URL(owner.page.url()).pathname;
+
+      const downloadPromise = owner.page.waitForEvent('download');
+      await owner.page.getByRole('button', { name: 'Export Markdown' }).click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toBe('Release-checklist.md');
+
+      await other.page.goto(artifactPath);
+      await expect(other.page.getByText('This artifact is unavailable.')).toBeVisible();
+      await expect(other.page.getByText('Release checklist')).toHaveCount(0);
+    } finally {
+      await owner.context.close();
+      await other.context.close();
     }
   });
 });

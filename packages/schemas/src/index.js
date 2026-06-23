@@ -404,6 +404,9 @@ export const conversationListItemSchema = z
     unread_count: nonnegativeSequenceSchema,
     can_send: z.boolean(),
     updated_at: timestampSchema,
+    muted_until: timestampSchema.nullable().default(null),
+    muted_forever: z.boolean().default(false),
+    is_muted: z.boolean().default(false),
   })
   .strict()
   .superRefine((conversation, context) => {
@@ -542,6 +545,7 @@ export const messagingErrorCategorySchema = z.enum([
 export const realtimeEventVersionSchema = z.literal(1);
 export const realtimeEventNameSchema = z.enum([
   'message.created',
+  'message.incoming',
   'message.edited',
   'message.deleted',
   'reaction.changed',
@@ -581,6 +585,18 @@ export const messageEditedEventSchema = z
   .object({
     ...realtimeEventBaseShape,
     event: z.literal('message.edited'),
+    conversation_id: uuidSchema,
+    entity_id: uuidSchema,
+    sequence: positiveSequenceSchema,
+    actor_user_id: uuidSchema,
+    last_sequence: positiveSequenceSchema,
+  })
+  .strict();
+
+export const messageIncomingEventSchema = z
+  .object({
+    ...realtimeEventBaseShape,
+    event: z.literal('message.incoming'),
     conversation_id: uuidSchema,
     entity_id: uuidSchema,
     sequence: positiveSequenceSchema,
@@ -654,6 +670,7 @@ export const messagingAvailabilityChangedEventSchema = z
 
 export const realtimeEventEnvelopeSchema = z.discriminatedUnion('event', [
   messageCreatedEventSchema,
+  messageIncomingEventSchema,
   messageEditedEventSchema,
   messageDeletedEventSchema,
   reactionChangedEventSchema,
@@ -662,6 +679,81 @@ export const realtimeEventEnvelopeSchema = z.discriminatedUnion('event', [
   conversationChangedEventSchema,
   messagingAvailabilityChangedEventSchema,
 ]);
+
+export const typingEventSchema = z
+  .object({
+    version: z.literal(1),
+    event: z.enum(['typing.start', 'typing.stop']),
+    sent_at: timestampSchema,
+  })
+  .strict();
+
+export const conversationMuteInputSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    duration_seconds: z.union([z.literal(3600), z.literal(28800), z.literal(604800)]).nullable(),
+    forever: z.boolean(),
+  })
+  .strict()
+  .refine((value) => !(value.forever && value.duration_seconds !== null));
+
+export const conversationMuteSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    muted_until: timestampSchema.nullable(),
+    muted_forever: z.boolean(),
+    is_muted: z.boolean(),
+  })
+  .strict();
+
+export const presenceSchema = z
+  .object({
+    user_id: uuidSchema,
+    is_online: z.boolean().nullable(),
+    last_seen_at: timestampSchema.nullable(),
+  })
+  .strict();
+export const presenceListSchema = z.array(presenceSchema);
+
+export const conversationSearchResultSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    peer_id: uuidSchema,
+    peer_username: usernameSchema.nullable(),
+    peer_display_name: nullableTrimmedString(60, 'Display name'),
+    peer_avatar_path: avatarPathSchema,
+  })
+  .strict();
+export const conversationSearchResultsSchema = z.array(conversationSearchResultSchema);
+
+export const messageSearchResultSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    message_id: uuidSchema,
+    sequence: positiveSequenceSchema,
+    snippet: z.string().min(1).max(240),
+    sender_id: uuidSchema,
+    created_at: timestampSchema,
+    peer_id: uuidSchema,
+    peer_username: usernameSchema.nullable(),
+    peer_display_name: nullableTrimmedString(60, 'Display name'),
+    peer_avatar_path: avatarPathSchema,
+  })
+  .strict();
+export const messageSearchResultsSchema = z.array(messageSearchResultSchema);
+
+export const messageSearchInputSchema = z
+  .object({
+    query: z.string().trim().min(2).max(200),
+    before_created_at: timestampSchema.nullable().default(null),
+    before_id: uuidSchema.nullable().default(null),
+    result_limit: z.number().int().min(1).max(50).default(30),
+  })
+  .strict()
+  .refine(
+    (value) => (value.before_created_at === null) === (value.before_id === null),
+    'Message search cursor fields must be provided together.',
+  );
 
 // ---- AI contacts (Task 009) ----
 export const aiAgentSchema = z
@@ -878,6 +970,64 @@ export const aiMessageSchema = z
   .strict();
 export const aiMessageListSchema = z.array(aiMessageSchema);
 
+export const aiArtifactTypeSchema = z.enum([
+  'document',
+  'plan',
+  'checklist',
+  'research_brief',
+  'comparison',
+  'study_plan',
+  'decision_record',
+  'project_outline',
+]);
+export const aiArtifactVersionSchema = z
+  .object({
+    id: uuidSchema,
+    version_number: z.number().int().positive(),
+    content: z.string().min(1).max(100000),
+    source_ai_message_id: uuidSchema.nullable(),
+    created_by: z.enum(['user', 'ai']),
+    created_at: timestampSchema,
+  })
+  .strict();
+export const aiArtifactSchema = z
+  .object({
+    id: uuidSchema,
+    ai_conversation_id: uuidSchema,
+    agent_id: uuidSchema.nullable(),
+    persona_id: uuidSchema.nullable(),
+    type: aiArtifactTypeSchema,
+    title: z.string().min(1).max(120),
+    current_version_number: z.number().int().positive(),
+    current_content: z.string().min(1).max(100000),
+    ai_contact_name: z.string().min(1).max(80),
+    ai_revision_available: z.boolean(),
+    created_at: timestampSchema,
+    updated_at: timestampSchema,
+    archived_at: timestampSchema.nullable(),
+    versions: z.array(aiArtifactVersionSchema),
+  })
+  .strict();
+export const aiArtifactListSchema = z.array(aiArtifactSchema);
+export const aiArtifactCreateInputSchema = z
+  .object({
+    source_ai_message_id: uuidSchema,
+    type: aiArtifactTypeSchema,
+    title: z.string().trim().min(1).max(120),
+    content: z.string().min(1).max(100000),
+    client_request_id: uuidSchema,
+  })
+  .strict();
+export const aiArtifactVersionInputSchema = z
+  .object({
+    artifact_id: uuidSchema,
+    content: z.string().min(1).max(100000),
+    created_by: z.enum(['user', 'ai']),
+    client_request_id: uuidSchema,
+    expected_current_version: z.number().int().positive().nullable().default(null),
+  })
+  .strict();
+
 export const aiMemorySchema = z
   .object({
     id: uuidSchema,
@@ -929,14 +1079,42 @@ export const aiAccessStateSchema = z.enum([
 ]);
 export const aiAccessSchema = z
   .object({
+    is_pro: z.boolean(),
+    pro_expires_at: timestampSchema.nullable(),
+    pro_credits_remaining: z.number().int().nonnegative(),
     trial_started_at: timestampSchema.nullable(),
     trial_expires_at: timestampSchema.nullable(),
     trial_credits_remaining: z.number().int().nonnegative(),
-    pro_enabled: z.boolean(),
+    active_credit_source: z.enum(['premium', 'trial']).nullable(),
     access_state: aiAccessStateSchema,
     can_generate: z.boolean(),
   })
   .strict();
+
+export const premiumCodeInputSchema = z
+  .object({
+    code: z.string().trim().min(16).max(128),
+  })
+  .strict();
+
+export const premiumRedemptionSchema = z
+  .object({
+    redeemed: z.boolean(),
+    pro_expires_at: timestampSchema.nullable(),
+    pro_credits_remaining: z.number().int().nonnegative().nullable(),
+  })
+  .strict();
+
+export const premiumGrantSchema = z
+  .object({
+    id: uuidSchema,
+    starts_at: timestampSchema,
+    ends_at: timestampSchema,
+    credits_granted: z.number().int().min(1).max(1000),
+    created_at: timestampSchema,
+  })
+  .strict();
+export const premiumGrantListSchema = z.array(premiumGrantSchema);
 
 export const aiSendInputSchema = z
   .object({
@@ -1004,6 +1182,13 @@ export const aiStreamEventSchema = z.discriminatedUnion('type', [
     .object({
       type: z.literal('error'),
       category: z.string().min(1).max(64),
+      credits_remaining: z.number().int().nonnegative().nullable().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('proposal_done'),
+      content: z.string().min(1).max(100000),
       credits_remaining: z.number().int().nonnegative().nullable().optional(),
     })
     .strict(),

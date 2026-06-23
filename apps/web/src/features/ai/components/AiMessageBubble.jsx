@@ -1,8 +1,7 @@
-// A single AI conversation message rendered as plain text (no Markdown, no raw
-// HTML). White-space is preserved so multi-line answers read naturally.
 import { AiImageAttachments } from './AiImageAttachments.jsx';
 import { AiContextCard } from './AiContextCard.jsx';
 import { AiDocumentAttachments } from './AiDocumentAttachments.jsx';
+import { SafeMarkdown } from './SafeMarkdown.jsx';
 
 export function AiMessageBubble({
   role,
@@ -15,6 +14,8 @@ export function AiMessageBubble({
   attachments = [],
   contextImport = null,
   documents = [],
+  messageId,
+  onSaveArtifact,
 }) {
   const isAssistant = role === 'assistant';
   return (
@@ -26,10 +27,14 @@ export function AiMessageBubble({
       >
         {isAssistant ? <p className="ai-message-author">{contactName} · AI</p> : null}
         {!isAssistant ? <AiContextCard contextImport={contextImport} /> : null}
-        <p className="ai-message-text">
-          {content}
-          {streaming ? <span className="ai-stream-caret" aria-hidden="true" /> : null}
-        </p>
+        {isAssistant ? (
+          <div className="ai-message-text">
+            <SafeMarkdown content={content} streaming={streaming} />
+            {streaming ? <span className="ai-stream-caret" aria-hidden="true" /> : null}
+          </div>
+        ) : (
+          <p className="ai-message-text">{content}</p>
+        )}
         {!isAssistant ? (
           <>
             <AiImageAttachments conversationId={conversationId} attachments={attachments} />
@@ -39,6 +44,11 @@ export function AiMessageBubble({
         {!isAssistant && !pending && onRemember ? (
           <button type="button" className="ai-message-remember" onClick={onRemember}>
             Remember
+          </button>
+        ) : null}
+        {isAssistant && !streaming && messageId && onSaveArtifact ? (
+          <button type="button" className="ai-message-remember" onClick={onSaveArtifact}>
+            Save as artifact
           </button>
         ) : null}
       </div>

@@ -31,6 +31,10 @@ export function appendAiMessages(queryClient, conversationId, incoming) {
 export function setAiAccessCredits(queryClient, creditsRemaining) {
   if (typeof creditsRemaining !== 'number') return;
   queryClient.setQueryData(aiKeys.access(), (current) =>
-    current ? { ...current, trial_credits_remaining: creditsRemaining } : current,
+    current
+      ? current.active_credit_source === 'premium'
+        ? { ...current, pro_credits_remaining: creditsRemaining }
+        : { ...current, trial_credits_remaining: creditsRemaining }
+      : current,
   );
 }

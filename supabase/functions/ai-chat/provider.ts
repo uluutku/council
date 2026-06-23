@@ -118,12 +118,37 @@ async function* runMock(options: ProviderOptions, usage: ProviderUsage): AsyncGe
   const documentNote = lastUser?.content.includes('User-provided document')
     ? ' Private document context was supplied to the final text model.'
     : '';
-  const reply =
-    `Council Assistant (mock mode) received: "${prompt}". ` +
-    `This is a deterministic local response used for testing; no external provider was called.` +
-    memoryNote +
-    visionNote +
-    documentNote;
+  const markdownDemo = prompt.includes(
+    'Reply with a heading, checklist, Markdown table, blockquote and JavaScript code block.',
+  );
+  const reply = markdownDemo
+    ? `# Safe Markdown demo
+
+- [x] Checklist item
+- [ ] Follow-up item
+
+| Feature | Status |
+| --- | --- |
+| Markdown | Ready |
+
+> A safe blockquote.
+
+[Council](https://example.com)
+
+\`\`\`javascript
+const safe = true;
+\`\`\`
+
+![Remote tracker](https://tracker.example/pixel.png)
+
+[Unsafe](javascript:alert(1))
+
+<script>window.unsafe = true</script>`
+    : `Council Assistant (mock mode) received: "${prompt}". ` +
+      `This is a deterministic local response used for testing; no external provider was called.` +
+      memoryNote +
+      visionNote +
+      documentNote;
   const tokens = reply.split(/(\s+)/);
   let emitted = 0;
   for (const token of tokens) {

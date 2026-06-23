@@ -50,6 +50,7 @@ export function MessageBubble({
   selectable = false,
   selected = false,
   onSelect,
+  highlighted = false,
 }) {
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const isDeleted = message.deleted_at !== null;
@@ -65,7 +66,7 @@ export function MessageBubble({
 
   return (
     <li
-      className="message-row"
+      className={`message-row${highlighted ? ' message-row--highlight' : ''}`}
       data-own={isOwn ? 'true' : undefined}
       data-selected={selected ? 'true' : undefined}
       id={`message-${message.id}`}

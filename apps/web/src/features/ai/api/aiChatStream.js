@@ -24,7 +24,9 @@ export function createAiStreamParser() {
     if (!result.success) throw new Error('invalid_stream');
     const event = result.data;
     if (terminalCount > 0) throw new Error('invalid_stream');
-    if (event.type === 'done' || event.type === 'error') terminalCount += 1;
+    if (event.type === 'done' || event.type === 'proposal_done' || event.type === 'error') {
+      terminalCount += 1;
+    }
     return [event];
   }
 

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { deleteLocalUsersByEmail } from './helpers/localSupabase.js';
+import { getLocalUserIdByEmail, setLocalPresence } from './helpers/localSupabase.js';
 import { makeContacts, registerAndOnboard } from './helpers/contactsFlow.js';
 import {
   messageInList,
@@ -97,6 +98,52 @@ test.describe('realtime text messaging', () => {
 
       // Both still point at the same single conversation.
       expect(new URL(b.page.url()).pathname).toBe(path);
+    } finally {
+      await a.context.close();
+      await b.context.close();
+    }
+  });
+
+  test('typing, presence, mute, filters, search, and notification settings work together', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const { a, b } = await makeContactPair(browser, 'polish');
+    try {
+      await b.context.grantPermissions(['notifications'], {
+        origin: 'http://127.0.0.1:4173',
+      });
+      await openConversationFromContacts(a.page);
+      await openConversationFromContacts(b.page);
+
+      const bUserId = await getLocalUserIdByEmail(b.user.email);
+      await setLocalPresence(bUserId);
+      await a.page.reload();
+      await expect(a.page.locator('.conversation-header-presence')).toHaveText('Online', {
+        timeout: 15_000,
+      });
+      await b.page.getByLabel('Message', { exact: true }).fill('typing draft');
+      await expect(a.page.getByText(/is typing\.\.\./)).toBeVisible({ timeout: 10_000 });
+      await b.page.getByLabel('Message', { exact: true }).blur();
+
+      const searchable = `old searchable ${Date.now()}`;
+      await sendMessage(a.page, searchable);
+      await expect(messageInList(b.page, searchable)).toBeVisible({ timeout: 15_000 });
+
+      await b.page.getByLabel('Mute conversation').selectOption('forever');
+      await expect(b.page.getByLabel('Mute conversation')).toHaveValue('muted');
+      await openInbox(b.page);
+      await b.page.getByRole('button', { name: /Muted/ }).click();
+      await expect(b.page.getByRole('button', { name: /Unmute/ })).toBeVisible();
+
+      await b.page.getByRole('link', { name: 'Search' }).click();
+      await b.page.getByRole('searchbox').fill(searchable);
+      await b.page.locator('.message-search-groups a', { hasText: searchable }).click();
+      await expect(ownMessageRow(b.page, searchable)).toHaveClass(/message-row--highlight/);
+
+      await b.page.goto('/app/settings/preferences');
+      await expect(b.page.getByText(/Browser permission:/)).toBeVisible();
+      await expect(b.page.getByText(/while Council is open/i).first()).toBeVisible();
     } finally {
       await a.context.close();
       await b.context.close();

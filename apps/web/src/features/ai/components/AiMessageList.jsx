@@ -18,6 +18,7 @@ export function AiMessageList({
   hasOlderMessages,
   isLoadingOlder,
   onLoadOlder,
+  onSaveArtifact,
 }) {
   const scrollRef = useRef(null);
 
@@ -82,6 +83,10 @@ export function AiMessageList({
                 contextImport={message.context_import}
                 onRemember={
                   message.role === 'user' ? () => onRememberMessage?.(message) : undefined
+                }
+                messageId={message.id}
+                onSaveArtifact={
+                  message.role === 'assistant' ? () => onSaveArtifact?.(message) : undefined
                 }
               />
             ))}

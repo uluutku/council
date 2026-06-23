@@ -41,6 +41,10 @@ const MESSAGES = {
     'This PDF does not contain enough readable text. Scanned-document OCR is not enabled in this build.',
   document_text_too_long: 'The readable document text exceeds Council’s processing limit.',
   pdf_parser_unavailable: 'PDF processing is temporarily unavailable. Try again.',
+  artifact_not_found: 'This artifact is unavailable.',
+  artifact_archived: 'Restore this artifact before changing it.',
+  artifact_limit_reached: 'Archive an artifact before creating another one.',
+  artifact_version_conflict: 'This artifact changed. Reload before saving again.',
   backend_unavailable: 'Council is temporarily unavailable. Try again.',
   unknown_error: 'Something went wrong. Try again.',
 };

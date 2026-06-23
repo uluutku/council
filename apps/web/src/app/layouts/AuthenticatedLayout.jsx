@@ -6,10 +6,12 @@ import { useRouteFocus } from '../../hooks/useRouteFocus.js';
 import { usePendingRequestCount } from '../../features/contacts/hooks/usePendingRequestCount.js';
 import { useUnreadCount } from '../../features/messaging/hooks/useUnreadCount.js';
 import { useInboxRealtime } from '../../features/messaging/hooks/useInboxRealtime.js';
+import { usePresenceHeartbeat } from '../../features/messaging/hooks/usePresenceHeartbeat.js';
 
 export function AuthenticatedLayout() {
   useRouteFocus();
   useInboxRealtime();
+  usePresenceHeartbeat();
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
   const pendingRequests = usePendingRequestCount();
@@ -51,6 +53,7 @@ export function AuthenticatedLayout() {
             ) : null}
           </NavLink>
           <NavLink to="/app/ai">AI</NavLink>
+          <NavLink to="/app/artifacts">Artifacts</NavLink>
           <NavLink to="/app/contacts">
             Contacts
             {pendingRequests > 0 ? (

@@ -77,6 +77,25 @@ describe('createAiStreamParser', () => {
     expect(() => parser.finish(`data: ${error}`)).toThrow('invalid_stream');
   });
 
+  it('accepts an artifact proposal as the single terminal event', () => {
+    const parser = createAiStreamParser();
+    expect(
+      parser.finish(
+        `data: ${JSON.stringify({
+          type: 'proposal_done',
+          content: 'Revised artifact',
+          credits_remaining: 17,
+        })}`,
+      ),
+    ).toEqual([
+      {
+        type: 'proposal_done',
+        content: 'Revised artifact',
+        credits_remaining: 17,
+      },
+    ]);
+  });
+
   it('preserves fragmented multibyte UTF-8 through decoder flushing', () => {
     const decoder = new TextDecoder();
     const bytes = new TextEncoder().encode(

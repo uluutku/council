@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
 import { aiConversationsQueryOptions, aiMessagesQueryOptions } from '../queries/aiQueries.js';
 import { useAiChat } from '../hooks/useAiChat.js';
@@ -14,6 +14,8 @@ import { AiProviderBadge } from '../components/AiProviderBadge.jsx';
 import { useAiImageDraft } from '../hooks/useAiImageDraft.js';
 import { useUiStore } from '../../../stores/uiStore.js';
 import { useAiDocumentDraft } from '../hooks/useAiDocumentDraft.js';
+import { SaveArtifactDialog } from '../../artifacts/components/SaveArtifactDialog.jsx';
+import { createArtifact } from '../../artifacts/api/artifactsApi.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -33,6 +35,7 @@ function UnavailableConversation() {
 export function AiConversationPage() {
   const { conversationId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const pendingAiForward = useUiStore((state) => state.pendingAiForward);
   const clearPendingAiForward = useUiStore((state) => state.clearPendingAiForward);
   const isValidId = typeof conversationId === 'string' && UUID_PATTERN.test(conversationId);
@@ -49,6 +52,7 @@ export function AiConversationPage() {
   const [draft, setDraft] = useState('');
   const [draftKey, setDraftKey] = useState(0);
   const [memoryPanel, setMemoryPanel] = useState(null);
+  const [artifactMessage, setArtifactMessage] = useState(null);
   const startedForwardRef = useRef(null);
 
   const conversation = conversations.find((entry) => entry.id === conversationId);
@@ -93,6 +97,17 @@ export function AiConversationPage() {
   }, []);
 
   const accessError = chat.errorCategory && isAiAccessError({ category: chat.errorCategory });
+  const createArtifactMutation = useMutation({
+    mutationFn: ({ type, title, content }) =>
+      createArtifact({
+        source_ai_message_id: artifactMessage.id,
+        type,
+        title,
+        content,
+        client_request_id: crypto.randomUUID(),
+      }),
+    onSuccess: (artifact) => navigate(`/app/artifacts/${artifact.id}`),
+  });
 
   if (!isValidId) return <UnavailableConversation />;
   if (messagesQuery.isError && messagesQuery.error?.category === 'ai_conversation_not_found') {
@@ -140,6 +155,7 @@ export function AiConversationPage() {
         hasOlderMessages={messagesQuery.hasNextPage}
         isLoadingOlder={messagesQuery.isFetchingNextPage}
         onLoadOlder={() => messagesQuery.fetchNextPage()}
+        onSaveArtifact={setArtifactMessage}
       />
 
       {chat.errorCategory ? (
@@ -195,6 +211,14 @@ export function AiConversationPage() {
               : null
           }
           onClose={() => setMemoryPanel(null)}
+        />
+      ) : null}
+      {artifactMessage ? (
+        <SaveArtifactDialog
+          message={artifactMessage}
+          saving={createArtifactMutation.isPending}
+          onClose={() => setArtifactMessage(null)}
+          onSave={(input) => createArtifactMutation.mutate(input)}
         />
       ) : null}
     </section>

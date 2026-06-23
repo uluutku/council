@@ -189,7 +189,12 @@ describe('private inbox subscription', () => {
       config: { private: true },
     });
     expect([...mock.handlers.keys()].sort()).toEqual(
-      ['conversation.changed', 'conversation.created', 'messaging.availability_changed'].sort(),
+      [
+        'conversation.changed',
+        'conversation.created',
+        'message.incoming',
+        'messaging.availability_changed',
+      ].sort(),
     );
   });
 

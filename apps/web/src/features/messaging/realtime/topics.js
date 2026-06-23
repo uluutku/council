@@ -7,3 +7,7 @@ export function conversationRealtimeTopic(conversationId) {
 export function userInboxRealtimeTopic(userId) {
   return `user:${realtimeUuidSchema.parse(userId)}:inbox`;
 }
+
+export function conversationEphemeralTopic(conversationId) {
+  return `conversation:${realtimeUuidSchema.parse(conversationId)}:ephemeral`;
+}

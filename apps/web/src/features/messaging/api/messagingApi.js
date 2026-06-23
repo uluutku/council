@@ -1,7 +1,10 @@
 import {
   conversationCursorSchema,
+  conversationMuteInputSchema,
+  conversationMuteSchema,
   conversationMemberReceiptSchema,
   conversationPageResponseSchema,
+  conversationSearchResultsSchema,
   createDirectConversationInputSchema,
   deletedMessageSchema,
   directConversationResultSchema,
@@ -9,7 +12,10 @@ import {
   messageActionInputSchema,
   messagePageInputSchema,
   messagePageResponseSchema,
+  messageSearchInputSchema,
+  messageSearchResultsSchema,
   messageSchema,
+  presenceListSchema,
   reactionInputSchema,
   reactionSchema,
   receiptUpdateSchema,
@@ -134,4 +140,68 @@ export async function markConversationDelivered(input, client = getSupabaseClien
 
 export async function markConversationRead(input, client = getSupabaseClient()) {
   return updateReceipt('mark_conversation_read', input, client);
+}
+
+export async function setConversationMute(input, client = getSupabaseClient()) {
+  const parsed = conversationMuteInputSchema.parse(input);
+  const { data, error } = await client
+    .rpc('set_conversation_mute', {
+      p_conversation_id: parsed.conversation_id,
+      p_duration_seconds: parsed.duration_seconds,
+      p_forever: parsed.forever,
+    })
+    .single();
+  if (error) throw toMessagingApiError(error);
+  return conversationMuteSchema.parse(data);
+}
+
+export async function touchMyPresence(client = getSupabaseClient()) {
+  const { data, error } = await client.rpc('touch_my_presence');
+  if (error) throw toMessagingApiError(error);
+  return data;
+}
+
+export async function markMyPresenceOffline(client = getSupabaseClient()) {
+  const { error } = await client.rpc('mark_my_presence_offline');
+  if (error) throw toMessagingApiError(error);
+}
+
+export async function getPresenceForUsers(userIds, client = getSupabaseClient()) {
+  const ids = [...new Set(userIds)].slice(0, 50);
+  if (ids.length === 0) return [];
+  const { data, error } = await client.rpc('get_presence_for_users', { p_user_ids: ids });
+  if (error) throw toMessagingApiError(error);
+  return presenceListSchema.parse(data ?? []);
+}
+
+export async function searchMyConversations(query, client = getSupabaseClient()) {
+  const parsed = messageSearchInputSchema.parse({ query });
+  const { data, error } = await client.rpc('search_my_conversations', {
+    p_query: parsed.query,
+    p_result_limit: 20,
+  });
+  if (error) throw toMessagingApiError(error);
+  return conversationSearchResultsSchema.parse(data ?? []);
+}
+
+export async function searchMyMessages(input, client = getSupabaseClient()) {
+  const parsed = messageSearchInputSchema.parse(input);
+  const { data, error } = await client.rpc('search_my_messages', {
+    p_query: parsed.query,
+    p_before_created_at: parsed.before_created_at,
+    p_before_id: parsed.before_id,
+    p_result_limit: parsed.result_limit,
+  });
+  if (error) throw toMessagingApiError(error);
+  return messageSearchResultsSchema.parse(data ?? []);
+}
+
+export async function getMessageWindow(conversationId, messageId, client = getSupabaseClient()) {
+  const { data, error } = await client.rpc('get_message_window', {
+    p_conversation_id: conversationId,
+    p_message_id: messageId,
+    p_radius: 25,
+  });
+  if (error) throw toMessagingApiError(error);
+  return messagePageResponseSchema.parse(data ?? []);
 }

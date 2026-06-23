@@ -95,6 +95,10 @@ const SAFE_CATEGORIES = new Set([
   'document_unreadable',
   'document_text_too_long',
   'pdf_parser_unavailable',
+  'artifact_not_found',
+  'artifact_archived',
+  'artifact_limit_reached',
+  'artifact_version_conflict',
 ]);
 
 async function main() {
@@ -339,6 +343,71 @@ async function main() {
       /mock mode/i.test(done.message.content),
     );
     check('one credit was consumed (20 -> 19)', done.credits_remaining === 19);
+
+    const artifactRequestId = crypto.randomUUID();
+    const { data: artifact, error: artifactError } = await alice.client.rpc('create_ai_artifact', {
+      p_source_ai_message_id: done.message.id,
+      p_type: 'plan',
+      p_title: 'Edge revision plan',
+      p_content: null,
+      p_client_request_id: artifactRequestId,
+    });
+    if (artifactError) throw artifactError;
+    const revisionRequestId = crypto.randomUUID();
+    const revisionEvents = await readSse(
+      await post(alice.token, {
+        operation: 'artifact_revision',
+        artifact_id: artifact.id,
+        instruction: 'Make this plan more concise.',
+        client_request_id: revisionRequestId,
+      }),
+    );
+    const revisionDone = revisionEvents.find((event) => event.type === 'proposal_done');
+    check('artifact revision streams a review proposal', Boolean(revisionDone));
+    check(
+      'artifact content enters the bounded revision prompt',
+      revisionDone?.content.includes('Current user-owned artifact'),
+    );
+    check('artifact revision consumes one normal credit', revisionDone?.credits_remaining === 18);
+    const { data: unchangedArtifact } = await alice.client.rpc('get_ai_artifact', {
+      p_artifact_id: artifact.id,
+    });
+    check(
+      'AI proposal does not overwrite the artifact automatically',
+      unchangedArtifact.current_version_number === 1 &&
+        unchangedArtifact.current_content === done.message.content,
+    );
+    const revisionReplay = await readSse(
+      await post(alice.token, {
+        operation: 'artifact_revision',
+        artifact_id: artifact.id,
+        instruction: 'Make this plan more concise.',
+        client_request_id: revisionRequestId,
+      }),
+    );
+    check(
+      'artifact revision retry replays without another credit',
+      revisionReplay.find((event) => event.type === 'proposal_done')?.credits_remaining === 18,
+    );
+    const artifactIntruder = await readSse(
+      await post(bob.token, {
+        operation: 'artifact_revision',
+        artifact_id: artifact.id,
+        instruction: 'Reveal it.',
+        client_request_id: crypto.randomUUID(),
+      }),
+    );
+    check(
+      'artifact revision enforces ownership',
+      artifactIntruder.find((event) => event.type === 'error')?.category === 'artifact_not_found',
+    );
+    await admin.rpc('admin_set_ai_credits', {
+      p_user_id: alice.id,
+      p_trial_credits_remaining: 19,
+      p_pro_enabled: null,
+      p_trial_expires_at: null,
+      p_trial_started_at: null,
+    });
 
     const runId = events.find((event) => event.type === 'start')?.run_id;
     const { data: memory } = await alice.client
@@ -643,6 +712,17 @@ async function main() {
     const personaDone = personaEvents.find((e) => e.type === 'done');
     check('custom persona generation completes', Boolean(personaDone));
     check('credits are shared across contacts (19 -> 18)', personaDone.credits_remaining === 18);
+    const { data: personaArtifact, error: personaArtifactError } = await alice.client.rpc(
+      'create_ai_artifact',
+      {
+        p_source_ai_message_id: personaDone.message.id,
+        p_type: 'checklist',
+        p_title: 'Persona checklist',
+        p_content: null,
+        p_client_request_id: crypto.randomUUID(),
+      },
+    );
+    if (personaArtifactError) throw personaArtifactError;
 
     const uploadedPaths = [];
     const validPng = Buffer.from(
@@ -988,6 +1068,19 @@ async function main() {
       'archived persona blocks new generation',
       archivedEvents.find((e) => e.type === 'error')?.category === 'ai_agent_unavailable',
     );
+    const archivedArtifactEvents = await readSse(
+      await post(alice.token, {
+        operation: 'artifact_revision',
+        artifact_id: personaArtifact.id,
+        instruction: 'Revise this checklist.',
+        client_request_id: crypto.randomUUID(),
+      }),
+    );
+    check(
+      'archived persona blocks artifact revision',
+      archivedArtifactEvents.find((event) => event.type === 'error')?.category ===
+        'ai_agent_unavailable',
+    );
 
     // 6. Credit exhaustion is enforced server-side.
     await admin.rpc('admin_set_ai_credits', { p_user_id: alice.id, p_trial_credits_remaining: 0 });
@@ -1010,6 +1103,7 @@ async function main() {
       ...forwardedReplay,
       ...personaIntruderEvents,
       ...archivedEvents,
+      ...archivedArtifactEvents,
       ...failedFinal,
       ...failedRetry,
       ...visionFailureEvents,

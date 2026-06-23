@@ -22,6 +22,7 @@
     "test:e2e": "npm run test:e2e --workspace @council/web",
     "test:concurrency": "node scripts/test-concurrency.mjs",
     "test:ai-edge": "node scripts/test-ai-edge.mjs",
+    "premium:create-code": "node scripts/create-premium-code.mjs",
     "build": "npm run build --workspace @council/web",
     "check": "npm run format:check && npm run lint && npm run test && npm run build",
     "supabase:start": "node scripts/supabase.mjs start",

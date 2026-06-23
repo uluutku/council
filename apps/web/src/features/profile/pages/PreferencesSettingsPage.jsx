@@ -43,6 +43,9 @@ export function PreferencesSettingsPage() {
   const [status, setStatus] = useState('');
   const [tone, setTone] = useState('neutral');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [permission, setPermission] = useState(() =>
+    typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
+  );
   const isDirty = useMemo(
     () => JSON.stringify(form) !== JSON.stringify(savedForm),
     [form, savedForm],
@@ -123,11 +126,26 @@ export function PreferencesSettingsPage() {
         <fieldset className="panel preference-group">
           <legend>Notifications</legend>
           <p className="field-hint">
-            Notification delivery is deferred; Council stores these preferences for the future.
+            Browser notifications work while Council is open. Background push is not enabled.
           </p>
+          <div className="notification-permission">
+            <span>Browser permission: {permission}</span>
+            {permission === 'default' ? (
+              <button
+                type="button"
+                className="button button--secondary button--small"
+                onClick={async () => setPermission(await Notification.requestPermission())}
+              >
+                Enable browser notifications
+              </button>
+            ) : null}
+            {permission === 'denied' ? (
+              <small>Permission is denied. Enable it in your browser site settings.</small>
+            ) : null}
+          </div>
           <ToggleField
             label="Message notifications"
-            description="Allow future message notifications."
+            description="Show incoming human-message notifications while Council is open."
             checked={form.notification_preferences.message_notifications}
             onChange={(event) =>
               setPreference(
@@ -140,7 +158,7 @@ export function PreferencesSettingsPage() {
           />
           <ToggleField
             label="Notification previews"
-            description="Allow message text in future notifications."
+            description="Include a bounded plain-text message excerpt."
             checked={form.notification_preferences.message_previews}
             onChange={(event) =>
               setPreference('notification_preferences', 'message_previews', event.target.checked)
@@ -149,7 +167,7 @@ export function PreferencesSettingsPage() {
           />
           <ToggleField
             label="Sound"
-            description="Allow sound for future notifications."
+            description="Play a best-effort sound for incoming notifications."
             checked={form.notification_preferences.sound}
             onChange={(event) =>
               setPreference('notification_preferences', 'sound', event.target.checked)
@@ -162,7 +180,7 @@ export function PreferencesSettingsPage() {
           <legend>Privacy</legend>
           <ToggleField
             label="Show online status"
-            description="Allow contacts to see when you are online once presence is implemented."
+            description="Allow accepted contacts to see when you are online."
             checked={form.privacy_preferences.show_online_status}
             onChange={(event) =>
               setPreference('privacy_preferences', 'show_online_status', event.target.checked)
@@ -171,7 +189,7 @@ export function PreferencesSettingsPage() {
           />
           <ToggleField
             label="Show last seen"
-            description="Allow contacts to see your last active time once available."
+            description="Allow accepted contacts to see your last active time."
             checked={form.privacy_preferences.show_last_seen}
             onChange={(event) =>
               setPreference('privacy_preferences', 'show_last_seen', event.target.checked)

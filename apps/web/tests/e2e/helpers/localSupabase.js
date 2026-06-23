@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
 import { resolve } from 'node:path';
+import { createHash, randomBytes } from 'node:crypto';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../../../..');
 const supabaseScript = resolve(repositoryRoot, 'scripts', 'supabase.mjs');
@@ -90,6 +91,31 @@ export async function setLocalAiCredits(userId, { credits, trialStartedAt, trial
     p_trial_credits_remaining: credits ?? null,
     p_trial_started_at: trialStartedAt ?? null,
     p_trial_expires_at: trialExpiresAt ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function createLocalPremiumCode({ days = 30, credits = 100 } = {}) {
+  const admin = createLocalAdminClient();
+  const code = `COUNCIL-${randomBytes(24).toString('base64url').toUpperCase()}`;
+  const hash = createHash('sha256').update(code).digest('hex');
+  const { error } = await admin.rpc('create_premium_access_code', {
+    p_code_hash: `\\x${hash}`,
+    p_code_prefix: code.slice(0, 12),
+    p_duration_days: days,
+    p_ai_credits: credits,
+    p_expires_at: null,
+  });
+  if (error) throw error;
+  return code;
+}
+
+export async function setLocalPresence(userId, lastActiveAt = new Date().toISOString()) {
+  const admin = createLocalAdminClient();
+  const { error } = await admin.from('user_presence').upsert({
+    user_id: userId,
+    last_active_at: lastActiveAt,
+    updated_at: lastActiveAt,
   });
   if (error) throw error;
 }

@@ -27,7 +27,17 @@ describe('AiAccessSummary', () => {
   });
 
   it('shows Pro access when enabled', () => {
-    render(<AiAccessSummary access={makeAccess({ access_state: 'pro', pro_enabled: true })} />);
-    expect(screen.getByText(/Pro access is enabled/i)).toBeInTheDocument();
+    render(
+      <AiAccessSummary
+        access={makeAccess({
+          access_state: 'pro',
+          is_pro: true,
+          pro_credits_remaining: 42,
+          pro_expires_at: '2026-07-23T10:00:00+00:00',
+          active_credit_source: 'premium',
+        })}
+      />,
+    );
+    expect(screen.getByText('42').closest('p')).toHaveTextContent('42 Premium credits remaining');
   });
 });

@@ -9,6 +9,7 @@ import { clearAiImageUrlCache } from '../../features/ai/queries/aiImageUrlCache.
 import { useUiStore } from '../../stores/uiStore.js';
 import { clearAiDocumentUrlCache } from '../../features/ai/queries/aiDocumentUrlCache.js';
 import { AuthContext } from './AuthContext.js';
+import { clearNotificationState } from '../../features/messaging/notifications/browserNotifications.js';
 
 const RECOVERY_KEY = 'council.password-recovery';
 
@@ -53,6 +54,7 @@ export function AuthProvider({ children, client = getSupabaseClient() }) {
         clearAiImageUrlCache();
         clearAiDocumentUrlCache();
         useUiStore.getState().clearPendingAiForward();
+        clearNotificationState();
       }
     });
 
@@ -113,6 +115,7 @@ export function AuthProvider({ children, client = getSupabaseClient() }) {
       clearAiImageUrlCache();
       clearAiDocumentUrlCache();
       useUiStore.getState().clearPendingAiForward();
+      clearNotificationState();
     },
     [client, queryClient],
   );

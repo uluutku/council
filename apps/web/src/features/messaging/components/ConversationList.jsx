@@ -20,6 +20,9 @@ export function ConversationList({
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
+  emptyReason = null,
+  presence = new Map(),
+  onToggleMute = () => {},
 }) {
   if (isPending) {
     return (
@@ -37,10 +40,14 @@ export function ConversationList({
   if (conversations.length === 0) {
     return (
       <div className="empty-state">
-        <p className="empty-state-title">You do not have any conversations yet.</p>
-        <p>
-          Open <Link to="/app/contacts">Contacts</Link> to message someone you have added.
+        <p className="empty-state-title">
+          {emptyReason ?? 'You do not have any conversations yet.'}
         </p>
+        {!emptyReason ? (
+          <p>
+            Open <Link to="/app/contacts">Contacts</Link> to message someone you have added.
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -54,6 +61,8 @@ export function ConversationList({
             conversation={conversation}
             currentUserId={currentUserId}
             isSelected={conversation.conversation_id === selectedId}
+            presence={presence.get(conversation.peer_id) ?? null}
+            onToggleMute={() => onToggleMute(conversation)}
           />
         ))}
       </ul>

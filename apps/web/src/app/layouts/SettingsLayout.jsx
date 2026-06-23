@@ -8,6 +8,7 @@ export function SettingsLayout() {
         <nav aria-label="Settings">
           <NavLink to="/app/settings/profile">Profile</NavLink>
           <NavLink to="/app/settings/preferences">Preferences</NavLink>
+          <NavLink to="/app/settings/access">Access</NavLink>
           <NavLink to="/app/settings/security">Security</NavLink>
           <NavLink to="/app/settings/blocked">Blocked users</NavLink>
         </nav>

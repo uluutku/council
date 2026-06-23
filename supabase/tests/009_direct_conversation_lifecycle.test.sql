@@ -348,7 +348,7 @@ select is(
   pg_get_function_result(
     'public.list_my_conversations(integer,timestamp with time zone,uuid)'::regprocedure
   ),
-  'TABLE(conversation_id uuid, conversation_type text, peer_id uuid, peer_username text, peer_display_name text, peer_avatar_path text, peer_status_text text, last_message_id uuid, last_message_content text, last_message_deleted boolean, last_message_sender_id uuid, last_message_sequence bigint, last_message_at timestamp with time zone, last_read_sequence bigint, last_delivered_sequence bigint, unread_count bigint, can_send boolean, updated_at timestamp with time zone)',
+  'TABLE(conversation_id uuid, conversation_type text, peer_id uuid, peer_username text, peer_display_name text, peer_avatar_path text, peer_status_text text, last_message_id uuid, last_message_content text, last_message_deleted boolean, last_message_sender_id uuid, last_message_sequence bigint, last_message_at timestamp with time zone, last_read_sequence bigint, last_delivered_sequence bigint, unread_count bigint, can_send boolean, updated_at timestamp with time zone, muted_until timestamp with time zone, muted_forever boolean, is_muted boolean)',
   'conversation listing exposes no email, biography, settings, or block direction'
 );
 
