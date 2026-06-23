@@ -6,13 +6,13 @@
 
 Council is a private web messenger I am building one milestone at a time. The plan is easy to say
 and slow to do: put real people and AI contacts in the same app, keep the two clearly apart, and
-be honest that the server can read your messages.
+explain clearly when features require server-side processing.
 
 It is a work in progress. The account and contact layers are finished and tested, and human text
 messaging now works end to end: an inbox, a real conversation screen, optimistic sending, replies,
 editing, deletion, reactions, and live Realtime synchronization between two people. Messages can
-now also carry private image and file attachments. There are built-in AI contacts — Council
-Assistant, Writing Editor, Study Coach, and Coding Partner — plus private custom personas you create
+now also carry private image and file attachments. There are built-in AI contacts, including Council
+Assistant, Writing Editor, Study Coach, and Coding Partner, plus private custom personas you create
 yourself, all chattable with streamed DeepSeek responses through a server-owned OpenRouter
 integration, gated by a short, server-enforced credit trial. Each AI contact also has transparent,
 user-curated memory that can be edited, deleted, or disabled without deleting conversation history.
@@ -62,17 +62,18 @@ through a staged, validated flow, render as bounded thumbnails or file cards, an
 through short-lived signed URLs that conversation members request on demand. Deleting a message
 removes its attachment metadata and revokes access.
 
-The AI section (`/app/ai`) has four built-in contacts — Council Assistant, Writing Editor, Study
-Coach, and Coding Partner — and a "My personas" tab where you create private custom personas with
+The AI section (`/app/ai`) has four built-in contacts: Council Assistant, Writing Editor, Study
+Coach, and Coding Partner. A "My personas" tab lets you create private custom personas with
 your own instructions, tone, and verbosity. Each contact has its own persistent conversation;
 sending a prompt streams a DeepSeek response token-by-token and persists it. Personas can be edited,
 archived (history stays readable, new replies pause), and restored, and are visible only to you. AI
 access is a server-enforced trial shared across every contact: 20 text-generation credits that start
 on your first message and expire seven days later. Each completed generation spends one credit; a
 failed provider request refunds it. The provider prompt is assembled on the server from a fixed
-platform-safety preamble that custom instructions cannot override, OpenRouter credentials live only
-on the server, built-in system prompts never reach the browser, and a deterministic local mock
-provider backs the automated tests.
+platform instructions followed by agent or persona instructions and untrusted user context.
+Enforceable authorization remains outside the model. OpenRouter credentials live only on the
+server, built-in prompts never reach the browser, and a deterministic local mock provider backs the
+automated tests.
 
 Each AI conversation defaults to Curated memory. Council includes only memories you explicitly save
 or approve; there is no automatic extraction. The Memory panel supports add/edit/delete, confirmed
@@ -104,10 +105,10 @@ explicit text-only human-message forwarding. It has no automatic memory extracti
 HTML analysis, semantic document search, tools, web search, AI inside human conversations,
 public/shared personas, or billing checkout (when the trial ends the app says so honestly rather
 than showing a fake upgrade). There is no mobile app or group chat. None of these are faked in the
-UI on purpose — there are no disabled controls advertising features that do not exist.
+UI on purpose; there are no disabled controls advertising features that do not exist.
 
-So Council now has working human text and attachment messaging plus a small AI-contact system —
-built-in assistants, private custom personas, and transparent per-contact memory — on top of its
+So Council now has working human text and attachment messaging plus a small AI-contact system,
+including built-in assistants, private custom personas, and transparent per-contact memory, on top of its
 account, contact, and secure database foundations, but not tools or billing.
 
 ## Why it is built this way
@@ -116,10 +117,10 @@ Most apps bolt AI on as a sidebar. I wanted an AI contact to sit in the contact 
 other contact, clearly labelled as AI, with no confusion about who you are talking to and no
 surprise about when your text leaves for a model provider.
 
-Council is server-readable, not end-to-end encrypted, and it says so plainly. Traffic is encrypted
-in transit and stored data is encrypted at rest, but the server can read messages and media so the
-product can run and, later, so AI contacts can reply. If you need end-to-end encryption, this is
-not that.
+Council protects data in transit and at rest. The current architecture uses server-side processing
+and is not end-to-end encrypted. Private content is protected by authentication, database
+authorization, and private storage; messaging and AI features require trusted server components to
+process the content involved.
 
 The part I spent the most time on is keeping the privacy rules in the database, not in the
 interface. Every table has row-level security. Every action that touches another user (sending a
@@ -141,9 +142,9 @@ PostgreSQL row-level security plus a small set of security-definer functions, no
 - React, Vite, and React Router for the app, in JavaScript with JSDoc at the edges.
 - TanStack Query for server state, Zustand only for client-only UI state, and Zod for validation,
   shared from one package so the same rules run in the browser and in tests.
-- Supabase Auth and PostgreSQL today. Realtime, Storage, and Edge Functions later.
-- OpenRouter with DeepSeek as the planned model, plus a separate vision model, once AI contacts
-  exist, behind a server-checked entitlement.
+- Supabase Auth, PostgreSQL, private Realtime Broadcast, private Storage, and Edge Functions.
+- OpenRouter with a configurable DeepSeek text model, a separate vision model, and a PDF parser,
+  behind server-checked entitlement and idempotency controls.
 
 Discovery goes through one bounded function that needs at least two characters, caps the number of
 results, and filters out blocked and privacy-hidden users on the server. The client never lists

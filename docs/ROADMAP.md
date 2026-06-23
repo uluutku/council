@@ -17,7 +17,7 @@ The milestone order is locked:
 Each milestone must satisfy its security and reliability completion gate before work depending on
 that behavior is considered complete.
 
-Status:
+Completed:
 
 - Foundation repository base: complete.
 - Accounts and contacts: database schema, web authentication, username onboarding, profile
@@ -32,18 +32,16 @@ Status:
   conversation creation from contacts, message history with bounded pagination, optimistic and
   idempotent sending with retry, replies, editing, deletion, reactions, honest delivery/read
   display, unread counts, realtime inbox and conversation synchronization, gap-triggered and
-  reconnect reconciliation, and the responsive desktop/mobile-web layout. Typing indicators,
-  presence, and push notifications remain pending.
+  reconnect reconciliation, and the responsive desktop/mobile-web layout.
 - Images, files and search: basic private image and file attachments are complete — a private
   Storage bucket, the staged authorized upload/finalize flow, attachment-aware sending with
   idempotency, member-only signed-URL access, message rendering with an accessible image viewer,
-  deletion that revokes attachment access, and database, component, and end-to-end tests. Message
-  search, richer galleries, and AI understanding of files remain pending.
+  deletion that revokes attachment access, and database, component, and end-to-end tests.
 - Basic AI contacts: complete and now expanded into a small AI-contact system — four built-in
   contacts (Council Assistant, Writing Editor, Study Coach, Coding Partner) and private user-created
   custom personas (create/edit/archive/restore, owner-only, max 10 active). Each contact has its own
-  persistent conversation; prompts are assembled server-side from a fixed platform-safety preamble
-  that custom instructions cannot override. Built on private AI conversations with persistent text
+  persistent conversation; prompts are assembled server-side with fixed platform instructions
+  above untrusted persona and user context. Built on private AI conversations with persistent text
   history, a server-owned OpenRouter integration with a configurable DeepSeek model
   (`deepseek/deepseek-v4-flash`), SSE streaming, a shared seven-day credit trial with atomic
   reservation and refund, idempotent/retryable generation through the `ai-chat` Edge Function, a
@@ -61,9 +59,15 @@ Status:
 - Private AI document understanding is complete for directly uploaded PDF, TXT, and Markdown files:
   private staged uploads, server-side text extraction or configured PDF parsing, user-scoped
   analysis caching, persistent document cards, provider disclosure, and idempotent generation.
-  Scanned-PDF OCR, Office/HTML analysis, human-chat attachment forwarding, semantic search, and
-  document knowledge bases remain pending.
-- Automatic memory extraction, embeddings, contradiction resolution, tools, web search,
-  AI inside human conversations, and public/shared personas remain pending.
-- Billing and entitlements (Pro checkout) is not started; the credit model exists but `pro_enabled`
-  is only settable by the trusted backend hook. Every later milestone remains pending.
+  document knowledge bases.
+
+Incomplete:
+
+- Typing indicators, presence, push notifications, message search, and richer attachment galleries.
+- Scanned-PDF OCR, Office/HTML analysis, and human-chat attachment forwarding.
+- Automatic memory extraction, embeddings, contradiction resolution, semantic search, and
+  document knowledge bases.
+- Tools, web search, AI inside human conversations, and public/shared personas.
+- Billing and Pro checkout. The credit model exists, but `pro_enabled` is only settable by the
+  trusted backend hook.
+- Production hardening, deployment operations, and an independent security audit.

@@ -3,31 +3,50 @@ import { getSupabaseClient } from '../../../lib/supabase.js';
 import { readBrowserEnvironment } from '../../../lib/env.js';
 import { AiApiError, toAiApiError } from './aiErrors.js';
 
-// Stateful parser for the small SSE protocol. Each pushed chunk yields the
-// validated events it completed; malformed lines and events that fail the
-// contract are dropped rather than trusted. Exported for unit testing.
+// Stateful strict parser for the application SSE protocol.
 export function createAiStreamParser() {
   let buffer = '';
+  let terminalCount = 0;
+  let finished = false;
+
+  function parseLine(line) {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.startsWith('data:')) return [];
+    const payload = trimmed.slice(5).trim();
+    if (!payload) return [];
+    let json;
+    try {
+      json = JSON.parse(payload);
+    } catch {
+      throw new Error('invalid_stream');
+    }
+    const result = aiStreamEventSchema.safeParse(json);
+    if (!result.success) throw new Error('invalid_stream');
+    const event = result.data;
+    if (terminalCount > 0) throw new Error('invalid_stream');
+    if (event.type === 'done' || event.type === 'error') terminalCount += 1;
+    return [event];
+  }
+
   return {
     push(text) {
+      if (finished) throw new Error('invalid_stream');
       buffer += text;
       const events = [];
       const lines = buffer.split('\n');
       buffer = lines.pop() ?? '';
       for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith('data:')) continue;
-        const payload = trimmed.slice(5).trim();
-        if (!payload) continue;
-        let json;
-        try {
-          json = JSON.parse(payload);
-        } catch {
-          continue;
-        }
-        const result = aiStreamEventSchema.safeParse(json);
-        if (result.success) events.push(result.data);
+        events.push(...parseLine(line));
       }
+      return events;
+    },
+    finish(text = '') {
+      if (finished) throw new Error('invalid_stream');
+      finished = true;
+      buffer += text;
+      const events = buffer ? parseLine(buffer) : [];
+      buffer = '';
+      if (terminalCount !== 1) throw new Error('invalid_stream');
       return events;
     },
   };
@@ -110,6 +129,7 @@ export async function streamAiChat({
         onEvent(event);
       }
     }
+    for (const event of parser.finish(decoder.decode())) onEvent(event);
   } catch (error) {
     if (error?.name === 'AbortError') throw new AiApiError('cancelled', error);
     throw new AiApiError('backend_unavailable', error);

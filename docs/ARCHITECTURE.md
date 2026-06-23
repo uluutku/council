@@ -26,26 +26,27 @@ must be enforced by PostgreSQL Row Level Security and server-side functions, nev
 alone.
 
 Supabase PostgreSQL, Auth, Realtime, Storage, and Edge Functions form Council's trusted server
-boundary. Trusted infrastructure can read stored messages and media. Service-role credentials
-remain inside this boundary.
+boundary. Some product behavior requires server-side content processing; Council is not
+end-to-end encrypted. Service-role credentials remain inside this boundary.
 
 OpenRouter and selected model providers are external data processors. Only content explicitly
 sent or forwarded to an AI contact may cross this boundary. Application-owned credentials are
 used; users do not supply provider keys.
 
-## Planned server components
+## Server components
 
-Future Edge Functions include `ai-chat`, `extract-memory`, `summarize-ai-conversation`,
-`create-upload`, `create-media-url`, `process-forwarded-context`, `billing-webhook`,
-`export-account`, and `delete-account`. They are architectural expectations, not Milestone 0
-implementations.
+The implemented `ai-chat` Edge Function authenticates requests, reserves the product credit,
+loads private conversation context, processes explicitly attached images and documents, calls
+OpenRouter, streams bounded responses, and finalizes or refunds the run idempotently. Upload and
+signed-access flows use narrow database RPCs plus private Storage buckets. Unimplemented tools,
+billing, export, and background processing remain outside the current runtime.
 
 ## Repository architecture
 
 - `apps/web` owns the responsive React application, routes, browser integration, and web tests.
 - `packages/schemas` owns environment-neutral Zod schemas shared at runtime boundaries.
-- `supabase` owns local service configuration, immutable migrations, pgTAP tests, and future Edge
-  Functions.
+- `supabase` owns local service configuration, immutable migrations, Edge Functions, and pgTAP
+  tests.
 - `docs` records locked product, architecture, security, and operational decisions.
 - `tasks` retains bounded implementation specifications as project history.
 
@@ -57,7 +58,7 @@ consume them without a compilation step.
 
 ## Runtime flow
 
-TanStack Query will manage server state, Zustand manages local UI state, React Router owns
+TanStack Query manages server state, Zustand manages local UI state, React Router owns
 navigation, and the Supabase JavaScript SDK is created from validated browser-safe configuration.
 
 ## Account and social database boundary
@@ -156,9 +157,8 @@ the database contract can change rather than relying on optimistic updates. Only
 and dialog state is component-local; no contact data is duplicated into Zustand. A pending
 incoming-request count is derived from the shared requests query and shown in navigation.
 
-Supabase Realtime is intentionally deferred to a later milestone. Until then the request count and
-lists refresh on tab focus, on normal stale-time expiry, and after successful mutations rather
-than through live subscriptions, so a short-lived stale count is expected and acceptable.
+Contact lists refresh on focus, normal stale-time expiry, and successful mutations. Human
+conversation and inbox synchronization use the private Realtime design described below.
 
 ## Direct messaging database boundary
 
@@ -209,13 +209,23 @@ therefore preserves history but returns one generic unavailable state for new wr
 deletion and own-reaction removal remain available. Reaccepting the pair resumes the original
 conversation.
 
-The web messaging feature currently contains only focused API wrappers, error mapping, shared
-schemas, and query-key factories. No inbox, conversation route, composer, or message component is
-implemented. Supabase Broadcast/Postgres Changes will attach to persisted message and receipt
-events in a later task; the database remains authoritative for reconnect recovery. Private
-Storage attachment records and access functions are also deferred. Future AI conversations may
-reuse the general conversation boundary but require their own membership/sender authorization
-model rather than the direct-human pair table.
+The web messaging feature includes the inbox, conversation route, composer, paginated message
+interface, optimistic sends, replies, editing, tombstones, reactions, receipts, private
+attachments, and Realtime reconciliation. The database remains authoritative after reconnects or
+event gaps. AI conversations use separate owner-scoped tables and authorization rather than the
+direct-human membership model.
+
+## AI conversation boundary
+
+AI contacts and private custom personas each own persistent user-scoped conversations. The browser
+can read bounded history but cannot create assistant messages or mutate runs directly. The
+`ai-chat` function uses service-role-only generation functions, product-credit reservation,
+deterministic idempotency hashes, bounded run leases, and retry-idempotent completion. Initial AI
+history loads the newest page and older pages use an exclusive `(created_at, id)` cursor.
+
+Curated memories are explicit owner-managed rows. Direct AI image and PDF/TXT/Markdown uploads use
+separate private buckets and server-only analysis caches. Forwarded human text is an immutable
+owner-only snapshot; the AI is never added to the human conversation.
 
 ## Secure Realtime delivery
 

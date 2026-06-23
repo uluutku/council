@@ -49,10 +49,16 @@ export async function listMyAiConversations(client = getSupabaseClient()) {
   return aiConversationListSchema.parse(data ?? []);
 }
 
-export async function listAiMessages(conversationId, client = getSupabaseClient()) {
+export async function listAiMessages(
+  conversationId,
+  { beforeCreatedAt = null, beforeId = null, limit = 100 } = {},
+  client = getSupabaseClient(),
+) {
   const { data, error } = await client.rpc('list_ai_messages', {
     p_conversation_id: conversationId,
-    p_limit: 200,
+    p_limit: limit,
+    p_before_created_at: beforeCreatedAt,
+    p_before_id: beforeId,
   });
   if (error) throw toAiApiError(error);
   return aiMessageListSchema.parse(data ?? []);
@@ -66,9 +72,18 @@ export async function getMyAiAccess(client = getSupabaseClient()) {
 
 export async function getAiProviderMetadata(fetcher = fetch) {
   const environment = readBrowserEnvironment();
+  const client = getSupabaseClient();
+  const {
+    data: { session },
+  } = await client.auth.getSession();
   const response = await fetcher(
-    `${environment.supabaseUrl.replace(/\/$/, '')}/functions/v1/ai-chat`,
-    { headers: { apikey: environment.supabaseAnonKey } },
+    `${environment.supabaseUrl.replace(/\/$/, '')}/functions/v1/ai-chat?details=1`,
+    {
+      headers: {
+        apikey: environment.supabaseAnonKey,
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
+    },
   );
   if (!response.ok) throw toAiApiError({ status: response.status });
   return aiProviderMetadataSchema.parse(await response.json());

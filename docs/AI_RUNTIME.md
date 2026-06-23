@@ -1,7 +1,7 @@
 # AI runtime
 
-Council will use OpenRouter as its provider gateway. DeepSeek is the primary language model, with
-a server-configured fallback. A separate vision-capable OpenRouter model may analyze images that a
+Council uses OpenRouter as its provider gateway. DeepSeek is the primary language model. A
+separate vision-capable OpenRouter model analyzes images that a
 user explicitly shares with an AI contact; DeepSeek then receives structured visual context for
 the final persona-consistent response.
 
@@ -9,18 +9,17 @@ All provider credentials are application-owned and server-only. The browser must
 OpenRouter credentials or Supabase service-role credentials. Users cannot provide arbitrary
 provider keys or select arbitrary models in the first release.
 
-Every AI request will require:
+Every accepted AI generation requires:
 
 - authenticated server-side entitlement checks for trial or Pro access;
-- estimated credit reservation and actual-cost reconciliation;
+- one product-credit reservation, with provider token and cost metadata recorded separately;
 - an idempotency key covering retries;
 - validated input and bounded output;
 - provider, model, token, latency, and estimated-cost metadata without private content in logs;
 - clear handling for cancellation, timeout, partial output, and failed reconciliation.
 
-The AI runtime will support limited validated tool rounds and explicit image routing. No AI calls,
-model configuration, entitlements, cost accounting, or provider integration are implemented in
-Task 001.
+Tools are not implemented. Image and document routing are explicit and use the same generation
+entitlement, idempotency, and finalization path.
 
 ## Task 009: first AI contact (text-only)
 
@@ -63,15 +62,17 @@ tests, and refuses to run unless Supabase is local/loopback. `OPENROUTER_API_KEY
 are server-only and never placed in a `VITE_*` variable.
 
 Local live startup uses `npm run dev:ai`, which reads `supabase/functions/.env` and fails before
-serving when OpenRouter mode has no key. Content-free GET metadata reports only `provider_mode`,
-`model`, and configuration status; the development UI renders `Live provider` or `Local mock`.
+serving when OpenRouter mode has no key. Unauthenticated GET returns only `{"status":"ok"}`.
+Authenticated detailed metadata is available only in local development or when explicitly enabled;
+the development UI uses it to render `Live provider` or `Local mock`.
 
 ### Streaming protocol
 
 The function returns a small SSE protocol: `start`, `delta`, `done`, `error`. The browser validates
 every event against `aiStreamEventSchema`, renders partial text during streaming, replaces it with
 the authoritative persisted message on `done`, and leaves a retryable state on `error`. Raw provider
-errors are never forwarded — only a fixed set of safe categories. Only the most recent bounded
+errors are never forwarded; only a fixed set of safe categories is used. Both browser and provider
+parsers require exactly one terminal event and reject malformed or truncated EOF. Only the most recent bounded
 window (20 messages) plus the system prompt is sent to the provider; there is no summarization,
 semantic memory, or inclusion of human conversations, files, or images.
 
@@ -104,8 +105,9 @@ stay valid.
 private platform safety/integrity preamble (`private.ai_platform_instructions()`), (2) the built-in
 prompt or the persona's instructions, (3) for personas, structured tone/verbosity guidance, then the
 bounded recent history and the new user message. The platform preamble always comes first and
-custom instructions cannot replace it; personas cannot be granted access to human conversations,
-other users, files, credentials, hidden prompts, tools, or the internet. `start_ai_generation`
+custom instructions are placed below it and treated as untrusted input. Model compliance is not a
+security boundary, so access to conversations, files, credentials, tools, and external systems is
+enforced outside the model. `start_ai_generation`
 rejects generation for a disabled built-in or an archived persona. The browser only ever sends the
 conversation id, client id, and message content — never raw system instructions.
 
@@ -117,7 +119,7 @@ to the provider; mock mode remains for automated tests.
 `load_ai_run_context` now assembles platform rules, built-in/persona instructions, persona style,
 active user-approved memory when mode is `curated`, then the bounded message window. Memories are
 ordered deterministically, capped at 50 per conversation, and marked as untrusted context that
-cannot override platform instructions. `conversation_only` leaves rows stored but excludes them
+are placed below platform instructions as untrusted context. `conversation_only` leaves rows stored but excludes them
 from generation. Deleted rows disappear from the next context load. Prompts and memory content are
 never returned to the browser or logged.
 
@@ -126,7 +128,8 @@ never returned to the browser or logged.
 Image prompts use two configured models. The Edge Function downloads up to two authorized private
 JPEG/PNG/WebP objects (5 MB each, 8 MB combined), validates their signatures, and sends base64 bytes
 to `OPENROUTER_VISION_MODEL`. Its bounded structured result is cached per user, image SHA-256,
-vision model, and prompt version. That private result is added to the existing server prompt and
+vision model, and prompt version. Analysis is deliberately generic and question-independent, so a
+later question may safely reuse it. That private result is added to the existing server prompt and
 `OPENROUTER_TEXT_MODEL` streams the persona-consistent final answer. Signed Storage URLs never go
 to OpenRouter, and raw vision output never goes to the browser.
 
@@ -168,3 +171,19 @@ bounded history, forwarded context, delimited untrusted document context, then t
 Document text and parser annotations are never returned in browser events, logged, or saved as
 memory. Safe document metadata persists with the user message for reload and short-lived authorized
 download access.
+
+## Task 015: reliability hardening
+
+AI history loads the newest bounded page, displays it chronologically, and pages backward with a
+stable `(created_at, id)` cursor. Running operations have a ten-minute lease; expired runs are
+recoverable at generation start and through a service-role maintenance RPC. Recovery and failure
+refund a reservation at most once.
+
+Completion is retry-idempotent. Repeating the same result returns the existing assistant message,
+while conflicting content is rejected. The Edge Function retries transient completion failures
+with bounded backoff, compensates persistent failure, and safely discovers a completion whose RPC
+response was lost.
+
+Text, vision, and PDF provider calls have configurable server deadlines. Client cancellation and
+deadline aborts remain internally distinct, while public errors stay within safe categories.
+OpenRouter attribution headers are optional server configuration and are omitted when unset.

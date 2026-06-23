@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
 import { aiConversationsQueryOptions, aiMessagesQueryOptions } from '../queries/aiQueries.js';
 import { useAiChat } from '../hooks/useAiChat.js';
@@ -37,7 +37,7 @@ export function AiConversationPage() {
   const clearPendingAiForward = useUiStore((state) => state.clearPendingAiForward);
   const isValidId = typeof conversationId === 'string' && UUID_PATTERN.test(conversationId);
 
-  const messagesQuery = useQuery({
+  const messagesQuery = useInfiniteQuery({
     ...aiMessagesQueryOptions(isValidId ? conversationId : null),
     enabled: isValidId,
   });
@@ -60,7 +60,10 @@ export function AiConversationPage() {
 
   const canGenerate = (access ? access.can_generate : true) && !isArchived;
   const composerDisabled = !canGenerate;
-  const messages = messagesQuery.data ?? [];
+  const messages = (messagesQuery.data?.pages ?? [])
+    .flat()
+    .filter((message, index, all) => all.findIndex((item) => item.id === message.id) === index)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
 
   useEffect(() => {
     const request =
@@ -134,6 +137,9 @@ export function AiConversationPage() {
         composerDisabled={composerDisabled}
         contactName={displayName}
         onRememberMessage={handleRememberMessage}
+        hasOlderMessages={messagesQuery.hasNextPage}
+        isLoadingOlder={messagesQuery.isFetchingNextPage}
+        onLoadOlder={() => messagesQuery.fetchNextPage()}
       />
 
       {chat.errorCategory ? (

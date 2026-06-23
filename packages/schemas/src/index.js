@@ -907,15 +907,18 @@ export const aiMemorySettingsSchema = z
   .strict();
 export const aiDeletedMemoryCountSchema = z.number().int().nonnegative();
 
-export const aiProviderMetadataSchema = z
-  .object({
-    status: z.enum(['ok', 'configuration_error']),
-    provider_mode: z.enum(['openrouter', 'mock']),
-    model: z.string().min(1).max(200),
-    vision_model: z.string().min(1).max(200),
-    pdf_engine: z.string().min(1).max(100),
-  })
-  .strict();
+export const aiProviderMetadataSchema = z.union([
+  z.object({ status: z.literal('ok') }).strict(),
+  z
+    .object({
+      status: z.enum(['ok', 'configuration_error']),
+      provider_mode: z.enum(['openrouter', 'mock']),
+      model: z.string().min(1).max(200),
+      vision_model: z.string().min(1).max(200),
+      pdf_engine: z.string().min(1).max(100),
+    })
+    .strict(),
+]);
 
 export const aiAccessStateSchema = z.enum([
   'trial_available',

@@ -5,7 +5,8 @@ import { aiKeys } from '../../../lib/query-keys/ai.js';
 // both appear. A background refetch later replaces the list with the truth.
 export function appendAiMessages(queryClient, conversationId, incoming) {
   queryClient.setQueryData(aiKeys.messages(conversationId), (current) => {
-    const base = Array.isArray(current) ? current : [];
+    const isInfinite = Array.isArray(current?.pages);
+    const base = isInfinite ? (current.pages[0] ?? []) : Array.isArray(current) ? current : [];
     const byId = new Map(base.map((message) => [message.id, message]));
     const userClientIds = new Set(
       base.filter((message) => message.role === 'user').map((message) => message.client_message_id),
@@ -15,7 +16,14 @@ export function appendAiMessages(queryClient, conversationId, incoming) {
       if (message.role === 'user' && userClientIds.has(message.client_message_id)) continue;
       byId.set(message.id, message);
     }
-    return [...byId.values()].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const merged = [...byId.values()].sort(
+      (a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id),
+    );
+    if (!isInfinite) return merged;
+    return {
+      ...current,
+      pages: [merged, ...current.pages.slice(1)],
+    };
   });
 }
 

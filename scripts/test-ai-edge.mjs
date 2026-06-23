@@ -13,6 +13,9 @@ import {
   buildPdfParserRequest,
   extractPdfFileAnnotation,
 } from '../supabase/functions/ai-chat/pdf-parser.mjs';
+import '../supabase/functions/ai-chat/provider-stream.test.mjs';
+import '../supabase/functions/ai-chat/request-control.test.mjs';
+import '../supabase/functions/ai-chat/vision-analysis.test.mjs';
 import { createHash } from 'node:crypto';
 
 const repoRoot = resolve(import.meta.dirname, '..');
@@ -127,20 +130,20 @@ async function main() {
     serve = null;
   }
 
-  async function waitForHealth(expectedMode) {
+  async function waitForHealth() {
     for (let i = 0; i < 40; i += 1) {
       try {
         const probe = await fetch(functionUrl);
         if (probe.ok) {
           const metadata = await probe.json();
-          if (metadata.provider_mode === expectedMode) return metadata;
+          if (metadata.status === 'ok') return metadata;
         }
       } catch {
         /* not up yet */
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
-    throw new Error(`Function did not start in ${expectedMode} mode.`);
+    throw new Error('Function did not become healthy.');
   }
 
   const createdUserIds = [];
@@ -252,13 +255,32 @@ async function main() {
 
     if (manage) {
       serve = startServe('supabase/functions/mock.env');
-      const mockMetadata = await waitForHealth('mock');
+      const mockMetadata = await waitForHealth();
       check(
-        'mock mode requires explicit local configuration',
-        mockMetadata.provider_mode === 'mock',
+        'unauthenticated health metadata is generic',
+        JSON.stringify(mockMetadata) === '{"status":"ok"}',
       );
-      check('mock vision mode is explicit', mockMetadata.vision_model === 'mock/council-vision');
-      check('mock PDF parser mode is explicit', mockMetadata.pdf_engine === 'mock/cloudflare-ai');
+      let detailedMetadata = {};
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const detailedResponse = await fetch(`${functionUrl}?details=1`, {
+          headers: { Authorization: `Bearer ${alice.token}` },
+        });
+        detailedMetadata = await detailedResponse.json();
+        if (detailedMetadata.provider_mode) break;
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
+      check(
+        'authenticated local runtime metadata reports mock mode',
+        detailedMetadata.provider_mode === 'mock',
+      );
+      check(
+        'mock vision mode is explicit',
+        detailedMetadata.vision_model === 'mock/council-vision',
+      );
+      check(
+        'mock PDF parser mode is explicit',
+        detailedMetadata.pdf_engine === 'mock/cloudflare-ai',
+      );
       await new Promise((resolveReady) => setTimeout(resolveReady, 1000));
     }
 
@@ -386,6 +408,87 @@ async function main() {
       p_limit: 100,
     });
     check('replay creates no duplicate messages', messagesAfterReplay.length === 2);
+
+    const reliabilityUser = await makeUser('reliability');
+    const { data: reliabilityConversation } = await reliabilityUser.client
+      .rpc('get_or_create_ai_conversation', { p_agent_id: agent.id })
+      .single();
+
+    const timeoutEvents = await readSse(
+      await post(reliabilityUser.token, {
+        conversation_id: reliabilityConversation.id,
+        client_message_id: crypto.randomUUID(),
+        content: '[text-timeout] wait for the application deadline',
+      }),
+    );
+    check(
+      'provider deadline returns a safe error',
+      timeoutEvents.find((event) => event.type === 'error')?.category === 'provider_unavailable',
+    );
+    check(
+      'provider deadline refunds the reserved credit',
+      timeoutEvents.find((event) => event.type === 'error')?.credits_remaining === 20,
+    );
+
+    const retryCompletionEvents = await readSse(
+      await post(reliabilityUser.token, {
+        conversation_id: reliabilityConversation.id,
+        client_message_id: crypto.randomUUID(),
+        content: '[complete-retry] finish after one transient database failure',
+      }),
+    );
+    check(
+      'completion retry succeeds after one failed attempt',
+      Boolean(retryCompletionEvents.find((event) => event.type === 'done')),
+    );
+
+    const lostCompletionId = crypto.randomUUID();
+    const lostCompletionEvents = await readSse(
+      await post(reliabilityUser.token, {
+        conversation_id: reliabilityConversation.id,
+        client_message_id: lostCompletionId,
+        content: '[complete-lost] discover a committed completion after response loss',
+      }),
+    );
+    check(
+      'committed completion is discovered after response loss',
+      Boolean(lostCompletionEvents.find((event) => event.type === 'done')),
+    );
+    const { data: lostMessages } = await reliabilityUser.client.rpc('list_ai_messages', {
+      p_conversation_id: reliabilityConversation.id,
+      p_limit: 100,
+    });
+    check(
+      'lost completion recovery creates one assistant message',
+      lostMessages.filter((message) => message.role === 'assistant').length === 2,
+    );
+
+    const failedCompletionId = crypto.randomUUID();
+    const failedCompletionEvents = await readSse(
+      await post(reliabilityUser.token, {
+        conversation_id: reliabilityConversation.id,
+        client_message_id: failedCompletionId,
+        content: '[complete-fail] compensate repeated completion failure',
+      }),
+    );
+    check(
+      'repeated completion failure returns a recoverable error',
+      failedCompletionEvents.find((event) => event.type === 'error')?.category ===
+        'backend_unavailable',
+    );
+    check(
+      'completion compensation refunds exactly once',
+      failedCompletionEvents.find((event) => event.type === 'error')?.credits_remaining === 18,
+    );
+    const { data: compensatedRuns } = await admin
+      .from('ai_runs')
+      .select('status,credit_reserved')
+      .eq('user_id', reliabilityUser.id)
+      .eq('status', 'failed');
+    check(
+      'compensated completion leaves no active reservation',
+      compensatedRuns?.some((run) => run.credit_reserved === false),
+    );
 
     // 4b. Forward selected human text through the same generation pipeline.
     await admin

@@ -19,6 +19,7 @@ import {
   type VisionAnalysis,
 } from './provider.ts';
 import { resolveProviderConfig } from './runtime-config.mjs';
+import { createDeadlineSignal } from './request-control.mjs';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -27,13 +28,20 @@ const OPENROUTER_TEXT_MODEL = Deno.env.get('OPENROUTER_TEXT_MODEL') ?? '';
 const OPENROUTER_VISION_MODEL = Deno.env.get('OPENROUTER_VISION_MODEL') ?? '';
 const OPENROUTER_PDF_ENGINE = Deno.env.get('OPENROUTER_PDF_ENGINE') ?? '';
 const PROVIDER_MODE = Deno.env.get('AI_PROVIDER_MODE') ?? '';
+const APP_ORIGIN = Deno.env.get('APP_ORIGIN') ?? '';
+const EXPOSE_RUNTIME_METADATA = Deno.env.get('AI_EXPOSE_RUNTIME_METADATA') === 'true';
+const OPENROUTER_APP_URL = Deno.env.get('OPENROUTER_APP_URL') ?? '';
+const OPENROUTER_APP_NAME = Deno.env.get('OPENROUTER_APP_NAME') ?? '';
+const AI_TEXT_TIMEOUT_MS = Deno.env.get('AI_TEXT_TIMEOUT_MS') ?? '';
+const AI_VISION_TIMEOUT_MS = Deno.env.get('AI_VISION_TIMEOUT_MS') ?? '';
+const AI_PDF_TIMEOUT_MS = Deno.env.get('AI_PDF_TIMEOUT_MS') ?? '';
 const MAX_CONTENT_LENGTH = 8000;
 const MAX_FORWARD_INSTRUCTION_LENGTH = 2000;
 const MAX_FORWARDED_MESSAGES = 20;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': APP_ORIGIN || '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
@@ -45,15 +53,21 @@ const providerConfig = resolveProviderConfig({
   pdfEngine: OPENROUTER_PDF_ENGINE,
   apiKey: OPENROUTER_API_KEY,
   supabaseUrl: SUPABASE_URL,
+  textTimeoutMs: AI_TEXT_TIMEOUT_MS,
+  visionTimeoutMs: AI_VISION_TIMEOUT_MS,
+  pdfTimeoutMs: AI_PDF_TIMEOUT_MS,
 }) as {
   mode: 'openrouter' | 'mock';
   model: string;
   visionModel: string;
   pdfEngine: string;
   configured: boolean;
+  textTimeoutMs: number;
+  visionTimeoutMs: number;
+  pdfTimeoutMs: number;
 };
 
-const VISION_PROMPT_VERSION = 1;
+const VISION_PROMPT_VERSION = 2;
 const SUPPORTED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_COMBINED_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -118,6 +132,25 @@ Deno.serve(async (req: Request) => {
   // Lightweight health response so readiness checks (e.g. test harnesses) can
   // confirm the function is serving without authenticating.
   if (req.method === 'GET') {
+    if (new URL(req.url).searchParams.get('details') !== '1') {
+      return jsonResponse(200, { status: 'ok' });
+    }
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7) : '';
+    const { data: metadataUser } = token
+      ? await serviceClient.auth.getUser(token)
+      : { data: { user: null } };
+    let localRuntime = false;
+    try {
+      localRuntime = ['127.0.0.1', 'localhost', '::1', 'kong', 'host.docker.internal'].includes(
+        new URL(SUPABASE_URL).hostname,
+      );
+    } catch {
+      localRuntime = false;
+    }
+    if (!metadataUser.user || (!localRuntime && !EXPOSE_RUNTIME_METADATA)) {
+      return jsonResponse(200, { status: 'ok' });
+    }
     return jsonResponse(200, {
       status: providerConfig.configured ? 'ok' : 'configuration_error',
       provider_mode: providerConfig.mode,
@@ -201,6 +234,10 @@ Deno.serve(async (req: Request) => {
       let creditReserved = true;
 
       try {
+        await serviceClient.rpc('recover_expired_ai_runs', {
+          p_user_id: userId,
+          p_conversation_id: conversationId,
+        });
         // Reserve the generation (idempotent, atomic, credit-gated).
         const { data: started, error: startError } = await serviceClient
           .rpc('start_ai_generation', {
@@ -256,6 +293,7 @@ Deno.serve(async (req: Request) => {
           controller.close();
           return;
         }
+        await serviceClient.rpc('heartbeat_ai_run', { p_run_id: runId });
 
         // Load the private system prompt + bounded recent window (server-only).
         const { data: context, error: contextError } = await serviceClient
@@ -333,15 +371,23 @@ Deno.serve(async (req: Request) => {
               continue;
             }
 
-            const result = await runVisionProvider({
-              mode,
-              model: providerConfig.visionModel,
-              apiKey: OPENROUTER_API_KEY,
-              userText: content,
-              mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp',
-              base64: bytesToBase64(bytes),
-              signal: req.signal,
-            });
+            const deadline = createDeadlineSignal(req.signal, providerConfig.visionTimeoutMs);
+            let result;
+            try {
+              result = await runVisionProvider({
+                mode,
+                model: providerConfig.visionModel,
+                apiKey: OPENROUTER_API_KEY,
+                userText: content,
+                mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp',
+                base64: bytesToBase64(bytes),
+                signal: deadline.signal,
+                appUrl: OPENROUTER_APP_URL,
+                appName: OPENROUTER_APP_NAME,
+              });
+            } finally {
+              deadline.cleanup();
+            }
             analyses.push(result.analysis);
             await serviceClient.rpc('save_ai_image_analysis', {
               p_user_id: userId,
@@ -439,15 +485,22 @@ Deno.serve(async (req: Request) => {
               };
               documentCacheHits += 1;
             } else if (mimeType === 'application/pdf') {
-              analysis = await runPdfParser({
-                mode,
-                model,
-                parserEngine: providerConfig.pdfEngine,
-                apiKey: OPENROUTER_API_KEY,
-                filename,
-                base64: bytesToBase64(bytes),
-                signal: req.signal,
-              });
+              const deadline = createDeadlineSignal(req.signal, providerConfig.pdfTimeoutMs);
+              try {
+                analysis = await runPdfParser({
+                  mode,
+                  model,
+                  parserEngine: providerConfig.pdfEngine,
+                  apiKey: OPENROUTER_API_KEY,
+                  filename,
+                  base64: bytesToBase64(bytes),
+                  signal: deadline.signal,
+                  appUrl: OPENROUTER_APP_URL,
+                  appName: OPENROUTER_APP_NAME,
+                });
+              } finally {
+                deadline.cleanup();
+              }
             } else {
               analysis = extractUtf8Document(bytes);
             }
@@ -513,23 +566,33 @@ Deno.serve(async (req: Request) => {
         };
         let assembled = '';
         try {
-          const generator = runProvider(
-            {
-              mode,
-              model,
-              apiKey: OPENROUTER_API_KEY,
-              systemPrompt: appendVisionContext((context.system_prompt as string) ?? '', analyses),
-              messages: appendDocumentContext(
-                (context.messages as ChatMessage[]) ?? [],
-                documentContexts,
-              ),
-              signal: req.signal,
-            },
-            usage,
-          );
-          for await (const delta of generator) {
-            assembled += delta;
-            send({ type: 'delta', text: delta });
+          const deadline = createDeadlineSignal(req.signal, providerConfig.textTimeoutMs);
+          try {
+            const generator = runProvider(
+              {
+                mode,
+                model,
+                apiKey: OPENROUTER_API_KEY,
+                systemPrompt: appendVisionContext(
+                  (context.system_prompt as string) ?? '',
+                  analyses,
+                ),
+                messages: appendDocumentContext(
+                  (context.messages as ChatMessage[]) ?? [],
+                  documentContexts,
+                ),
+                signal: deadline.signal,
+                appUrl: OPENROUTER_APP_URL,
+                appName: OPENROUTER_APP_NAME,
+              },
+              usage,
+            );
+            for await (const delta of generator) {
+              assembled += delta;
+              send({ type: 'delta', text: delta });
+            }
+          } finally {
+            deadline.cleanup();
           }
         } catch (providerError) {
           const category =
@@ -570,19 +633,15 @@ Deno.serve(async (req: Request) => {
           return;
         }
 
-        const { data: completed, error: completeError } = await serviceClient
-          .rpc('complete_ai_generation', {
-            p_run_id: runId,
-            p_assistant_content: assembled,
-            p_input_tokens: usage.inputTokens,
-            p_output_tokens: usage.outputTokens,
-            p_provider_cost: usage.cost,
-            p_provider_request_id: usage.providerRequestId,
-          })
-          .single();
+        const completed = await completeRunWithRetry(runId, assembled, usage, mode, content);
 
-        if (completeError || !completed) {
-          send({ type: 'error', category: 'backend_unavailable' });
+        if (!completed) {
+          const { data: refund } = await failRun(runId, 'backend_unavailable');
+          send({
+            type: 'error',
+            category: 'backend_unavailable',
+            credits_remaining: refund?.credits_remaining,
+          });
           controller.close();
           return;
         }
@@ -647,6 +706,42 @@ Deno.serve(async (req: Request) => {
     },
   });
 });
+
+async function completeRunWithRetry(
+  runId: string,
+  content: string,
+  usage: ProviderUsage,
+  mode: 'openrouter' | 'mock',
+  userContent: string,
+): Promise<Record<string, any> | null> {
+  const simulated = mode === 'mock' ? userContent : '';
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (simulated.includes('[complete-fail]')) {
+      await new Promise((resolve) => setTimeout(resolve, 20 * (attempt + 1)));
+      continue;
+    }
+    if (attempt === 0 && simulated.includes('[complete-retry]')) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      continue;
+    }
+    const { data, error } = await serviceClient
+      .rpc('complete_ai_generation', {
+        p_run_id: runId,
+        p_assistant_content: content,
+        p_input_tokens: usage.inputTokens,
+        p_output_tokens: usage.outputTokens,
+        p_provider_cost: usage.cost,
+        p_provider_request_id: usage.providerRequestId,
+      })
+      .single();
+    if (!error && data) {
+      if (attempt === 0 && simulated.includes('[complete-lost]')) continue;
+      return data;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+  }
+  return null;
+}
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';

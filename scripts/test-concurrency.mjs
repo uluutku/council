@@ -91,9 +91,13 @@ function eventCount(event, conversationId) {
 }
 
 async function rpc(client, name, args) {
-  const { data, error } = await client.rpc(name, args);
-  if (error) throw error;
-  return data;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const { data, error } = await client.rpc(name, args);
+    if (!error) return data;
+    if (error.code !== 'PGRST303' || !/JWT issued at future/i.test(error.message)) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+  }
+  throw new Error('Local JWT clock skew did not settle.');
 }
 
 async function createUser(email, password) {

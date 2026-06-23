@@ -2,6 +2,14 @@
 
 These instructions apply to everyone working in this repository.
 
+## Contribution status and license
+
+The repository is currently all-rights-reserved. External contributions are not being actively
+accepted unless the repository owner explicitly invites or approves the work in advance.
+Submitting a contribution does not itself grant permission to copy, redistribute, or otherwise use
+the repository beyond the terms in [LICENSE](LICENSE). The long-term license and contribution model
+remain an owner decision; this document does not add legal terms.
+
 ## Required context
 
 Before implementation, read `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, and `docs/SECURITY.md`.
