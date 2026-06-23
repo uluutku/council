@@ -1,6 +1,5 @@
 # Council
 
-[![CI](https://github.com/uluutku/council/actions/workflows/ci.yml/badge.svg)](https://github.com/uluutku/council/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-%3E%3D22-3c873a)
 ![License](https://img.shields.io/badge/license-source--available-blue)
 
@@ -141,25 +140,34 @@ a remote project. Only cryptographic hashes are stored. Each plaintext code is d
 
 ## Commands
 
-| Command                    | Purpose                                                |
-| -------------------------- | ------------------------------------------------------ |
-| `npm run dev`              | Start the web application                              |
-| `npm run dev:ai`           | Start the local AI Edge Function                       |
-| `npm run check`            | Run formatting, lint, unit tests, and production build |
-| `npm run test:e2e`         | Run Playwright browser tests                           |
-| `npm run test:concurrency` | Run multi-session messaging and Realtime tests         |
-| `npm run test:ai-edge`     | Run AI Edge Function tests                             |
-| `npm run db:test`          | Run pgTAP database tests                               |
-| `npm run supabase:reset`   | Recreate the local database from migrations            |
+| Command                       | Purpose                                                         |
+| ----------------------------- | --------------------------------------------------------------- |
+| `npm run dev`                 | Start the web application                                       |
+| `npm run dev:ai`              | Start the local AI Edge Function                                |
+| `npm run verify:local`        | Run the normal local verification orchestrator                  |
+| `npm run verify:local:quick`  | Run local checks that do not require Docker or Supabase         |
+| `npm run verify:local:strict` | Run local verification and fail if an expected stage is skipped |
+| `npm run check`               | Run formatting, lint, unit tests, and production build          |
+| `npm run eval:ai:offline`     | Run deterministic synthetic AI behavior evaluations             |
+| `npm run eval:ai:live`        | Run opt-in live AI evaluations only with `-- --confirm`         |
+| `npm run test:e2e`            | Run Playwright browser tests                                    |
+| `npm run test:concurrency`    | Run multi-session messaging and Realtime tests                  |
+| `npm run test:ai-edge`        | Run AI Edge Function tests                                      |
+| `npm run db:test`             | Run pgTAP database tests                                        |
+| `npm run supabase:reset`      | Recreate the local database from migrations                     |
 
 ## Verification
 
 The test suite covers authentication and social privacy, messaging authorization, Realtime
 recovery, private attachments, safe AI Markdown, AI credit accounting, artifacts, presence,
-typing, mute behavior, notifications, search, and Premium code redemption.
+typing, mute behavior, notifications, search, Premium code redemption, and small offline AI
+behavior checks.
 
-CI runs schema validation, formatting, lint, unit and component tests, database tests, AI Edge
-Function tests, concurrency tests, production builds, and focused browser scenarios.
+Verification is local-only. `npm run verify:local` is the normal command. It runs available local
+stages and prints PASS, FAIL, and SKIPPED rows. Infrastructure-dependent stages may be skipped
+when Docker, Supabase, Chromium, required ports, or local configuration are unavailable. GitHub
+Actions is not used as a hosted test runner. Optional live AI evaluations are never part of local
+verification and may consume provider credits when explicitly confirmed.
 
 ## Repository
 

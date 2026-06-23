@@ -16,6 +16,7 @@ import {
 import '../supabase/functions/ai-chat/provider-stream.test.mjs';
 import '../supabase/functions/ai-chat/request-control.test.mjs';
 import '../supabase/functions/ai-chat/vision-analysis.test.mjs';
+import '../supabase/functions/ai-chat/cors.test.mjs';
 import { createHash } from 'node:crypto';
 
 const repoRoot = resolve(import.meta.dirname, '..');
@@ -176,6 +177,7 @@ async function main() {
         method: 'POST',
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Origin: 'http://127.0.0.1:4173',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),

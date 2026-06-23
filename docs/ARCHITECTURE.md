@@ -38,11 +38,14 @@ used; users do not supply provider keys.
 
 ## Server components
 
-The implemented `ai-chat` Edge Function authenticates requests, reserves the product credit,
-loads private conversation context, processes explicitly attached images and documents, calls
-OpenRouter, streams bounded responses, and finalizes or refunds the run idempotently. Upload and
-signed-access flows use narrow database RPCs plus private Storage buckets. Unimplemented tools,
-billing, export, and background processing remain outside the current runtime.
+The implemented `ai-chat` Edge Function authenticates requests, validates fail-closed CORS,
+reserves the product credit, loads private conversation context, processes explicitly attached
+images and documents, calls OpenRouter or the local mock provider, streams bounded responses, and
+finalizes or refunds the run idempotently. Its runtime is split into request handling, validation,
+SSE, generation orchestration, artifact revision orchestration, media processing, provider calls,
+and run-lifecycle helpers. Upload and signed-access flows use narrow database RPCs plus private
+Storage buckets. Unimplemented tools, billing, export, and background processing remain outside
+the current runtime.
 
 ## Repository architecture
 
@@ -52,6 +55,7 @@ billing, export, and background processing remain outside the current runtime.
   tests.
 - `docs` records locked product, architecture, security, and operational decisions.
 - `tasks` retains bounded implementation specifications as project history.
+- `evals` stores small synthetic AI behavior evaluation cases that run locally only.
 
 The web application uses JavaScript with JSDoc where types clarify boundaries. This keeps the
 locked frontend language while ESLint, runtime validation, and tests provide guardrails.

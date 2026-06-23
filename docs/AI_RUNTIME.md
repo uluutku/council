@@ -62,7 +62,12 @@ tests, and refuses to run unless Supabase is local/loopback. `OPENROUTER_API_KEY
 are server-only and never placed in a `VITE_*` variable.
 
 Local live startup uses `npm run dev:ai`, which reads `supabase/functions/.env` and fails before
-serving when OpenRouter mode has no key. Unauthenticated GET returns only `{"status":"ok"}`.
+serving when OpenRouter mode has no key. CORS is fail-closed: production-style OpenRouter mode
+must configure `APP_ORIGINS` or `APP_ORIGIN`, allowed browser requests echo only the matched
+origin, responses include `Vary: Origin`, and no production response uses
+`Access-Control-Allow-Origin: *`. Local mock development may use explicit loopback defaults.
+Requests without an `Origin` are accepted for trusted local/server health checks and do not receive
+a wildcard origin. Unauthenticated GET returns only `{"status":"ok"}`.
 Authenticated detailed metadata is available only in local development or when explicitly enabled;
 the development UI uses it to render `Live provider` or `Local mock`.
 
@@ -75,6 +80,17 @@ errors are never forwarded; only a fixed set of safe categories is used. Both br
 parsers require exactly one terminal event and reject malformed or truncated EOF. Only the most recent bounded
 window (20 messages) plus the system prompt is sent to the provider; there is no summarization,
 semantic memory, or inclusion of human conversations, files, or images.
+
+### Runtime modules
+
+The `ai-chat` runtime is decomposed into focused internal modules. `index.ts` reads runtime
+configuration, constructs the Supabase service client, resolves provider and CORS settings, and
+registers `Deno.serve`. `handler.ts` owns HTTP routing, authentication, health checks, validation,
+safe JSON errors, and CORS decisions. `generation-handler.ts` owns normal AI generation
+orchestration. `artifact-revision-handler.ts` owns reviewable artifact proposals. Image and
+document processing live in separate modules and do not format HTTP responses. `run-lifecycle.ts`
+centralizes completion retry and failure compensation. `sse.ts` owns stream event encoding and
+response headers.
 
 ## Task 010: more built-in contacts and private custom personas
 
@@ -223,3 +239,15 @@ Owner-issued codes are generated with a cryptographic random source by
 `npm run premium:create-code`. Only the hash is inserted. Redemption stacks duration from
 `greatest(now(), current pro_expires_at)`, adds bounded credits, and creates immutable grant
 history. The browser can read only its safe access summary and own grants.
+
+## Task 018: local verification and behavior evaluations
+
+GitHub-hosted test execution is disabled. `npm run verify:local` is the normal local verification
+entrypoint, `verify:local:quick` avoids Docker/Supabase requirements, and `verify:local:strict`
+fails if an expected local stage is skipped. Infrastructure-dependent skips are reported as
+SKIPPED with a reason rather than treated as passed.
+
+`npm run eval:ai:offline` runs synthetic deterministic cases for prompt ordering, memory
+boundaries, forwarded/document context delimiting, artifact distrust, persona separation,
+unsupported capability honesty, and prompt truncation. `npm run eval:ai:live -- --confirm` is
+reserved for explicitly confirmed local provider checks and is not a release gate.

@@ -4,6 +4,7 @@ coverage/
 playwright-report/
 test-results/
 blob-report/
+.local-test-results/
 
 .env
 .env.*

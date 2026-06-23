@@ -20,3 +20,6 @@ detailed implementation history.
   foreground browser notifications, inbox filters, and bounded conversation/message search.
 - Added owner-issued 30-day Premium codes with hash-only storage, immutable grants, attempt
   limiting, stacked time and credits, and Premium-first exact-once AI credit accounting.
+- Moved verification to local-only orchestration, disabled hosted GitHub test workflows,
+  decomposed the AI Edge runtime, made CORS fail closed, and added offline AI behavior
+  evaluations.

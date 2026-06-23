@@ -1,25 +1,46 @@
 # Testing
 
-## Layers
+Council verification is local-only. GitHub-hosted runners do not run tests, builds, linting,
+database checks, Supabase, Playwright, or deployment jobs.
 
-- Shared-schema tests verify environment-neutral Zod contracts.
-- Vitest and React Testing Library cover web modules, components, routes, and security boundaries.
-- Playwright covers critical browser flows against a real Vite development server.
-- pgTAP tests run against local Supabase migrations.
-- Future AI evaluations will measure behavior that deterministic tests cannot fully cover.
-
-## Local commands
+## Local Commands
 
 ```bash
-npm run test
-npm run test:watch
-npm run test:e2e
-npm run db:test
-npm run check
+npm run verify:local
+npm run verify:local:quick
+npm run verify:local:strict
+npm run eval:ai:offline
 ```
 
-`npm run check` runs format verification, lint, unit/component tests, and a production build. It
-does not depend on Supabase. Start local Supabase before `npm run db:test`.
+`npm run verify:local:quick` runs formatting, linting, shared/frontend tests, and the production
+build. `npm run verify:local` also attempts local Supabase startup, database reset, schema lint,
+database/RLS tests, AI Edge integration, messaging concurrency, and Playwright E2E. It skips
+infrastructure-dependent stages when local prerequisites are unavailable. `verify:local:strict`
+uses the same local-only stages but exits nonzero if an expected stage is skipped.
+
+Result semantics:
+
+- PASS means the stage executed locally and returned success.
+- FAIL means the stage executed locally and returned a failure.
+- SKIPPED means the stage did not execute because a local prerequisite was unavailable. Skipped is
+  not counted as passed.
+
+Logs and local eval results are written only under `.local-test-results/`, which is gitignored and
+never uploaded automatically.
+
+## Test Categories
+
+- Shared schemas: environment-neutral Zod contracts and boundary validation.
+- Frontend units/components: Vitest and Testing Library coverage for routes, components, API
+  wrappers, caches, rendering, and security-sensitive UI states.
+- Database/RLS: pgTAP tests against local Supabase migrations for authorized and denied paths.
+- Concurrency: local multi-session messaging and Realtime integration checks.
+- AI Edge: local mock-provider integration for authorization, credits, persistence, retries,
+  images, documents, forwarding, artifacts, and safe error mapping.
+- Browser E2E: Playwright Chromium scenarios against local Vite and local Supabase.
+- Offline AI evaluations: deterministic synthetic prompt and context behavior checks.
+- Optional live AI evaluations: explicitly confirmed local-only provider checks that are not a
+  release gate.
 
 ## Database security tests
 
@@ -27,28 +48,7 @@ Every future RLS policy must include positive tests for permitted actors and neg
 non-members, other users, unauthenticated sessions, or blocked relationships as applicable.
 Tests must also cover function execution grants and private media access paths when introduced.
 
-The database suite now contains seven pgTAP files with 190 assertions. Task 002 contributes five
-files and 174 assertions covering:
-
-- Auth-triggered profile/settings creation and cascading deletion;
-- profile normalization, constraints, immutable ownership fields, and own-row RLS;
-- private settings validation and owner-only access;
-- bounded profile discovery, privacy settings, block filtering, and minimal return fields;
-- request, response, reciprocal acceptance, rejection retry, removal, blocking, and unblocking;
-- participant visibility, anonymous denial, direct-mutation denial, and internal-helper grants.
-
-Task 003 adds 14 assertions for `update_my_settings`: own-user updates, anonymous denial,
-supported-key/type validation, and preservation of existing unknown JSON keys.
-
-Task 004 adds an eighth pgTAP file with 11 assertions for `list_my_blocked_users`: a blocker sees
-only their own blocked targets; a blocked user cannot discover their blocker through the function;
-an unrelated user sees only their own blocks; the result excludes blocks created by someone else;
-the returned shape exposes only minimal profile fields and never email, biography, or settings;
-the acting identity is derived from `auth.uid()`; unblocking removes the row; and anonymous
-callers are denied. The database suite now contains 201 assertions across eight files.
-
-Task 005 adds five pgTAP files and 196 assertions for a total of 397 assertions across 13 files.
-The messaging matrix covers:
+The database matrix covers:
 
 - tables, foreign keys, RLS, constraints, canonical pairs, membership triggers, and required
   indexes;
@@ -63,12 +63,11 @@ The messaging matrix covers:
 - anonymous denial, unrelated-user isolation, internal-helper grants, and denial of every direct
   messaging-table mutation.
 
-Task 006 adds 53 pgTAP assertions for a total of 450 assertions across 14 files. They verify exact
-topic helpers, trigger/function presence, private receive policy behavior, client Broadcast
-denial, malformed/similar-prefix rejection, member/owner authorization, minimal event payloads,
-transaction failure behavior, idempotent event suppression, edits/deletes, reaction no-ops,
-coherent receipt advancement, generic availability payloads, and one logical block event per
-topic.
+Realtime database tests verify exact topic helpers, trigger/function presence, private receive
+policy behavior, client Broadcast denial, malformed/similar-prefix rejection, member/owner
+authorization, minimal event payloads, transaction failure behavior, idempotent event suppression,
+edits/deletes, reaction no-ops, coherent receipt advancement, generic availability payloads, and
+one logical block event per topic.
 
 Tests create deterministic `auth.users` rows inside transactions. They simulate real API
 authorization with:
@@ -82,12 +81,17 @@ Anonymous cases clear the subject and use `set local role anon`. Fixture setup r
 database owner, but authorization assertions run under the actual API roles and exercise RLS and
 grants. Every file rolls back its fixtures.
 
-## AI evaluation
+## AI Evaluation
 
-Future repeatable evaluations will measure persona consistency, memory precision and recall,
-contradiction resolution, deleted-memory reuse, correct tool selection and result use,
-fact-checking citation support, image-description accuracy, cost per useful interaction, and
-failure rate.
+`npm run eval:ai:offline` runs synthetic local cases under `evals/ai/`. These verify deterministic
+application behavior such as prompt ordering, memory inclusion/exclusion, forwarded and document
+context delimiting, artifact distrust, persona separation, unsupported capability honesty, and
+prompt truncation boundaries.
+
+`npm run eval:ai:live -- --confirm` is optional and local-only. It requires a local OpenRouter
+configuration, prints the configured model and case limit before starting, uses bounded synthetic
+cases only, writes safe aggregate results under `.local-test-results/`, and is not run by
+`verify:local`.
 
 ## Authentication and browser tests
 
@@ -164,7 +168,8 @@ Broadcast replication slot after the first private join, and verifies:
   events.
 
 This suite remains outside `npm run check` because it requires Docker, Auth, Realtime, and multiple
-sessions. CI runs it after the clean database reset and pgTAP suite.
+sessions. `npm run verify:local` runs it after local Supabase startup, reset, and pgTAP when those
+prerequisites are available.
 
 ## Messaging UI tests
 
@@ -208,10 +213,8 @@ reconnection reconciling messages a client missed while offline. Message-content
 scoped to the message-history list so the inbox sidebar's last-message preview is not mistaken for a
 duplicate. The interception helper alters only a test response and never weakens production code.
 
-## CI
+## Hosted CI
 
-CI installs locked dependencies, checks formatting, lints, runs unit tests, builds the web
-application, starts local Supabase, resets and tests the database, installs Chromium, and runs the
-local-backed Playwright suite without production credentials. The npm Supabase wrapper sets
-`DO_NOT_TRACK=1` so unreachable analytics endpoints cannot turn successful tests into false
-command failures.
+Hosted CI is intentionally disabled. Do not trigger GitHub Actions or recreate hosted runner jobs
+to obtain verification results. If GitHub branch protection still requires removed status checks,
+the repository owner must update those repository settings.
