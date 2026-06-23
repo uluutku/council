@@ -13,8 +13,8 @@ export function AppHomePage() {
       <h1>Welcome, {name}</h1>
       <p className="lede">
         Open <Link to="/app/messages">Messages</Link> to read and reply in real time, or find people
-        and manage your connections from <Link to="/app/contacts">Contacts</Link>. Media sharing and
-        AI contacts are not available yet.
+        and manage your connections from <Link to="/app/contacts">Contacts</Link>. AI contacts,
+        artifacts, attachments, search, and access controls are available from the app rail.
       </p>
       <section className="panel compact-panel">
         <h2>Account status</h2>

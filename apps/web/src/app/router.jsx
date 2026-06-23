@@ -1,4 +1,5 @@
 import { createBrowserRouter, createMemoryRouter } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { PublicLayout } from './layouts/PublicLayout.jsx';
 import { AuthenticatedLayout } from './layouts/AuthenticatedLayout.jsx';
 import { SettingsLayout } from './layouts/SettingsLayout.jsx';
@@ -17,21 +18,73 @@ import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage.jsx';
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage.jsx';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage.jsx';
 import { OnboardingPage } from '../features/onboarding/OnboardingPage.jsx';
-import { ProfileSettingsPage } from '../features/profile/pages/ProfileSettingsPage.jsx';
-import { PreferencesSettingsPage } from '../features/profile/pages/PreferencesSettingsPage.jsx';
-import { SecuritySettingsPage } from '../features/profile/pages/SecuritySettingsPage.jsx';
-import { ContactsPage } from '../features/contacts/pages/ContactsPage.jsx';
-import { DiscoverContactsPage } from '../features/contacts/pages/DiscoverContactsPage.jsx';
-import { ContactRequestsPage } from '../features/contacts/pages/ContactRequestsPage.jsx';
-import { BlockedUsersPage } from '../features/contacts/pages/BlockedUsersPage.jsx';
-import { InboxPage } from '../features/messaging/pages/InboxPage.jsx';
-import { ConversationPage } from '../features/messaging/pages/ConversationPage.jsx';
-import { MessageSearchPage } from '../features/messaging/pages/MessageSearchPage.jsx';
-import { AiCataloguePage } from '../features/ai/pages/AiCataloguePage.jsx';
-import { AiConversationPage } from '../features/ai/pages/AiConversationPage.jsx';
-import { ArtifactsPage } from '../features/artifacts/pages/ArtifactsPage.jsx';
-import { ArtifactDetailPage } from '../features/artifacts/pages/ArtifactDetailPage.jsx';
-import { AccessSettingsPage } from '../features/access/pages/AccessSettingsPage.jsx';
+import { RouteSkeleton } from '../components/RouteSkeleton.jsx';
+
+function lazyNamed(loader, exportName) {
+  return lazy(() => loader().then((module) => ({ default: module[exportName] })));
+}
+
+const ProfileSettingsPage = lazyNamed(
+  () => import('../features/profile/pages/ProfileSettingsPage.jsx'),
+  'ProfileSettingsPage',
+);
+const PreferencesSettingsPage = lazyNamed(
+  () => import('../features/profile/pages/PreferencesSettingsPage.jsx'),
+  'PreferencesSettingsPage',
+);
+const SecuritySettingsPage = lazyNamed(
+  () => import('../features/profile/pages/SecuritySettingsPage.jsx'),
+  'SecuritySettingsPage',
+);
+const AccessSettingsPage = lazyNamed(
+  () => import('../features/access/pages/AccessSettingsPage.jsx'),
+  'AccessSettingsPage',
+);
+const ContactsPage = lazyNamed(
+  () => import('../features/contacts/pages/ContactsPage.jsx'),
+  'ContactsPage',
+);
+const DiscoverContactsPage = lazyNamed(
+  () => import('../features/contacts/pages/DiscoverContactsPage.jsx'),
+  'DiscoverContactsPage',
+);
+const ContactRequestsPage = lazyNamed(
+  () => import('../features/contacts/pages/ContactRequestsPage.jsx'),
+  'ContactRequestsPage',
+);
+const BlockedUsersPage = lazyNamed(
+  () => import('../features/contacts/pages/BlockedUsersPage.jsx'),
+  'BlockedUsersPage',
+);
+const InboxPage = lazyNamed(() => import('../features/messaging/pages/InboxPage.jsx'), 'InboxPage');
+const ConversationPage = lazyNamed(
+  () => import('../features/messaging/pages/ConversationPage.jsx'),
+  'ConversationPage',
+);
+const MessageSearchPage = lazyNamed(
+  () => import('../features/messaging/pages/MessageSearchPage.jsx'),
+  'MessageSearchPage',
+);
+const AiCataloguePage = lazyNamed(
+  () => import('../features/ai/pages/AiCataloguePage.jsx'),
+  'AiCataloguePage',
+);
+const AiConversationPage = lazyNamed(
+  () => import('../features/ai/pages/AiConversationPage.jsx'),
+  'AiConversationPage',
+);
+const ArtifactsPage = lazyNamed(
+  () => import('../features/artifacts/pages/ArtifactsPage.jsx'),
+  'ArtifactsPage',
+);
+const ArtifactDetailPage = lazyNamed(
+  () => import('../features/artifacts/pages/ArtifactDetailPage.jsx'),
+  'ArtifactDetailPage',
+);
+
+function lazyRoute(element) {
+  return <Suspense fallback={<RouteSkeleton />}>{element}</Suspense>;
+}
 
 export const routes = [
   {
@@ -66,40 +119,40 @@ export const routes = [
             path: 'messages',
             element: <MessagingLayout />,
             children: [
-              { index: true, element: <InboxPage /> },
-              { path: 'search', element: <MessageSearchPage /> },
-              { path: ':conversationId', element: <ConversationPage /> },
+              { index: true, element: lazyRoute(<InboxPage />) },
+              { path: 'search', element: lazyRoute(<MessageSearchPage />) },
+              { path: ':conversationId', element: lazyRoute(<ConversationPage />) },
             ],
           },
           {
             path: 'ai',
             element: <AiLayout />,
             children: [
-              { index: true, element: <AiCataloguePage /> },
-              { path: ':conversationId', element: <AiConversationPage /> },
+              { index: true, element: lazyRoute(<AiCataloguePage />) },
+              { path: ':conversationId', element: lazyRoute(<AiConversationPage />) },
             ],
           },
           {
             path: 'contacts',
             element: <ContactsLayout />,
             children: [
-              { index: true, element: <ContactsPage /> },
-              { path: 'discover', element: <DiscoverContactsPage /> },
-              { path: 'requests', element: <ContactRequestsPage /> },
+              { index: true, element: lazyRoute(<ContactsPage />) },
+              { path: 'discover', element: lazyRoute(<DiscoverContactsPage />) },
+              { path: 'requests', element: lazyRoute(<ContactRequestsPage />) },
             ],
           },
-          { path: 'artifacts', element: <ArtifactsPage /> },
-          { path: 'artifacts/:artifactId', element: <ArtifactDetailPage /> },
+          { path: 'artifacts', element: lazyRoute(<ArtifactsPage />) },
+          { path: 'artifacts/:artifactId', element: lazyRoute(<ArtifactDetailPage />) },
           {
             path: 'settings',
             element: <SettingsLayout />,
             children: [
-              { index: true, element: <ProfileSettingsPage /> },
-              { path: 'profile', element: <ProfileSettingsPage /> },
-              { path: 'preferences', element: <PreferencesSettingsPage /> },
-              { path: 'access', element: <AccessSettingsPage /> },
-              { path: 'security', element: <SecuritySettingsPage /> },
-              { path: 'blocked', element: <BlockedUsersPage /> },
+              { index: true, element: lazyRoute(<ProfileSettingsPage />) },
+              { path: 'profile', element: lazyRoute(<ProfileSettingsPage />) },
+              { path: 'preferences', element: lazyRoute(<PreferencesSettingsPage />) },
+              { path: 'access', element: lazyRoute(<AccessSettingsPage />) },
+              { path: 'security', element: lazyRoute(<SecuritySettingsPage />) },
+              { path: 'blocked', element: lazyRoute(<BlockedUsersPage />) },
             ],
           },
         ],

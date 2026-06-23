@@ -58,4 +58,35 @@ describe('useTypingIndicator', () => {
     view.unmount();
     expect(send).toHaveBeenCalledWith(expect.objectContaining({ event: 'typing.stop' }));
   });
+
+  it('sends a typing start after the channel subscribes when typing begins early', () => {
+    vi.useFakeTimers();
+    let subscribeCallback;
+    const send = vi.fn().mockResolvedValue('ok');
+    const channel = {
+      on: vi.fn(() => channel),
+      subscribe: vi.fn((callback) => {
+        subscribeCallback = callback;
+      }),
+      send,
+    };
+    const client = {
+      channel: vi.fn(() => channel),
+      realtime: { setAuth: vi.fn().mockResolvedValue() },
+      removeChannel: vi.fn().mockResolvedValue(),
+    };
+    const view = render(
+      <AuthContext.Provider value={{ client }}>
+        <Harness />
+      </AuthContext.Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Type' }));
+    expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'typing.start' }));
+
+    act(() => subscribeCallback('SUBSCRIBED'));
+
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ event: 'typing.start' }));
+    view.unmount();
+  });
 });

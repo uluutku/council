@@ -1,3 +1,4 @@
+import { MoreHorizontal, Search, UserPlus } from 'lucide-react';
 import { Link, Outlet, useLocation, useParams } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,6 +10,8 @@ import { setConversationMute } from '../../features/messaging/api/messagingApi.j
 import { usePresence } from '../../features/messaging/hooks/usePresence.js';
 import { messagingKeys } from '../../lib/query-keys/messaging.js';
 import { filterConversations } from '../../features/messaging/queries/conversationsQuery.js';
+import { IconButton } from '../../components/IconButton.jsx';
+import { useCollectionPanelWidth } from './useCollectionPanelWidth.js';
 
 // Responsive shell for the messaging area. On wide screens both panes are
 // visible (conversation list | active conversation). On narrow screens a single
@@ -20,6 +23,7 @@ export function MessagingLayout() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState('all');
+  const panel = useCollectionPanelWidth();
   const {
     conversations,
     isPending,
@@ -49,13 +53,24 @@ export function MessagingLayout() {
     <div
       className="messaging-layout"
       data-view={conversationId || location.pathname.endsWith('/search') ? 'conversation' : 'list'}
+      style={{ '--collection-panel-width': `${panel.width}px` }}
     >
-      <aside className="messaging-sidebar" aria-label="Conversations">
+      <aside className="messaging-sidebar collection-panel" aria-label="Conversations">
         <div className="messaging-sidebar-header">
-          <h1>Messages</h1>
-          <Link className="button button--secondary button--small" to="/app/messages/search">
-            Search
-          </Link>
+          <div>
+            <h1>Messages</h1>
+            <p>Human conversations</p>
+          </div>
+          <div className="messaging-sidebar-actions">
+            <IconButton as={Link} to="/app/messages/search" icon={Search} label="Search messages" />
+            <IconButton
+              as={Link}
+              to="/app/contacts/discover"
+              icon={UserPlus}
+              label="Start a conversation"
+            />
+            <IconButton icon={MoreHorizontal} label="More message options" disabled />
+          </div>
         </div>
         <div className="inbox-filters" aria-label="Inbox filters">
           {[
@@ -89,7 +104,28 @@ export function MessagingLayout() {
           onToggleMute={(conversation) => mute.mutate(conversation)}
         />
       </aside>
-      <div className="messaging-main">
+      <div
+        className="collection-panel-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize conversation list"
+        aria-valuemin={panel.minWidth}
+        aria-valuemax={panel.maxWidth}
+        aria-valuenow={panel.width}
+        tabIndex={0}
+        onPointerDown={panel.startResize}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            panel.adjustWidth(-16);
+          }
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            panel.adjustWidth(16);
+          }
+        }}
+      />
+      <div className="messaging-main content-panel">
         <Outlet />
       </div>
     </div>

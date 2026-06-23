@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Paperclip, Send } from 'lucide-react';
 import { ReplyPreview } from './ReplyPreview.jsx';
 import { AttachmentDraftList } from './AttachmentDraftList.jsx';
 import { ATTACHMENT_ACCEPT, attachmentRejectionMessage } from '../utils/attachments.js';
@@ -52,6 +53,13 @@ export function MessageComposer({
     if (replyReference) textareaRef.current?.focus();
   }, [replyReference]);
 
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 176)}px`;
+  }, [value]);
+
   function handleFiles(fileList) {
     if (!fileList || fileList.length === 0) return;
     const { rejected } = attachments.addFiles(fileList);
@@ -70,6 +78,11 @@ export function MessageComposer({
   }
 
   function handleKeyDown(event) {
+    if (event.key === 'Escape' && replyReference) {
+      event.preventDefault();
+      onCancelReply();
+      return;
+    }
     if (event.key === 'Enter' && !event.shiftKey && !composingRef.current) {
       event.preventDefault();
       submit();
@@ -135,11 +148,12 @@ export function MessageComposer({
         />
         <button
           type="button"
-          className="button button--secondary message-composer-attach"
+          className="icon-button message-composer-attach"
           onClick={() => fileInputRef.current?.click()}
           aria-label="Attach files"
+          title="Attach files"
         >
-          Attach
+          <Paperclip aria-hidden="true" size={19} strokeWidth={2} />
         </button>
         <label className="sr-only" htmlFor="message-composer-input">
           Message
@@ -169,8 +183,15 @@ export function MessageComposer({
           }}
           data-autofocus-key={autoFocusKey}
         />
-        <button type="submit" className="button message-composer-send" disabled={!canSubmit}>
-          Send
+        <button
+          type="submit"
+          className="icon-button message-composer-send"
+          disabled={!canSubmit}
+          aria-label="Send"
+          title="Send"
+          data-ready={canSubmit ? 'true' : undefined}
+        >
+          <Send aria-hidden="true" size={19} strokeWidth={2} />
         </button>
       </div>
       {attachments.isUploading ? (

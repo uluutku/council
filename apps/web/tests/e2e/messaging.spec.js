@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { randomBytes } from 'node:crypto';
 import { deleteLocalUsersByEmail } from './helpers/localSupabase.js';
 import { getLocalUserIdByEmail, setLocalPresence } from './helpers/localSupabase.js';
 import { makeContacts, registerAndOnboard } from './helpers/contactsFlow.js';
@@ -13,14 +14,18 @@ const password = 'local-test-password';
 const createdEmails = [];
 
 function makeUser(prefix) {
-  const stamp = `${Date.now()}${Math.floor(Math.random() * 1_000_000)}`;
-  const email = `council-msg-${prefix}-${stamp}@example.test`;
+  const unique = `${randomBytes(8).toString('hex')}${Date.now().toString(36)}`;
+  const safePrefix = prefix
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '')
+    .slice(0, 10);
+  const email = `council-msg-${safePrefix}-${unique}@example.test`;
   createdEmails.push(email);
   return {
     email,
     password,
-    username: `${prefix}${stamp}`.slice(0, 20),
-    displayName: `Msg ${prefix.toUpperCase()} ${stamp}`,
+    username: `${safePrefix}_${unique}`.slice(0, 24),
+    displayName: `Msg ${prefix.toUpperCase()} ${unique}`,
   };
 }
 

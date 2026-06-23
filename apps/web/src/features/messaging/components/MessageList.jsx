@@ -186,16 +186,34 @@ export function MessageList({
   let lastTimestamp = null;
   const rows = [];
 
-  for (const message of messages) {
+  for (const [index, message] of messages.entries()) {
     if (!lastTimestamp || !isSameCalendarDay(lastTimestamp, message.created_at)) {
       rows.push(<DateSeparator key={`sep-${message.id}`} timestamp={message.created_at} />);
       lastSenderId = null;
     }
+    const sameDayAsPrevious = lastTimestamp
+      ? isSameCalendarDay(lastTimestamp, message.created_at)
+      : false;
     lastTimestamp = message.created_at;
 
     const isOwn = message.sender_user_id === currentUserId;
     const showSender = !isOwn && message.sender_user_id !== lastSenderId;
+    const previousSenderId = lastSenderId;
     lastSenderId = message.sender_user_id;
+    const nextMessage = messages[index + 1];
+    const joinsPrevious = sameDayAsPrevious && previousSenderId === message.sender_user_id;
+    const joinsNext =
+      Boolean(nextMessage) &&
+      isSameCalendarDay(message.created_at, nextMessage.created_at) &&
+      nextMessage.sender_user_id === message.sender_user_id;
+    const groupPosition =
+      joinsPrevious && joinsNext
+        ? 'middle'
+        : joinsPrevious
+          ? 'end'
+          : joinsNext
+            ? 'start'
+            : 'single';
 
     rows.push(
       <MessageBubble
@@ -206,6 +224,7 @@ export function MessageList({
         canSend={canSend}
         senderName={peerName(peer)}
         showSender={showSender}
+        groupPosition={groupPosition}
         replyReference={
           message.reply_to_message_id
             ? buildReplyReference(message, messageById, currentUserId, peer)

@@ -1,4 +1,6 @@
+import { BellOff, MoreHorizontal } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { IconButton } from '../../../components/IconButton.jsx';
 import { PeerAvatar } from './PeerAvatar.jsx';
 import { conversationPeer, peerName } from '../utils/peer.js';
 import { previewExcerpt } from '../utils/messageContent.js';
@@ -14,6 +16,7 @@ function previewText(conversation, currentUserId) {
   }
 
   const excerpt = previewExcerpt(conversation.last_message_content ?? '');
+  if (!excerpt) return { text: 'Attachment', muted: true };
   const mine = conversation.last_message_sender_id === currentUserId;
   return { text: mine ? `You: ${excerpt}` : excerpt, muted: false };
 }
@@ -62,11 +65,19 @@ export function ConversationListItem({
               >
                 {preview.text}
               </span>
-              {unread > 0 ? (
-                <span className="conversation-unread" aria-hidden="true">
-                  {unread > 99 ? '99+' : unread}
-                </span>
-              ) : null}
+              <span className="conversation-row-indicators">
+                {conversation.is_muted ? <BellOff aria-hidden="true" size={14} /> : null}
+                {unread > 0 ? (
+                  <span className="conversation-unread" aria-hidden="true">
+                    {unread > 99 ? '99+' : unread}
+                  </span>
+                ) : (
+                  <span
+                    className="conversation-unread conversation-unread--empty"
+                    aria-hidden="true"
+                  />
+                )}
+              </span>
             </span>
             {!conversation.can_send ? (
               <span className="conversation-item-meta">Messaging unavailable</span>
@@ -76,15 +87,13 @@ export function ConversationListItem({
             ) : null}
           </span>
         </Link>
-        <button
-          type="button"
+        <IconButton
           className="conversation-mute-button"
-          onClick={onToggleMute}
-          aria-label={conversation.is_muted ? `Unmute ${name}` : `Mute ${name}`}
+          icon={MoreHorizontal}
+          label={conversation.is_muted ? `Unmute ${name}` : `Mute ${name}`}
           title={conversation.is_muted ? 'Unmute' : 'Mute forever'}
-        >
-          {conversation.is_muted ? 'Muted' : 'Mute'}
-        </button>
+          onClick={onToggleMute}
+        />
       </div>
     </li>
   );

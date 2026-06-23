@@ -25,3 +25,6 @@ detailed implementation history.
   evaluations.
 - Completed local integration verification with pinned local Deno, strict no-skip verification,
   validated Playwright app-origin configuration, and repaired artifact E2E username collisions.
+- Added Council's messenger design-system foundation, full-height authenticated shell, redesigned
+  human messaging list/conversation/composer surfaces, route skeletons, and local UI screenshot
+  review tooling.

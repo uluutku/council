@@ -13,8 +13,10 @@ export function useTypingIndicator(conversationId) {
   const expiryRef = useRef(null);
   const inactivityRef = useRef(null);
   const lastStartRef = useRef(0);
+  const textActiveRef = useRef(false);
 
   const stop = useCallback(() => {
+    textActiveRef.current = false;
     if (inactivityRef.current) window.clearTimeout(inactivityRef.current);
     inactivityRef.current = null;
     subscriptionRef.current?.send('typing.stop').catch(() => {});
@@ -26,6 +28,7 @@ export function useTypingIndicator(conversationId) {
         stop();
         return;
       }
+      textActiveRef.current = true;
       const now = Date.now();
       if (now - lastStartRef.current >= THROTTLE_MS) {
         lastStartRef.current = now;
@@ -52,6 +55,11 @@ export function useTypingIndicator(conversationId) {
           }
           setPeerTyping(true);
           expiryRef.current = window.setTimeout(() => setPeerTyping(false), EXPIRES_MS);
+        },
+        onStatus: (status) => {
+          if (status !== 'subscribed' || !textActiveRef.current) return;
+          lastStartRef.current = Date.now();
+          subscriptionRef.current?.send('typing.start').catch(() => {});
         },
       });
     } catch {

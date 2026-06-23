@@ -69,6 +69,9 @@ Completed:
 - Local-first verification is complete: hosted GitHub test workflows are disabled, local
   verification reports PASS/FAIL/SKIPPED, the AI runtime is decomposed internally, CORS is
   fail-closed, and a small local AI behavior evaluation foundation exists.
+- Messenger UI foundation is complete: the authenticated shell, navigation rail, mobile
+  navigation, human conversation list, human conversation screen, composer, route skeletons, and
+  local screenshot review tooling now use Council's semantic design tokens.
 
 Incomplete:
 

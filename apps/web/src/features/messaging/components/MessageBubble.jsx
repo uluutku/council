@@ -34,6 +34,7 @@ export function MessageBubble({
   canSend,
   senderName,
   showSender,
+  groupPosition = 'single',
   replyReference,
   receiptStatus,
   isEditing,
@@ -69,6 +70,7 @@ export function MessageBubble({
       className={`message-row${highlighted ? ' message-row--highlight' : ''}`}
       data-own={isOwn ? 'true' : undefined}
       data-selected={selected ? 'true' : undefined}
+      data-group={groupPosition}
       id={`message-${message.id}`}
       tabIndex={-1}
     >

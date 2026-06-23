@@ -68,6 +68,19 @@ consume them without a compilation step.
 TanStack Query manages server state, Zustand manages local UI state, React Router owns
 navigation, and the Supabase JavaScript SDK is created from validated browser-safe configuration.
 
+## Web shell and design system
+
+The authenticated web application uses a full-height messenger shell. Desktop routes render inside
+an icon-first navigation rail and a panel-owned content area. Messages use a resizable collection
+panel plus a main conversation panel; narrow screens switch to a single route-driven panel with
+mobile bottom navigation. Browser-level page scrolling is avoided inside the authenticated shell
+where practical.
+
+The visual system is based on semantic CSS custom properties documented in
+`docs/DESIGN_SYSTEM.md`. Legacy color variables remain mapped to the semantic tokens so older AI,
+artifact, contact, and settings surfaces can adopt the shell before their focused redesigns. The
+single icon family is `lucide-react`.
+
 ## Account and social database boundary
 
 ```mermaid
@@ -298,11 +311,17 @@ authenticated shell through two routes:
 /app/messages/:conversationId    a single direct conversation
 ```
 
-`MessagingLayout` renders the conversation list in a sidebar and the active conversation through an
-`<Outlet/>`. On wide screens both panes show (list | conversation). On narrow screens a single pane
-shows at a time, chosen by a `data-view` attribute derived from the route param, giving full-screen
-conversation routing on mobile-web. The conversation id is validated as a UUID before any query
-runs; an invalid id renders the same generic "unavailable" screen as an inaccessible conversation.
+`MessagingLayout` renders the conversation list in a resizable collection panel and the active
+conversation through an `<Outlet/>`. On wide screens both panes show (list | conversation). On
+narrow screens a single pane shows at a time, chosen by a `data-view` attribute derived from the
+route param, giving full-screen conversation routing on mobile-web. The conversation id is
+validated as a UUID before any query runs; an invalid id renders the same generic "unavailable"
+screen as an inaccessible conversation.
+
+`ConversationPage.jsx` composes route-level states and delegates coordination to
+`useConversationController`, `useConversationSelection`, and `useConversationDialogs`. Query,
+realtime, optimistic send, attachment, receipt, typing, mutation, selection, forwarding, and
+dialog behavior remain backed by the existing hooks and database contracts.
 
 ### Query and cache ownership
 

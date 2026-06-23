@@ -56,11 +56,10 @@ export default defineConfig({
     },
     {
       // Serve the ai-chat Edge Function in deterministic mock mode for AI e2e.
-      command:
-        'node scripts/supabase.mjs functions serve ai-chat --no-verify-jwt --env-file supabase/functions/mock.env',
-      url: `${localSupabase.apiUrl}/functions/v1/ai-chat`,
+      command: 'node scripts/serve-ai-chat-e2e.mjs',
+      url: 'http://127.0.0.1:54329/health',
       cwd: repositoryRoot,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
   ],

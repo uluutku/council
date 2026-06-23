@@ -25,6 +25,7 @@
     "deno:check:ai": "node scripts/deno-local.mjs check --node-modules-dir=manual supabase/functions/ai-chat/index.ts",
     "eval:ai:offline": "node scripts/eval-ai-offline.mjs",
     "eval:ai:live": "node scripts/eval-ai-live.mjs",
+    "ui:review": "node scripts/ui-review.mjs",
     "premium:create-code": "node scripts/create-premium-code.mjs",
     "build": "npm run build --workspace @council/web",
     "check": "npm run format:check && npm run lint && npm run test && npm run build",
