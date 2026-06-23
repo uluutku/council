@@ -16,7 +16,9 @@ npm run eval:ai:offline
 build. `npm run verify:local` also attempts local Supabase startup, database reset, schema lint,
 database/RLS tests, AI Edge integration, messaging concurrency, and Playwright E2E. It skips
 infrastructure-dependent stages when local prerequisites are unavailable. `verify:local:strict`
-uses the same local-only stages but exits nonzero if an expected stage is skipped.
+uses the same local-only stages but exits nonzero if an expected stage is skipped or failed. A
+fully provisioned local machine needs Docker running, the repository-managed Supabase CLI, pinned
+local Deno 2.1.4 from `npm install`, and local Chromium from Playwright.
 
 Result semantics:
 
@@ -27,6 +29,22 @@ Result semantics:
 
 Logs and local eval results are written only under `.local-test-results/`, which is gitignored and
 never uploaded automatically.
+
+## Local prerequisites
+
+Use the repository-managed Supabase wrapper instead of a separate global install:
+
+```bash
+node scripts/supabase.mjs --version
+node scripts/supabase.mjs start
+```
+
+Docker must be installed and the daemon must be running before Supabase-backed stages can execute.
+The Edge Function check uses the pinned local Deno package:
+
+```bash
+npm run deno:check:ai
+```
 
 ## Test Categories
 
@@ -111,6 +129,11 @@ Playwright starts the real web application against local Supabase and verifies:
 
 The Node-only test helper reads credentials from local `supabase status`, rejects remote URLs,
 creates only unique test users, and deletes those users after execution where practical.
+
+Playwright uses one validated loopback application origin. By default it is
+`http://127.0.0.1:4173`; override it with `PLAYWRIGHT_BASE_URL` only for a local `http` origin with
+an explicit port. If a scenario fails before navigation with an invalid or missing base URL, check
+that variable first and run `npm run test:e2e -- --list` to confirm the app config is being loaded.
 
 ## Contact UI tests
 

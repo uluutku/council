@@ -23,3 +23,5 @@ detailed implementation history.
 - Moved verification to local-only orchestration, disabled hosted GitHub test workflows,
   decomposed the AI Edge runtime, made CORS fail closed, and added offline AI behavior
   evaluations.
+- Completed local integration verification with pinned local Deno, strict no-skip verification,
+  validated Playwright app-origin configuration, and repaired artifact E2E username collisions.

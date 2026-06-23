@@ -88,7 +88,8 @@ Requirements:
 
 - Node.js 22 or newer
 - npm 11 or newer
-- Docker for local Supabase
+- Docker Desktop with the daemon running for local Supabase
+- Pinned local Deno 2.1.4, installed by `npm install` for Edge Function validation
 
 ```bash
 npm install
@@ -165,9 +166,11 @@ behavior checks.
 
 Verification is local-only. `npm run verify:local` is the normal command. It runs available local
 stages and prints PASS, FAIL, and SKIPPED rows. Infrastructure-dependent stages may be skipped
-when Docker, Supabase, Chromium, required ports, or local configuration are unavailable. GitHub
-Actions is not used as a hosted test runner. Optional live AI evaluations are never part of local
-verification and may consume provider credits when explicitly confirmed.
+when Docker, Supabase, Chromium, required ports, pinned Deno, or local configuration are
+unavailable. `npm run verify:local:strict` uses the same local machine checks and fails when any
+expected stage is skipped or failed. GitHub Actions is not used as a hosted test runner. Optional
+live AI evaluations are never part of local verification and may consume provider credits when
+explicitly confirmed.
 
 ## Repository
 

@@ -25,10 +25,11 @@ function record(name, status, reason = '') {
 
 function run(command, args, { env = {}, logFile = null, quiet = false } = {}) {
   return new Promise((resolveRun) => {
+    const useShell = process.platform === 'win32' && command === 'npm';
     const child = spawn(command, args, {
       cwd: repositoryRoot,
       env: { ...process.env, DO_NOT_TRACK: '1', ...env },
-      shell: process.platform === 'win32',
+      shell: useShell,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';
@@ -151,6 +152,22 @@ async function ensureSupabase() {
   return true;
 }
 
+async function ensureDeno() {
+  const result = await run(process.execPath, ['scripts/deno-local.mjs', '--version'], {
+    quiet: true,
+  });
+  if (!result.ok || !/^deno 2\.1\.4\b/m.test(result.output)) {
+    record(
+      'Deno prerequisite',
+      'SKIPPED',
+      'Pinned local Deno 2.1.4 is unavailable. Run npm install.',
+    );
+    return false;
+  }
+  record('Deno prerequisite', 'PASS', 'Pinned local Deno 2.1.4 is available.');
+  return true;
+}
+
 async function chromiumAvailable() {
   const result = await run(
     process.execPath,
@@ -183,6 +200,15 @@ async function main() {
   await runStage('Production build', 'npm', ['run', 'build']);
 
   if (mode !== 'quick') {
+    const denoReady = await ensureDeno();
+    if (denoReady) {
+      await runStage('AI Edge Deno check', 'npm', ['run', 'deno:check:ai'], {
+        logFile: 'deno-check-ai.log',
+      });
+    } else {
+      record('AI Edge Deno check', 'SKIPPED', 'Pinned local Deno prerequisite is unavailable.');
+    }
+
     const supabaseReady = await ensureSupabase();
     if (supabaseReady) {
       const resetOk = await runStage('Database reset', 'npm', ['run', 'supabase:reset'], {

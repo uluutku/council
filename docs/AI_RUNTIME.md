@@ -251,3 +251,13 @@ SKIPPED with a reason rather than treated as passed.
 boundaries, forwarded/document context delimiting, artifact distrust, persona separation,
 unsupported capability honesty, and prompt truncation. `npm run eval:ai:live -- --confirm` is
 reserved for explicitly confirmed local provider checks and is not a release gate.
+
+## Task 019: local integration verification
+
+The decomposed `ai-chat` runtime is checked with pinned local Deno 2.1.4 through
+`npm run deno:check:ai`, then exercised through the local Supabase Edge runtime in deterministic
+mock mode. The local integration suite covers text generation, mock image analysis, TXT/Markdown
+and mock PDF document paths, forwarded human context, artifact revision, memory enabled and
+disabled, Premium and trial credit selection, idempotent retry, provider failure refund,
+stale-run recovery, strict stream termination, and allowed/denied CORS origins. OpenRouter mode is
+not invoked by normal verification.
