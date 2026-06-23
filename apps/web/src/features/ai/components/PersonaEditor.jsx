@@ -74,13 +74,14 @@ export function PersonaEditor({ initial, onSubmit, onCancel, isSaving, errorMess
         <label htmlFor={`${ids}-instructions`}>Instructions</label>
         <textarea
           id={`${ids}-instructions`}
+          className="persona-instructions"
           value={instructions}
           maxLength={4000}
           rows={5}
           onChange={(event) => setInstructions(event.target.value)}
           placeholder="Describe how this persona should behave and respond."
         />
-        <span className="field-hint">{instructions.length} / 4000</span>
+        <span className="field-hint persona-editor-count">{instructions.length} / 4000</span>
       </div>
 
       <div className="persona-editor-selects">

@@ -1,6 +1,7 @@
 import { createBrowserRouter, createMemoryRouter } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { PublicLayout } from './layouts/PublicLayout.jsx';
+import { AuthLayout } from './layouts/AuthLayout.jsx';
 import { AuthenticatedLayout } from './layouts/AuthenticatedLayout.jsx';
 import { SettingsLayout } from './layouts/SettingsLayout.jsx';
 import { ContactsLayout } from './layouts/ContactsLayout.jsx';
@@ -92,6 +93,15 @@ export const routes = [
     children: [
       { path: '/', element: <LandingPage /> },
       {
+        element: <OnboardingRoute />,
+        children: [{ path: '/onboarding', element: <OnboardingPage /> }],
+      },
+    ],
+  },
+  {
+    element: <AuthLayout />,
+    children: [
+      {
         element: <GuestRoute />,
         children: [
           { path: '/login', element: <LoginPage /> },
@@ -101,10 +111,6 @@ export const routes = [
       },
       { path: '/verify-email', element: <VerifyEmailPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
-      {
-        element: <OnboardingRoute />,
-        children: [{ path: '/onboarding', element: <OnboardingPage /> }],
-      },
     ],
   },
   {

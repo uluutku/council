@@ -86,11 +86,10 @@ export function ContactsPage() {
 
   return (
     <section className="contacts-section">
-      <div>
-        <p className="eyebrow">People</p>
+      <header className="contacts-header">
         <h1>My contacts</h1>
         <p>The people you are connected with on Council.</p>
-      </div>
+      </header>
 
       <FormStatus message={status.message} tone={status.tone} />
 

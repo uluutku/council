@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
 import { FormStatus } from '../../../components/FormStatus.jsx';
 import { ContactAvatar } from '../components/ContactAvatar.jsx';
+import { ContactStatusBadge } from '../components/ContactStatusBadge.jsx';
 import { UnblockUserDialog } from '../components/UnblockUserDialog.jsx';
 import { ContactsError, ContactsLoading, EmptyState } from '../components/ContactsFeedback.jsx';
 import { blockedUsersQueryOptions } from '../queries/contactQueries.js';
@@ -39,12 +40,11 @@ export function BlockedUsersPage() {
   }
 
   return (
-    <section className="settings-section">
-      <div>
-        <p className="eyebrow">Privacy</p>
+    <section className="contacts-section">
+      <header className="contacts-header">
         <h1>Blocked users</h1>
         <p>People you have blocked. Only your own blocks are shown here.</p>
-      </div>
+      </header>
 
       <FormStatus message={status.message} tone={status.tone} />
 
@@ -71,6 +71,7 @@ export function BlockedUsersPage() {
                   <div className="contact-identity">
                     <p className="contact-name">{name}</p>
                     <p className="contact-username">@{user.username}</p>
+                    <ContactStatusBadge label="Blocked" tone="danger" />
                     {blockedOn ? <p className="contact-meta">Blocked {blockedOn}</p> : null}
                   </div>
                   <div className="contact-actions">

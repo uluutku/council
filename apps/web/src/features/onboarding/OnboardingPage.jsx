@@ -45,14 +45,27 @@ export function OnboardingPage() {
   }
 
   return (
-    <main className="centered-page">
-      <section className="panel onboarding-card">
-        <p className="eyebrow">One required step</p>
-        <h1>Choose your Council username</h1>
-        <p>
-          Other users can discover this username. Your email remains private and is never returned
-          by profile search.
-        </p>
+    <main className="centered-page auth-page">
+      <section className="panel auth-card onboarding-card">
+        <header className="auth-brandbar">
+          <span className="brand auth-brand">
+            <span className="auth-brand-mark" aria-hidden="true">
+              C
+            </span>
+            <span className="auth-brand-name">Council</span>
+          </span>
+          <p className="onboarding-step" aria-hidden="true">
+            Step 1 of 1
+          </p>
+        </header>
+        <div className="auth-heading">
+          <p className="eyebrow">One required step</p>
+          <h1>Choose your Council username</h1>
+          <p className="auth-description">
+            Other users can discover this username. Your email remains private and is never returned
+            by profile search.
+          </p>
+        </div>
         <form className="stacked-form" onSubmit={handleSubmit} noValidate>
           <FormField
             label="Username"

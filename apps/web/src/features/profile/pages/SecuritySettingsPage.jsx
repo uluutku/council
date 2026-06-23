@@ -33,11 +33,11 @@ export function SecuritySettingsPage() {
 
   return (
     <section className="settings-section">
-      <div>
+      <header className="settings-head">
         <p className="eyebrow">Account access</p>
         <h1>Security</h1>
         <p>Council relies on Supabase Auth for password and session security.</p>
-      </div>
+      </header>
 
       <section className="panel security-card">
         <h2>Email</h2>
@@ -48,7 +48,14 @@ export function SecuritySettingsPage() {
           </div>
           <div>
             <dt>Verification</dt>
-            <dd>{user.email_confirmed_at ? 'Verified' : 'Not verified'}</dd>
+            <dd>
+              <span
+                className="verification-chip"
+                data-verified={user.email_confirmed_at ? 'true' : 'false'}
+              >
+                {user.email_confirmed_at ? 'Verified' : 'Not verified'}
+              </span>
+            </dd>
           </div>
         </dl>
       </section>

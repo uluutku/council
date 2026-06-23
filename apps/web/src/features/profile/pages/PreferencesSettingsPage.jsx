@@ -100,14 +100,15 @@ export function PreferencesSettingsPage() {
 
   return (
     <section className="settings-section">
-      <div>
+      <header className="settings-head">
         <p className="eyebrow">Account behavior</p>
         <h1>Preferences</h1>
         <p>These values are private to your account and persist across sessions.</p>
-      </div>
+      </header>
       <form className="stacked-form" onSubmit={handleSubmit}>
         <fieldset className="panel preference-group">
           <legend>Appearance</legend>
+          <p className="field-hint">Choose how Council looks. System follows your device theme.</p>
           <div className="segmented-control" aria-label="Theme">
             {['system', 'light', 'dark'].map((theme) => (
               <button
@@ -129,7 +130,12 @@ export function PreferencesSettingsPage() {
             Browser notifications work while Council is open. Background push is not enabled.
           </p>
           <div className="notification-permission">
-            <span>Browser permission: {permission}</span>
+            <span className="notification-permission-state">
+              Browser permission:{' '}
+              <span className="permission-chip" data-permission={permission}>
+                {permission}
+              </span>
+            </span>
             {permission === 'default' ? (
               <button
                 type="button"

@@ -12,7 +12,7 @@ export function ContactsLayout() {
         </NavLink>
         <NavLink to="/app/contacts/discover">Discover</NavLink>
         <NavLink to="/app/contacts/requests">
-          Requests
+          <span>Requests</span>
           {pendingCount > 0 ? (
             <span className="nav-count" aria-label={`${pendingCount} pending incoming requests`}>
               {pendingCount}

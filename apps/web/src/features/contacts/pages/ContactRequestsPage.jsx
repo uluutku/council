@@ -68,11 +68,10 @@ export function ContactRequestsPage() {
 
   return (
     <section className="contacts-section">
-      <div>
-        <p className="eyebrow">People</p>
+      <header className="contacts-header">
         <h1>Contact requests</h1>
         <p>Requests waiting for a response and the requests you have sent.</p>
-      </div>
+      </header>
 
       <FormStatus message={status.message} tone={status.tone} />
 

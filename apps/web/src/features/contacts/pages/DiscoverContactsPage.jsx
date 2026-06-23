@@ -59,11 +59,10 @@ export function DiscoverContactsPage() {
 
   return (
     <section className="contacts-section">
-      <div>
-        <p className="eyebrow">People</p>
+      <header className="contacts-header">
         <h1>Discover people</h1>
         <p>Search by username or display name to send a contact request.</p>
-      </div>
+      </header>
 
       <form className="search-form" role="search" onSubmit={(event) => event.preventDefault()}>
         <FormField

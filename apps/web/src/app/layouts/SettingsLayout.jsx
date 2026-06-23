@@ -5,7 +5,7 @@ export function SettingsLayout() {
     <div className="settings-layout">
       <aside className="settings-sidebar">
         <p className="eyebrow">Settings</p>
-        <nav aria-label="Settings">
+        <nav className="settings-nav" aria-label="Settings">
           <NavLink to="/app/settings/profile">Profile</NavLink>
           <NavLink to="/app/settings/preferences">Preferences</NavLink>
           <NavLink to="/app/settings/access">Access</NavLink>

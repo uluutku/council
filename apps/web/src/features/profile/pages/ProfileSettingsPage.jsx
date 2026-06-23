@@ -83,17 +83,23 @@ export function ProfileSettingsPage() {
 
   return (
     <section className="settings-section">
-      <div>
+      <header className="settings-head">
         <p className="eyebrow">Public identity</p>
         <h1>Profile</h1>
         <p>
           Edit the profile fields other Council users may see. Avatar upload is not available yet.
         </p>
+      </header>
+      <div className="profile-identity">
+        <div className="profile-preview" aria-label="Generated profile avatar">
+          {initials}
+        </div>
+        <div className="profile-identity-text">
+          <strong>{profile.display_name || profile.username}</strong>
+          <span>@{profile.username}</span>
+        </div>
       </div>
-      <div className="profile-preview" aria-label="Generated profile avatar">
-        {initials}
-      </div>
-      <form className="stacked-form panel" onSubmit={handleSubmit} noValidate>
+      <form className="stacked-form panel settings-card" onSubmit={handleSubmit} noValidate>
         <FormField label="Username" name="username" error={errors.username}>
           {(props) => (
             <input

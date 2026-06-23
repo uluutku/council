@@ -53,11 +53,11 @@ export function LoginPage() {
 
   return (
     <AuthCard
-      eyebrow="Welcome back"
-      title="Log in to Council"
+      title="Welcome back"
+      description="Sign in to your private workspace."
       footer={
         <p>
-          New to Council? <Link to="/register">Create an account</Link>
+          Don’t have an account? <Link to="/register">Create one</Link>
         </p>
       }
     >
@@ -86,8 +86,10 @@ export function LoginPage() {
             />
           )}
         </FormField>
-        <div className="form-row form-row--between">
-          <Link to="/forgot-password">Forgot password?</Link>
+        <div className="form-row form-row--between auth-utility-row">
+          <Link className="auth-utility-link" to="/forgot-password">
+            Forgot password?
+          </Link>
         </div>
         <FormStatus message={status} tone="error" />
         <button className="button button--full" type="submit" disabled={isSubmitting}>

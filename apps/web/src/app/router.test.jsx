@@ -66,13 +66,13 @@ describe('application routes', () => {
   it('renders the login route for guests', async () => {
     renderRoute('/login');
 
-    expect(await screen.findByRole('heading', { name: 'Log in to Council' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
   });
 
   it('redirects a guest from protected content to login', async () => {
     const router = renderRoute('/app/settings/profile');
 
-    expect(await screen.findByRole('heading', { name: 'Log in to Council' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/login');
     expect(router.state.location.state.returnTo).toBe('/app/settings/profile');
   });
@@ -116,7 +116,7 @@ describe('application routes', () => {
   it('protects the contacts routes from guests', async () => {
     const router = renderRoute('/app/contacts');
 
-    expect(await screen.findByRole('heading', { name: 'Log in to Council' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/login');
     expect(router.state.location.state.returnTo).toBe('/app/contacts');
   });

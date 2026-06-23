@@ -117,13 +117,16 @@ export function AiConversationPage() {
   return (
     <section className="ai-conversation" aria-label={`Conversation with ${displayName}`}>
       <header className="ai-conversation-header">
-        <div>
+        <span className="ai-conversation-avatar" aria-hidden="true">
+          AI
+        </span>
+        <div className="ai-conversation-identity">
           <h1>
-            {displayName}{' '}
+            <span className="ai-conversation-name">{displayName}</span>
             <span className="ai-badge" data-kind={kind ?? undefined}>
               {kind === 'custom' ? 'Custom' : 'AI'}
             </span>
-            {isArchived ? <span className="ai-archived-tag"> · Archived</span> : null}
+            {isArchived ? <span className="ai-archived-tag">Archived</span> : null}
           </h1>
           <p className="ai-disclosure-inline">
             AI messages are processed by Council’s configured AI provider.

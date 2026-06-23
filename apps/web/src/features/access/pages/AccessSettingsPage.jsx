@@ -43,14 +43,14 @@ export function AccessSettingsPage() {
 
   return (
     <section className="settings-section access-settings">
-      <div>
+      <header className="settings-head">
         <p className="eyebrow">AI access</p>
         <h1>Access</h1>
         <p>
           Premium access codes are issued manually. There is no automatic renewal or payment in this
           build.
         </p>
-      </div>
+      </header>
       <div className="panel access-status-card">
         <h2>Current access</h2>
         <AiAccessSummary access={access} />
@@ -68,13 +68,14 @@ export function AccessSettingsPage() {
         ) : null}
       </div>
       <form
-        className="panel stacked-form"
+        className="panel stacked-form settings-card"
         onSubmit={(event) => {
           event.preventDefault();
           setStatus('');
           redeem.mutate();
         }}
       >
+        <h2 className="settings-card-title">Redeem a code</h2>
         <label className="form-field">
           <span>Premium access code</span>
           <input
@@ -82,20 +83,31 @@ export function AccessSettingsPage() {
             maxLength={128}
             autoComplete="off"
             spellCheck="false"
+            placeholder="COUNCIL-XXXX-XXXX-XXXX"
             onChange={(event) => setCode(event.target.value)}
           />
         </label>
-        <button
-          type="submit"
-          className="button"
-          disabled={code.trim().length < 16 || redeem.isPending}
-        >
-          {redeem.isPending ? 'Redeeming…' : 'Redeem code'}
-        </button>
-        {status ? <p role="status">{status}</p> : null}
+        <div className="form-actions">
+          <button
+            type="submit"
+            className="button"
+            disabled={code.trim().length < 16 || redeem.isPending}
+          >
+            {redeem.isPending ? 'Redeeming…' : 'Redeem code'}
+          </button>
+          {status ? (
+            <p
+              className="access-redeem-status"
+              role="status"
+              data-tone={status === 'Premium access added.' ? 'success' : 'error'}
+            >
+              {status}
+            </p>
+          ) : null}
+        </div>
       </form>
       <section className="panel">
-        <h2>Grant history</h2>
+        <h2 className="settings-card-title">Grant history</h2>
         {grants.data?.length ? (
           <ul className="premium-grant-list">
             {grants.data.map((grant) => (
@@ -108,7 +120,7 @@ export function AccessSettingsPage() {
             ))}
           </ul>
         ) : (
-          <p>No Premium grants yet.</p>
+          <p className="access-empty">No Premium grants yet.</p>
         )}
       </section>
     </section>

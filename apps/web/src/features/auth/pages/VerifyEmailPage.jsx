@@ -72,7 +72,7 @@ export function VerifyEmailPage() {
       footer={<Link to="/login">Return to login</Link>}
     >
       <div className="stacked-form">
-        <p>
+        <p className="auth-note">
           Verification links expire. If the link is invalid, return here from registration or
           request another email.
         </p>

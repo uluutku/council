@@ -203,7 +203,7 @@ export function AiMemoryPanel({ conversationId, initialDraft, onClose }) {
             <ul>
               {memories.map((memory) => (
                 <li key={memory.id}>
-                  <div>
+                  <div className="ai-memory-body">
                     <span className="ai-memory-category">{categoryLabel(memory.category)}</span>
                     <p>{memory.content}</p>
                   </div>

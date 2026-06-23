@@ -57,7 +57,9 @@ export function ResetPasswordPage() {
   if (isHydrating) {
     return (
       <AuthCard eyebrow="Account security" title="Checking recovery link…">
-        <p aria-busy="true">Please wait.</p>
+        <p className="auth-note" aria-busy="true">
+          Please wait.
+        </p>
       </AuthCard>
     );
   }

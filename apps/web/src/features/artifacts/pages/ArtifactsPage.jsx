@@ -26,24 +26,33 @@ export function ArtifactsPage() {
     [artifacts, search, type],
   );
 
+  const hasArtifacts = artifacts.length > 0;
+  const isFiltering = search.trim() !== '' || type !== 'all';
+
   return (
-    <section className="artifacts-page">
-      <header className="page-header">
-        <div>
+    <section className="artifacts-page app-page">
+      <header className="artifacts-header">
+        <div className="artifacts-header-text">
           <p className="eyebrow">Workspace</p>
           <h1>Artifacts</h1>
+          <p className="artifacts-header-sub">
+            Documents, plans, and notes you saved from AI conversations.
+          </p>
         </div>
         <Link className="button button--primary" to="/app/ai">
           Open AI contacts
         </Link>
       </header>
-      <div className="artifact-toolbar">
-        <input
-          aria-label="Search artifacts"
-          placeholder="Search by title"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
+
+      <div className="artifact-toolbar" role="search">
+        <span className="artifact-search-field">
+          <input
+            aria-label="Search artifacts"
+            placeholder="Search by title"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </span>
         <select
           aria-label="Filter by type"
           value={type}
@@ -57,25 +66,63 @@ export function ArtifactsPage() {
           ))}
         </select>
       </div>
-      {isPending ? <p>Loading artifacts…</p> : null}
-      {!isPending && filtered.length === 0 ? (
-        <div className="empty-card">
-          <p>No artifacts match this view.</p>
-          <Link to="/app/ai">Create one from an AI response</Link>
+
+      {isPending ? (
+        <div className="artifacts-status" aria-live="polite">
+          <p>Loading artifacts…</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="artifacts-empty" role="status">
+          {hasArtifacts && isFiltering ? (
+            <>
+              <p className="artifacts-empty-title">No artifacts match this view.</p>
+              <p className="artifacts-empty-hint">
+                Try a different title or clear the type filter.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="artifacts-empty-title">No artifacts yet.</p>
+              <p className="artifacts-empty-hint">
+                Save a useful AI response as an artifact to keep and revise it here.
+              </p>
+              <Link className="button button--secondary button--small" to="/app/ai">
+                Create one from an AI response
+              </Link>
+            </>
+          )}
         </div>
       ) : (
         <ul className="artifact-list">
           {filtered.map((artifact) => (
             <li
               key={artifact.id}
-              className="artifact-card"
+              className="artifact-row"
               data-archived={Boolean(artifact.archived_at)}
             >
-              <div>
-                <Link to={`/app/artifacts/${artifact.id}`}>{artifact.title}</Link>
-                <p>
-                  {TYPE_LABELS[artifact.type]} · {artifact.ai_contact_name} ·{' '}
-                  {new Date(artifact.updated_at).toLocaleString()}
+              <div className="artifact-row-main">
+                <div className="artifact-row-title">
+                  <Link to={`/app/artifacts/${artifact.id}`}>{artifact.title}</Link>
+                  {artifact.archived_at ? (
+                    <span className="artifact-chip" data-tone="muted">
+                      Archived
+                    </span>
+                  ) : null}
+                </div>
+                <p className="artifact-row-meta">
+                  <span className="artifact-chip" data-tone="type">
+                    {TYPE_LABELS[artifact.type]}
+                  </span>
+                  <span className="artifact-row-dot" aria-hidden="true">
+                    ·
+                  </span>
+                  <span>{artifact.ai_contact_name}</span>
+                  <span className="artifact-row-dot" aria-hidden="true">
+                    ·
+                  </span>
+                  <time dateTime={artifact.updated_at}>
+                    {new Date(artifact.updated_at).toLocaleString()}
+                  </time>
                 </p>
               </div>
               <button
