@@ -123,7 +123,7 @@ export function ForwardToAiDialog({
         request: forwardRequest,
       });
       onForwardingStarted();
-      navigate(`/app/ai/${conversation.id}`, {
+      navigate(`/app/messages/ai/${conversation.id}`, {
         state: { displayName: selectedLabel, forwardRequest },
       });
     } catch {

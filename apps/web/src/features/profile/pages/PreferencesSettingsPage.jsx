@@ -2,14 +2,13 @@ import { useMemo, useState } from 'react';
 import { preferencesFormSchema } from '@council/schemas';
 import { FormStatus } from '../../../components/FormStatus.jsx';
 import { useAuth } from '../../../app/providers/AuthContext.js';
-import { applyTheme } from '../../../app/providers/theme.js';
 import { updateMySettings } from '../api/profileApi.js';
 import { mapSupabaseError } from '../../auth/utils/authErrors.js';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
 
 function preferencesFromSettings(settings) {
   return {
-    theme: settings.theme,
+    theme: 'light',
     notification_preferences: {
       message_notifications: settings.notification_preferences.message_notifications ?? true,
       message_previews: settings.notification_preferences.message_previews ?? false,
@@ -51,12 +50,6 @@ export function PreferencesSettingsPage() {
     [form, savedForm],
   );
 
-  function setTheme(theme) {
-    setForm((current) => ({ ...current, theme }));
-    applyTheme(theme);
-    setStatus('');
-  }
-
   function setPreference(group, field, value) {
     setForm((current) => ({
       ...current,
@@ -85,12 +78,10 @@ export function PreferencesSettingsPage() {
       const next = preferencesFromSettings(updated);
       setForm(next);
       setSavedForm(next);
-      applyTheme(next.theme);
       await refreshProfile();
       setStatus('Preferences saved.');
       setTone('success');
     } catch (error) {
-      applyTheme(savedForm.theme);
       setStatus(mapSupabaseError(error).message);
       setTone('error');
     } finally {
@@ -106,24 +97,6 @@ export function PreferencesSettingsPage() {
         <p>These values are private to your account and persist across sessions.</p>
       </header>
       <form className="stacked-form" onSubmit={handleSubmit}>
-        <fieldset className="panel preference-group">
-          <legend>Appearance</legend>
-          <p className="field-hint">Choose how Council looks. System follows your device theme.</p>
-          <div className="segmented-control" aria-label="Theme">
-            {['system', 'light', 'dark'].map((theme) => (
-              <button
-                key={theme}
-                type="button"
-                data-selected={form.theme === theme}
-                onClick={() => setTheme(theme)}
-                disabled={isSubmitting}
-              >
-                {theme[0].toUpperCase() + theme.slice(1)}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
         <fieldset className="panel preference-group">
           <legend>Notifications</legend>
           <p className="field-hint">

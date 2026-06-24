@@ -58,6 +58,7 @@ export function AiConversationPage() {
   const conversation = conversations.find((entry) => entry.id === conversationId);
   const displayName =
     conversation?.display_name ?? location.state?.displayName ?? 'Council Assistant';
+  const description = conversation?.description || 'Online';
   const kind = conversation?.kind ?? null;
   const isArchived = conversation?.archived ?? false;
   usePageTitle(displayName);
@@ -128,9 +129,7 @@ export function AiConversationPage() {
             </span>
             {isArchived ? <span className="ai-archived-tag">Archived</span> : null}
           </h1>
-          <p className="ai-disclosure-inline">
-            AI messages are processed by Council’s configured AI provider.
-          </p>
+          <p className="ai-disclosure-inline">{description}</p>
         </div>
         <div className="ai-conversation-header-actions">
           <AiProviderBadge />

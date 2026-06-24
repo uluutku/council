@@ -1,7 +1,7 @@
-import { BellOff, MoreHorizontal } from 'lucide-react';
+import { BellOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { IconButton } from '../../../components/IconButton.jsx';
 import { PeerAvatar } from './PeerAvatar.jsx';
+import { ConversationOptionsMenu } from './ConversationOptionsMenu.jsx';
 import { conversationPeer, peerName } from '../utils/peer.js';
 import { previewExcerpt } from '../utils/messageContent.js';
 import { formatConversationTimestamp, formatFullTimestamp } from '../utils/datetime.js';
@@ -26,7 +26,10 @@ export function ConversationListItem({
   currentUserId,
   isSelected,
   presence,
-  onToggleMute,
+  onMuteToggle,
+  onDeleteChat,
+  onRemoveContact,
+  onBlockUser,
 }) {
   const peer = conversationPeer(conversation);
   const name = peerName(peer);
@@ -87,12 +90,36 @@ export function ConversationListItem({
             ) : null}
           </span>
         </Link>
-        <IconButton
-          className="conversation-mute-button"
-          icon={MoreHorizontal}
-          label={conversation.is_muted ? `Unmute ${name}` : `Mute ${name}`}
-          title={conversation.is_muted ? 'Unmute' : 'Mute forever'}
-          onClick={onToggleMute}
+        <ConversationOptionsMenu
+          name={name}
+          items={[
+            {
+              key: 'mute',
+              label: conversation.is_muted ? 'Unmute chat' : 'Mute chat',
+              description: conversation.is_muted ? 'Notifications on' : 'Notifications off',
+              onSelect: () => onMuteToggle(conversation),
+            },
+            {
+              key: 'delete',
+              label: 'Delete chat',
+              description: 'Clear from your inbox',
+              tone: 'danger',
+              onSelect: () => onDeleteChat(conversation),
+            },
+            {
+              key: 'remove',
+              label: 'Remove contact',
+              description: 'Keep message history',
+              onSelect: () => onRemoveContact(conversation),
+            },
+            {
+              key: 'block',
+              label: 'Block user',
+              description: 'Stop future contact',
+              tone: 'danger',
+              onSelect: () => onBlockUser(conversation),
+            },
+          ]}
         />
       </div>
     </li>

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { FileText, Image, Send, Square } from 'lucide-react';
 import { AiImageDraftList } from './AiImageDraftList.jsx';
 import { AI_IMAGE_ACCEPT, aiImageRejectionMessage } from '../utils/aiImages.js';
 import { AiDocumentDraftList } from './AiDocumentDraftList.jsx';
@@ -162,12 +163,13 @@ export function AiComposer({
         />
         <button
           type="button"
-          className="button button--secondary ai-composer-attach"
+          className="icon-button ai-composer-attach"
           aria-label="Attach images"
+          title="Attach images"
           disabled={disabled || isStreaming}
           onClick={() => fileInputRef.current?.click()}
         >
-          Images
+          <Image aria-hidden="true" size={19} strokeWidth={2} />
         </button>
         <input
           ref={documentInputRef}
@@ -184,12 +186,13 @@ export function AiComposer({
         />
         <button
           type="button"
-          className="button button--secondary ai-composer-attach"
+          className="icon-button ai-composer-attach"
           aria-label="Attach documents"
+          title="Attach documents"
           disabled={disabled || isStreaming}
           onClick={() => documentInputRef.current?.click()}
         >
-          Documents
+          <FileText aria-hidden="true" size={19} strokeWidth={2} />
         </button>
         <label className="sr-only" htmlFor="ai-composer-input">
           Message the assistant
@@ -215,14 +218,23 @@ export function AiComposer({
         {isStreaming ? (
           <button
             type="button"
-            className="button button--secondary ai-composer-stop"
+            className="icon-button ai-composer-stop"
+            aria-label="Stop response"
+            title="Stop response"
             onClick={onStop}
           >
-            Stop
+            <Square aria-hidden="true" size={18} strokeWidth={2} />
           </button>
         ) : (
-          <button type="submit" className="button ai-composer-send" disabled={!canSend}>
-            Send
+          <button
+            type="submit"
+            className="icon-button ai-composer-send"
+            disabled={!canSend}
+            aria-label="Send"
+            title="Send"
+            data-ready={canSend ? 'true' : undefined}
+          >
+            <Send aria-hidden="true" size={19} strokeWidth={2} />
           </button>
         )}
       </div>

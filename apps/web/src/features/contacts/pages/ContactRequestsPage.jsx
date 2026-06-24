@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Inbox, SendHorizontal } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
 import { FormStatus } from '../../../components/FormStatus.jsx';
 import { ContactRequestCard } from '../components/ContactRequestCard.jsx';
 import { ConfirmDialog } from '../components/ConfirmDialog.jsx';
 import { BlockUserDialog } from '../components/BlockUserDialog.jsx';
-import { ContactsError, ContactsLoading, EmptyState } from '../components/ContactsFeedback.jsx';
+import { ContactsError, ContactsLoading } from '../components/ContactsFeedback.jsx';
 import { contactRequestsQueryOptions } from '../queries/contactQueries.js';
 import { useBlockUser, useRespondContactRequest } from '../queries/contactMutations.js';
 import { splitContactRequests } from '../utils/contactRequests.js';
@@ -15,8 +15,29 @@ import { contactDisplayName } from '../utils/contactDisplay.js';
 
 const NEUTRAL = { message: '', tone: 'neutral' };
 
-export function ContactRequestsPage() {
-  usePageTitle('Contact requests');
+function RequestCount({ count }) {
+  return (
+    <span className="request-count" aria-hidden="true">
+      {count}
+    </span>
+  );
+}
+
+function EmptyRequestRow({ icon: Icon, title, children }) {
+  return (
+    <div className="request-empty-row" role="status">
+      <span className="request-empty-icon" aria-hidden="true">
+        <Icon size={18} strokeWidth={2} />
+      </span>
+      <span>
+        <strong>{title}</strong>
+        <small>{children}</small>
+      </span>
+    </div>
+  );
+}
+
+export function ContactRequestsPanel({ headingLevel: Heading = 'h1' } = {}) {
   const requestsQuery = useQuery(contactRequestsQueryOptions());
   const respond = useRespondContactRequest();
   const blockUser = useBlockUser();
@@ -67,9 +88,9 @@ export function ContactRequestsPage() {
   }
 
   return (
-    <section className="contacts-section">
+    <section className="contacts-panel-section" id="contacts-requests">
       <header className="contacts-header">
-        <h1>Contact requests</h1>
+        <Heading>Contact requests</Heading>
         <p>Requests waiting for a response and the requests you have sent.</p>
       </header>
 
@@ -87,11 +108,14 @@ export function ContactRequestsPage() {
       {requestsQuery.isSuccess ? (
         <>
           <section aria-labelledby="incoming-heading" className="request-section">
-            <h2 id="incoming-heading">Incoming</h2>
+            <h2 id="incoming-heading">
+              <span>Incoming</span>
+              <RequestCount count={incoming.length} />
+            </h2>
             {incoming.length === 0 ? (
-              <EmptyState title="No incoming requests.">
-                <p>When someone asks to connect, their request appears here.</p>
-              </EmptyState>
+              <EmptyRequestRow icon={Inbox} title="No incoming requests">
+                New requests will appear here.
+              </EmptyRequestRow>
             ) : (
               <ul className="contact-list">
                 {incoming.map((request) => (
@@ -109,14 +133,14 @@ export function ContactRequestsPage() {
           </section>
 
           <section aria-labelledby="outgoing-heading" className="request-section">
-            <h2 id="outgoing-heading">Outgoing</h2>
+            <h2 id="outgoing-heading">
+              <span>Outgoing</span>
+              <RequestCount count={outgoing.length} />
+            </h2>
             {outgoing.length === 0 ? (
-              <EmptyState title="No outgoing requests.">
-                <p>
-                  Requests you send from <Link to="/app/contacts/discover">Discover</Link> appear
-                  here until they are answered.
-                </p>
-              </EmptyState>
+              <EmptyRequestRow icon={SendHorizontal} title="No outgoing requests">
+                Sent requests will stay here until answered.
+              </EmptyRequestRow>
             ) : (
               <ul className="contact-list">
                 {outgoing.map((request) => (
@@ -149,6 +173,15 @@ export function ContactRequestsPage() {
         onConfirm={confirmBlock}
         onCancel={closeDialog}
       />
+    </section>
+  );
+}
+
+export function ContactRequestsPage() {
+  usePageTitle('Contact requests');
+  return (
+    <section className="contacts-section">
+      <ContactRequestsPanel />
     </section>
   );
 }

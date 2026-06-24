@@ -1,19 +1,97 @@
+import { Award, CircleSlash, ShieldCheck, SlidersHorizontal, UserRound } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useCollectionPanelWidth } from './useCollectionPanelWidth.js';
+
+const settingsSections = [
+  {
+    to: '/app/settings/profile',
+    icon: UserRound,
+    title: 'Profile',
+    description: 'Name, username, and presence',
+  },
+  {
+    to: '/app/settings/preferences',
+    icon: SlidersHorizontal,
+    title: 'Preferences',
+    description: 'Notifications and privacy',
+  },
+  {
+    to: '/app/settings/access',
+    icon: Award,
+    title: 'Pro Status',
+    description: 'Credits, trial, and plan',
+  },
+  {
+    to: '/app/settings/security',
+    icon: ShieldCheck,
+    title: 'Security',
+    description: 'Password and session controls',
+  },
+  {
+    to: '/app/settings/blocked',
+    icon: CircleSlash,
+    title: 'Blocked users',
+    description: 'People you have blocked',
+  },
+];
 
 export function SettingsLayout() {
+  const panel = useCollectionPanelWidth();
+
   return (
-    <div className="settings-layout">
-      <aside className="settings-sidebar">
-        <p className="eyebrow">Settings</p>
-        <nav className="settings-nav" aria-label="Settings">
-          <NavLink to="/app/settings/profile">Profile</NavLink>
-          <NavLink to="/app/settings/preferences">Preferences</NavLink>
-          <NavLink to="/app/settings/access">Access</NavLink>
-          <NavLink to="/app/settings/security">Security</NavLink>
-          <NavLink to="/app/settings/blocked">Blocked users</NavLink>
+    <div
+      className="messaging-layout settings-layout"
+      data-view="conversation"
+      style={{ '--collection-panel-width': `${panel.width}px` }}
+    >
+      <aside className="messaging-sidebar collection-panel" aria-label="Settings">
+        <div className="messaging-sidebar-header">
+          <div>
+            <h1>Settings</h1>
+            <p>Account and access</p>
+          </div>
+        </div>
+        <nav className="contact-collection-list settings-nav" aria-label="Settings">
+          {settingsSections.map(({ to, icon: Icon, title, description }) => (
+            <NavLink
+              key={to}
+              to={to}
+              aria-label={title}
+              className={({ isActive }) =>
+                isActive ? 'contact-collection-link active' : 'contact-collection-link'
+              }
+            >
+              <Icon aria-hidden="true" size={20} strokeWidth={2} />
+              <span>
+                <strong>{title}</strong>
+                <small>{description}</small>
+              </span>
+            </NavLink>
+          ))}
         </nav>
       </aside>
-      <div className="settings-content">
+      <div
+        className="collection-panel-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize settings list"
+        aria-valuemin={panel.minWidth}
+        aria-valuemax={panel.maxWidth}
+        aria-valuenow={panel.width}
+        tabIndex={0}
+        onPointerDown={panel.startResize}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            panel.adjustWidth(-16);
+          }
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            panel.adjustWidth(16);
+          }
+        }}
+      />
+      <div className="messaging-main content-panel settings-content">
         <Outlet />
       </div>
     </div>

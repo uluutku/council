@@ -37,11 +37,10 @@ export function ConversationHeader({
         <h1 className="conversation-header-name" tabIndex={-1}>
           {name}
         </h1>
-        {peer?.username ? <p className="conversation-header-username">@{peer.username}</p> : null}
         {status ? <p className="conversation-header-presence">{status}</p> : null}
       </div>
-      <RealtimeStatusIndicator status={realtimeStatus} />
       <div className="conversation-header-actions">
+        <RealtimeStatusIndicator status={realtimeStatus} />
         <IconButton as={Link} to="/app/messages/search" icon={Search} label="Search messages" />
         {onMuteChange ? (
           <label className="conversation-mute-control">

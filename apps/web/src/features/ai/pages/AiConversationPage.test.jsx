@@ -36,10 +36,10 @@ import { createArtifact } from '../../artifacts/api/artifactsApi.js';
 function renderConversation() {
   return renderWithAi(
     <Routes>
-      <Route path="/app/ai/:conversationId" element={<AiConversationPage />} />
+      <Route path="/app/messages/ai/:conversationId" element={<AiConversationPage />} />
       <Route path="/app/artifacts/:artifactId" element={<p>Artifact opened</p>} />
     </Routes>,
-    { initialEntries: [`/app/ai/${CONVERSATION_ID}`] },
+    { initialEntries: [`/app/messages/ai/${CONVERSATION_ID}`] },
   );
 }
 

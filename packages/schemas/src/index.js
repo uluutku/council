@@ -384,6 +384,14 @@ export const deletedMessageSchema = messageSchema.refine(
   'Expected a deleted-message tombstone.',
 );
 
+export const deletedConversationSchema = z
+  .object({
+    conversation_id: uuidSchema,
+    deleted_at: timestampSchema,
+    deleted_through_sequence: nonnegativeSequenceSchema,
+  })
+  .strict();
+
 export const conversationListItemSchema = z
   .object({
     conversation_id: uuidSchema,
@@ -796,6 +804,8 @@ export const aiConversationSchema = z
   })
   .strict();
 export const aiConversationListSchema = z.array(aiConversationSchema);
+
+export const deletedAiConversationSchema = uuidSchema;
 
 export const aiPersonaToneSchema = z.enum(['warm', 'balanced', 'direct', 'playful', 'formal']);
 export const aiPersonaVerbositySchema = z.enum(['concise', 'balanced', 'detailed']);

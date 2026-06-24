@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
-import { aiAgentsQueryOptions, aiPersonasQueryOptions } from '../queries/aiQueries.js';
+import {
+  aiAgentsQueryOptions,
+  aiConversationsQueryOptions,
+  aiPersonasQueryOptions,
+} from '../queries/aiQueries.js';
 import { aiKeys } from '../../../lib/query-keys/ai.js';
 import { getOrCreateAiConversation } from '../api/aiApi.js';
 import { useAiAccess } from '../hooks/useAiAccess.js';
@@ -18,7 +22,7 @@ import { AiProviderBadge } from '../components/AiProviderBadge.jsx';
 // custom personas. Opening any contact creates (or reuses) its single per-user
 // conversation and navigates to it.
 export function AiCataloguePage() {
-  usePageTitle('AI');
+  usePageTitle('AI contacts');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState('builtin');
@@ -27,6 +31,7 @@ export function AiCataloguePage() {
 
   const agentsQuery = useQuery(aiAgentsQueryOptions());
   const personasQuery = useQuery(aiPersonasQueryOptions());
+  const conversationsQuery = useQuery(aiConversationsQueryOptions());
   const { data: access } = useAiAccess();
   const personaMutations = usePersonaMutations();
 
@@ -34,7 +39,9 @@ export function AiCataloguePage() {
     mutationFn: (target) => getOrCreateAiConversation(target),
     onSuccess: (conversation) => {
       queryClient.invalidateQueries({ queryKey: aiKeys.conversations() });
-      navigate(`/app/ai/${conversation.id}`, { state: { displayName: conversation.display_name } });
+      navigate(`/app/messages/ai/${conversation.id}`, {
+        state: { displayName: conversation.display_name },
+      });
     },
     onError: (error) => setActionError(aiErrorMessage(error)),
   });
@@ -60,12 +67,31 @@ export function AiCataloguePage() {
 
   const agents = agentsQuery.data ?? [];
   const personas = personasQuery.data ?? [];
+  const conversations = conversationsQuery.data ?? [];
+  const conversationsByAgentId = new Map(
+    conversations
+      .filter((conversation) => conversation.agent_id)
+      .map((conversation) => [conversation.agent_id, conversation]),
+  );
+  const conversationsByPersonaId = new Map(
+    conversations
+      .filter((conversation) => conversation.persona_id)
+      .map((conversation) => [conversation.persona_id, conversation]),
+  );
   const editorSaving = personaMutations.create.isPending || personaMutations.update.isPending;
 
+  function openExistingConversation(conversation) {
+    if (!conversation) return;
+    setActionError('');
+    navigate(`/app/messages/ai/${conversation.id}`, {
+      state: { displayName: conversation.display_name },
+    });
+  }
+
   return (
-    <section className="ai-catalogue" aria-label="AI assistants">
+    <section className="ai-catalogue" aria-label="AI contacts">
       <header className="ai-catalogue-header">
-        <h1>AI assistants</h1>
+        <h1>AI contacts</h1>
         <AiAccessSummary access={access} />
       </header>
 
@@ -118,17 +144,22 @@ export function AiCataloguePage() {
           </div>
         ) : (
           <div className="ai-agent-grid">
-            {agents.map((agent) => (
-              <AiAgentCard
-                key={agent.id}
-                agent={agent}
-                isOpening={open.isPending && open.variables?.agentId === agent.id}
-                onOpen={() => {
-                  setActionError('');
-                  open.mutate({ agentId: agent.id });
-                }}
-              />
-            ))}
+            {agents.map((agent) => {
+              const conversation = conversationsByAgentId.get(agent.id);
+              return (
+                <AiAgentCard
+                  key={agent.id}
+                  agent={agent}
+                  isInContacts={Boolean(conversation)}
+                  isOpening={open.isPending && open.variables?.agentId === agent.id}
+                  onOpen={() => {
+                    setActionError('');
+                    open.mutate({ agentId: agent.id });
+                  }}
+                  onOpenChat={() => openExistingConversation(conversation)}
+                />
+              );
+            })}
           </div>
         )
       ) : (
@@ -167,31 +198,35 @@ export function AiCataloguePage() {
             </p>
           ) : (
             <div className="ai-agent-grid">
-              {personas.map((persona) => (
-                <PersonaCard
-                  key={persona.id}
-                  persona={persona}
-                  isBusy={
-                    open.isPending ||
-                    personaMutations.archive.isPending ||
-                    personaMutations.restore.isPending
-                  }
-                  onOpen={() => {
-                    setActionError('');
-                    open.mutate({ personaId: persona.id });
-                  }}
-                  onEdit={() => {
-                    setActionError('');
-                    setEditor({ mode: 'edit', persona });
-                  }}
-                  onArchive={() =>
-                    runPersonaAction(personaMutations.archive.mutateAsync(persona.id))
-                  }
-                  onRestore={() =>
-                    runPersonaAction(personaMutations.restore.mutateAsync(persona.id))
-                  }
-                />
-              ))}
+              {personas.map((persona) => {
+                const conversation = conversationsByPersonaId.get(persona.id);
+                return (
+                  <PersonaCard
+                    key={persona.id}
+                    persona={persona}
+                    isInContacts={Boolean(conversation)}
+                    isAdding={open.isPending && open.variables?.personaId === persona.id}
+                    isBusy={
+                      personaMutations.archive.isPending || personaMutations.restore.isPending
+                    }
+                    onOpen={() => {
+                      setActionError('');
+                      open.mutate({ personaId: persona.id });
+                    }}
+                    onOpenChat={() => openExistingConversation(conversation)}
+                    onEdit={() => {
+                      setActionError('');
+                      setEditor({ mode: 'edit', persona });
+                    }}
+                    onArchive={() =>
+                      runPersonaAction(personaMutations.archive.mutateAsync(persona.id))
+                    }
+                    onRestore={() =>
+                      runPersonaAction(personaMutations.restore.mutateAsync(persona.id))
+                    }
+                  />
+                );
+              })}
             </div>
           )}
         </div>

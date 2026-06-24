@@ -92,9 +92,24 @@ export function MessageBubble({
           </span>
         </label>
       ) : null}
+      {!isEditing ? (
+        <p className="message-meta">
+          {!isOwn && showSender ? <span>{senderName} · </span> : null}
+          <time dateTime={message.created_at} title={formatFullTimestamp(message.created_at)}>
+            {formatMessageTime(message.created_at)}
+          </time>
+          {!isDeleted && message.edited_at ? (
+            <span className="message-edited"> · edited</span>
+          ) : null}
+          {isOwn && receiptStatus ? (
+            <span className="message-receipt" data-status={receiptStatus}>
+              {' · '}
+              {RECEIPT_LABEL[receiptStatus]}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
       <div className="message-bubble" data-own={isOwn ? 'true' : undefined}>
-        {showSender && !isOwn ? <p className="message-sender">{senderName}</p> : null}
-
         {message.reply_to_message_id ? (
           <ReplyPreview reference={replyReference} variant="bubble" onJump={onJumpToReply} />
         ) : null}
@@ -119,23 +134,6 @@ export function MessageBubble({
             ) : null}
           </>
         )}
-
-        {!isEditing ? (
-          <p className="message-meta">
-            <time dateTime={message.created_at} title={formatFullTimestamp(message.created_at)}>
-              {formatMessageTime(message.created_at)}
-            </time>
-            {!isDeleted && message.edited_at ? (
-              <span className="message-edited"> · edited</span>
-            ) : null}
-            {isOwn && receiptStatus ? (
-              <span className="message-receipt" data-status={receiptStatus}>
-                {' · '}
-                {RECEIPT_LABEL[receiptStatus]}
-              </span>
-            ) : null}
-          </p>
-        ) : null}
 
         {!isDeleted ? (
           <MessageReactions

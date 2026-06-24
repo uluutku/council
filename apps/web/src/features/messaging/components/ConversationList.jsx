@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { ContactRound, MessagesSquare } from 'lucide-react';
 import { ConversationListItem } from './ConversationListItem.jsx';
 import {
   ConversationListSkeleton,
@@ -21,8 +22,12 @@ export function ConversationList({
   isFetchingNextPage,
   onLoadMore,
   emptyReason = null,
+  renderEmpty = true,
   presence = new Map(),
   onToggleMute = () => {},
+  onDeleteChat = () => {},
+  onRemoveContact = () => {},
+  onBlockUser = () => {},
 }) {
   if (isPending) {
     return (
@@ -38,15 +43,26 @@ export function ConversationList({
   }
 
   if (conversations.length === 0) {
+    if (!renderEmpty) return null;
     return (
-      <div className="empty-state">
-        <p className="empty-state-title">
-          {emptyReason ?? 'You do not have any conversations yet.'}
-        </p>
+      <div className="empty-state empty-state--inbox">
+        <span className="empty-state-icon" aria-hidden="true">
+          <MessagesSquare size={28} strokeWidth={1.8} />
+        </span>
+        <p className="empty-state-title">{emptyReason ?? 'No conversations'}</p>
         {!emptyReason ? (
-          <p>
-            Open <Link to="/app/contacts">Contacts</Link> to message someone you have added.
-          </p>
+          <>
+            <p>You do not have any conversations yet.</p>
+            <p>
+              Start a new one with your <Link to="/app/contacts">Contacts</Link> or an AI.
+            </p>
+          </>
+        ) : null}
+        {!emptyReason ? (
+          <Link className="button empty-state-action" to="/app/contacts">
+            <ContactRound aria-hidden="true" size={16} strokeWidth={2} />
+            Open Contacts
+          </Link>
         ) : null}
       </div>
     );
@@ -62,7 +78,10 @@ export function ConversationList({
             currentUserId={currentUserId}
             isSelected={conversation.conversation_id === selectedId}
             presence={presence.get(conversation.peer_id) ?? null}
-            onToggleMute={() => onToggleMute(conversation)}
+            onMuteToggle={() => onToggleMute(conversation)}
+            onDeleteChat={() => onDeleteChat(conversation)}
+            onRemoveContact={() => onRemoveContact(conversation)}
+            onBlockUser={() => onBlockUser(conversation)}
           />
         ))}
       </ul>

@@ -6,7 +6,7 @@ export function ThemeController() {
   const { settings } = useAuth();
 
   useEffect(() => {
-    const fallback = localStorage.getItem(THEME_STORAGE_KEY) ?? 'system';
+    const fallback = localStorage.getItem(THEME_STORAGE_KEY) ?? 'light';
     applyTheme(settings?.theme ?? fallback);
   }, [settings?.theme]);
 

@@ -10,15 +10,15 @@ describe('useCollectionPanelWidth', () => {
   it('uses the default width and persists adjustments within bounds', () => {
     const { result } = renderHook(() => useCollectionPanelWidth());
 
-    expect(result.current.width).toBe(368);
+    expect(result.current.width).toBe(320);
 
     act(() => result.current.adjustWidth(500));
     expect(result.current.width).toBe(480);
     expect(localStorage.getItem('council.collectionPanelWidth')).toBe('480');
 
     act(() => result.current.adjustWidth(-500));
-    expect(result.current.width).toBe(300);
-    expect(localStorage.getItem('council.collectionPanelWidth')).toBe('300');
+    expect(result.current.width).toBe(320);
+    expect(localStorage.getItem('council.collectionPanelWidth')).toBe('320');
   });
 
   it('clamps a stored width on startup', () => {

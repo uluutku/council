@@ -165,7 +165,7 @@ export function MessageComposer({
           value={value}
           rows={1}
           maxLength={MAX_LENGTH}
-          placeholder="Write a message"
+          placeholder="Write a message..."
           onChange={(event) => {
             setValue(event.target.value);
             onTypingChange(event.target.value.trim().length > 0);

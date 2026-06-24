@@ -39,7 +39,7 @@ export function ArtifactsPage() {
             Documents, plans, and notes you saved from AI conversations.
           </p>
         </div>
-        <Link className="button button--primary" to="/app/ai">
+        <Link className="button button--primary" to="/app/contacts/ai">
           Open AI contacts
         </Link>
       </header>
@@ -86,7 +86,7 @@ export function ArtifactsPage() {
               <p className="artifacts-empty-hint">
                 Save a useful AI response as an artifact to keep and revise it here.
               </p>
-              <Link className="button button--secondary button--small" to="/app/ai">
+              <Link className="button button--secondary button--small" to="/app/contacts/ai">
                 Create one from an AI response
               </Link>
             </>

@@ -1,4 +1,13 @@
-import { Archive, Bot, LogOut, MessageCircle, Settings, Users, UserRound } from 'lucide-react';
+import {
+  Archive,
+  Award,
+  LogOut,
+  MessageCircle,
+  Settings,
+  Shield,
+  Users,
+  UserRound,
+} from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../providers/AuthContext.js';
@@ -22,9 +31,9 @@ function CountBadge({ count, label, accessible = true }) {
   );
 }
 
-function NavItem({ to, label, icon: Icon, end = false, count = 0, countLabel }) {
+function NavItem({ to, label, icon: Icon, end = false, count = 0, countLabel, ariaLabel = label }) {
   return (
-    <NavLink className="rail-link" to={to} end={end} aria-label={label} title={label}>
+    <NavLink className="rail-link" to={to} end={end} aria-label={ariaLabel} title={label}>
       <Icon aria-hidden="true" size={21} strokeWidth={2} />
       <span className="rail-link-label">{label}</span>
       <CountBadge count={count} label={countLabel} />
@@ -75,9 +84,15 @@ export function MessengerShell() {
   return (
     <div className="app-shell">
       <aside className="navigation-rail" aria-label="Primary">
-        <NavLink className="rail-mark" to="/app" aria-label="Council home" title="Council">
-          C
-        </NavLink>
+        <div className="rail-brand">
+          <NavLink className="rail-mark" to="/app" aria-label="Council home" title="Council">
+            <Shield aria-hidden="true" size={24} strokeWidth={2.25} />
+          </NavLink>
+          <div className="rail-brand-copy" aria-hidden="true">
+            <span className="rail-brand-name">Council</span>
+            <span className="rail-brand-subtitle">Private Messenger</span>
+          </div>
+        </div>
         <nav className="rail-nav" aria-label="Application">
           <NavItem
             to="/app/messages"
@@ -86,8 +101,6 @@ export function MessengerShell() {
             count={unreadMessages}
             countLabel={`${unreadMessages} unread messages`}
           />
-          <NavItem to="/app/ai" label="AI" icon={Bot} />
-          <NavItem to="/app/artifacts" label="Artifacts" icon={Archive} />
           <NavItem
             to="/app/contacts"
             label="Contacts"
@@ -95,11 +108,21 @@ export function MessengerShell() {
             count={pendingRequests}
             countLabel={`${pendingRequests} pending incoming requests`}
           />
+          <NavItem to="/app/artifacts" label="Artifacts" icon={Archive} />
           <NavItem to="/app/settings/profile" label="Settings" icon={Settings} />
+          <NavItem
+            to="/app/settings/access"
+            label="Pro Status"
+            ariaLabel="Premium access"
+            icon={Award}
+          />
         </nav>
         <div className="rail-account">
           <span className="rail-avatar" aria-hidden="true">
             {initial}
+          </span>
+          <span className="rail-profile-label" aria-hidden="true">
+            Profile
           </span>
           <span className="sr-only">Signed in as {name}</span>
           <button
@@ -132,7 +155,6 @@ export function MessengerShell() {
           count={unreadMessages}
           countLabel={`${unreadMessages} unread messages`}
         />
-        <MobileNavItem to="/app/ai" label="AI" icon={Bot} />
         <MobileNavItem to="/app/artifacts" label="Files" icon={Archive} />
         <MobileNavItem
           to="/app/contacts"

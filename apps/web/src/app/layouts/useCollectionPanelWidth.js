@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'council.collectionPanelWidth';
-const DEFAULT_WIDTH = 368;
-const MIN_WIDTH = 300;
+const DEFAULT_WIDTH = 320;
+const MIN_WIDTH = 320;
 const MAX_WIDTH = 480;
 
 function clampWidth(value) {

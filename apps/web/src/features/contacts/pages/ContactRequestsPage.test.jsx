@@ -146,13 +146,13 @@ describe('ContactRequestsPage', () => {
     contactsApi.listMyContactRequests.mockResolvedValue([outgoing]);
     renderWithContacts(<ContactRequestsPage />);
 
-    expect(await screen.findByText('No incoming requests.')).toBeInTheDocument();
+    expect(await screen.findByText('No incoming requests')).toBeInTheDocument();
   });
 
   it('shows an empty outgoing state', async () => {
     contactsApi.listMyContactRequests.mockResolvedValue([incoming]);
     renderWithContacts(<ContactRequestsPage />);
 
-    expect(await screen.findByText('No outgoing requests.')).toBeInTheDocument();
+    expect(await screen.findByText('No outgoing requests')).toBeInTheDocument();
   });
 });

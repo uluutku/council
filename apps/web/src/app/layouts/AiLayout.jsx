@@ -25,7 +25,7 @@ export function AiLayout() {
     >
       <aside
         className="messaging-sidebar collection-panel"
-        aria-label="AI assistants and conversations"
+        aria-label="AI contacts and conversations"
       >
         <div className="messaging-sidebar-header">
           <div>
@@ -33,7 +33,13 @@ export function AiLayout() {
             <p>Private assistants</p>
           </div>
           <div className="messaging-sidebar-actions">
-            <IconButton as={NavLink} to="/app/ai" end icon={Sparkles} label="Browse assistants" />
+            <IconButton
+              as={NavLink}
+              to="/app/contacts/ai"
+              end
+              icon={Sparkles}
+              label="Browse assistants"
+            />
           </div>
         </div>
         <AiAccessSummary access={access} variant="compact" />
@@ -53,7 +59,7 @@ export function AiLayout() {
                   data-selected={conversation.id === conversationId ? 'true' : undefined}
                 >
                   <NavLink
-                    to={`/app/ai/${conversation.id}`}
+                    to={`/app/messages/ai/${conversation.id}`}
                     state={{ displayName: name }}
                     className="conversation-item-link ai-conversation-link"
                   >

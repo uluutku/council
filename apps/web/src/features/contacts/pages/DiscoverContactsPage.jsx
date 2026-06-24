@@ -25,8 +25,7 @@ function outcomeMessage(outcome, name) {
   }
 }
 
-export function DiscoverContactsPage() {
-  usePageTitle('Discover people');
+export function DiscoverContactsPanel({ headingLevel: Heading = 'h1' } = {}) {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, 300);
   const sendRequest = useSendContactRequest();
@@ -58,9 +57,9 @@ export function DiscoverContactsPage() {
   }
 
   return (
-    <section className="contacts-section">
+    <section className="contacts-panel-section" id="contacts-discover">
       <header className="contacts-header">
-        <h1>Discover people</h1>
+        <Heading>Discover people</Heading>
         <p>Search by username or display name to send a contact request.</p>
       </header>
 
@@ -118,6 +117,15 @@ export function DiscoverContactsPage() {
           ))}
         </ul>
       ) : null}
+    </section>
+  );
+}
+
+export function DiscoverContactsPage() {
+  usePageTitle('Discover people');
+  return (
+    <section className="contacts-section">
+      <DiscoverContactsPanel />
     </section>
   );
 }

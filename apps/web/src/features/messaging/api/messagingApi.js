@@ -7,6 +7,7 @@ import {
   conversationSearchResultsSchema,
   createDirectConversationInputSchema,
   deletedMessageSchema,
+  deletedConversationSchema,
   directConversationResultSchema,
   editMessageInputSchema,
   messageActionInputSchema,
@@ -95,6 +96,15 @@ export async function deleteMessage(messageId, client = getSupabaseClient()) {
 
   if (error) throw toMessagingApiError(error);
   return deletedMessageSchema.parse(data);
+}
+
+export async function deleteConversationForMe(conversationId, client = getSupabaseClient()) {
+  const { data, error } = await client
+    .rpc('delete_conversation_for_me', { p_conversation_id: conversationId })
+    .single();
+
+  if (error) throw toMessagingApiError(error);
+  return deletedConversationSchema.parse(data);
 }
 
 export async function addMessageReaction(input, client = getSupabaseClient()) {

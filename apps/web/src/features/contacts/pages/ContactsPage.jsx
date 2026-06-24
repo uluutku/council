@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
 import { FormStatus } from '../../../components/FormStatus.jsx';
@@ -13,6 +13,8 @@ import { mapContactError } from '../utils/contactErrors.js';
 import { contactDisplayName } from '../utils/contactDisplay.js';
 import { useStartConversation } from '../../messaging/hooks/useStartConversation.js';
 import { messagingErrorMessage } from '../../messaging/api/messagingErrorMessages.js';
+import { DiscoverContactsPanel } from './DiscoverContactsPage.jsx';
+import { ContactRequestsPanel } from './ContactRequestsPage.jsx';
 
 const NEUTRAL = { message: '', tone: 'neutral' };
 
@@ -103,22 +105,28 @@ export function ContactsPage() {
       ) : null}
 
       {contactsQuery.isSuccess ? (
-        <ContactList
-          contacts={contacts}
-          onMessage={handleMessage}
-          startingContactId={startingContactId}
-          onRemove={(contact) => setDialog({ type: 'remove', contact })}
-          onBlock={(contact) => setDialog({ type: 'block', contact })}
-          emptyState={
-            <EmptyState title="You have no contacts yet.">
-              <p>
-                Find people on the <Link to="/app/contacts/discover">Discover</Link> page and send a
-                contact request to get started.
-              </p>
-            </EmptyState>
-          }
-        />
+        <section className="contacts-panel-section" aria-labelledby="my-contacts-heading">
+          <header className="contacts-header contacts-header--compact">
+            <h2 id="my-contacts-heading">Human contacts</h2>
+            <p>Message, remove, or block people you are connected with.</p>
+          </header>
+          <ContactList
+            contacts={contacts}
+            onMessage={handleMessage}
+            startingContactId={startingContactId}
+            onRemove={(contact) => setDialog({ type: 'remove', contact })}
+            onBlock={(contact) => setDialog({ type: 'block', contact })}
+            emptyState={
+              <EmptyState title="You have no contacts yet.">
+                <p>Search below and send a contact request to get started.</p>
+              </EmptyState>
+            }
+          />
+        </section>
       ) : null}
+
+      <DiscoverContactsPanel headingLevel="h2" />
+      <ContactRequestsPanel headingLevel="h2" />
 
       <RemoveContactDialog
         open={dialog?.type === 'remove'}

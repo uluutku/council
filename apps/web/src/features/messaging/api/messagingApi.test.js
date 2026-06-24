@@ -3,6 +3,7 @@ import {
   addMessageReaction,
   createOrGetDirectConversation,
   deleteMessage,
+  deleteConversationForMe,
   editMessage,
   listConversationMessages,
   listMyConversations,
@@ -198,6 +199,24 @@ describe('message RPC wrappers', () => {
       args: { p_message_id: MESSAGE },
     });
     expect(result.content).toBeNull();
+  });
+
+  it('deletes a conversation through the owner-scoped RPC', async () => {
+    const client = makeClient({
+      data: {
+        conversation_id: CONVERSATION,
+        deleted_at: TIMESTAMP,
+        deleted_through_sequence: 4,
+      },
+      error: null,
+    });
+    const result = await deleteConversationForMe(CONVERSATION, client);
+
+    expect(client.calls[0]).toEqual({
+      name: 'delete_conversation_for_me',
+      args: { p_conversation_id: CONVERSATION },
+    });
+    expect(result.deleted_through_sequence).toBe(4);
   });
 
   it('rejects a malformed deleted response that leaks content', async () => {

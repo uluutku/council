@@ -86,6 +86,13 @@ messaging-unavailable result and never expose block direction. Own-message delet
 own-reaction removal remain permitted so a user can remove their own historical contribution.
 Unblocking alone restores no send permission.
 
+Human chat deletion is private to the deleting member. It records only the caller's deleted-through
+sequence in their owner-only conversation preference and does not remove shared conversation rows,
+peer messages, peer receipts, realtime membership, or the other participant's view. Reads that
+return message history, search results, message windows, and inbox rows apply that marker
+server-side, so hidden historical content is not returned to the browser after deletion. A later
+message can make the conversation visible again without exposing the older deleted range.
+
 Soft deletion clears `messages.content`, removes reactions on that message, and preserves the
 message ID, sender, sequence, timestamp, and reply graph as a tombstone. Listing and preview
 functions explicitly return null deleted content. Message bodies and reaction values must never
@@ -171,6 +178,13 @@ former content. Realtime event payloads are never logged, and all private messag
 dropped from the cache on sign-out (`queryClient.clear()`), so no message content, preview, or
 receipt state survives a session change. Realtime channels are torn down on conversation change,
 route change, and logout.
+
+AI chat deletion is limited to owner-scoped AI conversations. The browser can delete only its own
+AI conversation through a narrow RPC; cross-user IDs collapse to the normal unavailable error. The
+RPC rejects active generation runs so reserved credits stay under the existing run lifecycle.
+Deleting the conversation cascades owner-only database history and revokes metadata-backed private
+image/document access; physical object cleanup remains best-effort and access revocation does not
+depend on public storage.
 
 ## Mutation restrictions
 

@@ -12,6 +12,17 @@ export function OptimisticMessage({ item, onRetry, onRemove }) {
 
   return (
     <li className="message-row" data-own="true">
+      <p className="message-meta">
+        {failed ? (
+          <span className="message-receipt" data-status="failed" role="alert">
+            Not sent
+          </span>
+        ) : (
+          <span className="message-receipt" data-status="sending" role="status">
+            Sending...
+          </span>
+        )}
+      </p>
       <div className="message-bubble" data-own="true" data-status={item.status}>
         <OptimisticAttachments attachments={item.attachments} />
         {item.content ? (
@@ -27,17 +38,6 @@ export function OptimisticMessage({ item, onRetry, onRemove }) {
             )}
           </p>
         ) : null}
-        <p className="message-meta">
-          {failed ? (
-            <span className="message-receipt" data-status="failed" role="alert">
-              Not sent
-            </span>
-          ) : (
-            <span className="message-receipt" data-status="sending" role="status">
-              Sending…
-            </span>
-          )}
-        </p>
         {failed ? (
           <div className="message-actions" role="group" aria-label="Failed message actions">
             <button

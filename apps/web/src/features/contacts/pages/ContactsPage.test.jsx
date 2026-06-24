@@ -48,10 +48,10 @@ describe('ContactsPage', () => {
     renderWithContacts(<ContactsPage />);
 
     expect(await screen.findByText('You have no contacts yet.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Discover' })).toHaveAttribute(
-      'href',
-      '/app/contacts/discover',
-    );
+    expect(
+      screen.getByText('Search below and send a contact request to get started.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Contact requests' })).toBeInTheDocument();
   });
 
   it('confirms and removes a contact', async () => {

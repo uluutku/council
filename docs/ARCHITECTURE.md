@@ -70,16 +70,18 @@ navigation, and the Supabase JavaScript SDK is created from validated browser-sa
 
 ## Web shell and design system
 
-The authenticated web application uses a full-height messenger shell. Desktop routes render inside
-an icon-first navigation rail and a panel-owned content area. Messages use a resizable collection
-panel plus a main conversation panel; narrow screens switch to a single route-driven panel with
-mobile bottom navigation. Browser-level page scrolling is avoided inside the authenticated shell
-where practical.
+The authenticated web application uses a full-height messenger shell. Desktop primary tabs render
+inside a branded label navigation sidebar and a panel-owned content area. Messages, Contacts,
+Artifacts, Settings, and Pro Status use the same resizable collection-panel plus content-panel
+section model so navigation placement, scrolling, selected rows, and panel resizing are consistent
+across the app. Narrow screens switch to a single route-driven panel with mobile bottom navigation.
+Browser-level page scrolling is avoided inside the authenticated shell where practical.
 
 The visual system is based on semantic CSS custom properties documented in
 `docs/DESIGN_SYSTEM.md`. Legacy color variables remain mapped to the semantic tokens so older AI,
 artifact, contact, and settings surfaces can adopt the shell before their focused redesigns. The
-single icon family is `lucide-react`.
+single icon family is `lucide-react`. The web app currently normalizes theme selection to the
+light Council design.
 
 ## Account and social database boundary
 
@@ -161,7 +163,10 @@ The contacts experience lives in a focused feature area under
 options and mutation hooks, presentational `components`, `pages`, `hooks`, and pure `utils`.
 Presentational components never call Supabase directly; only the `api` wrappers do, and every
 wrapper validates returned rows with the shared `@council/schemas` contracts before the data
-reaches a component.
+reaches a component. The authenticated Contacts route uses the same collection-panel layout model
+as Messages: a vertical selector for Human contacts and AI contacts, with the selected contact
+surface rendered in the content panel. The Human contacts surface includes accepted contacts,
+people discovery, and incoming/outgoing requests as sections in one scrollable view.
 
 All cross-user social writes (sending, responding to, removing, blocking, and unblocking) go
 through the existing security-definer database functions. The browser never inserts, updates, or
@@ -229,6 +234,13 @@ therefore preserves history but returns one generic unavailable state for new wr
 deletion and own-reaction removal remain available. Reaccepting the pair resumes the original
 conversation.
 
+Deleting a human direct chat is owner-scoped. The browser calls the
+`delete_conversation_for_me` RPC, which records a deletion marker on the caller's
+`conversation_preferences` row through the current sequence. The shared conversation, membership,
+peer history, and realtime authorization remain intact. The deleting user no longer sees messages
+at or before that sequence in inbox, message listing, search, or message-window reads; a later
+message makes the conversation visible again with unread counts starting after the deletion marker.
+
 The web messaging feature includes the inbox, conversation route, composer, paginated message
 interface, optimistic sends, replies, editing, tombstones, reactions, receipts, private
 attachments, and Realtime reconciliation. The database remains authoritative after reconnects or
@@ -242,6 +254,11 @@ can read bounded history but cannot create assistant messages or mutate runs dir
 `ai-chat` function uses service-role-only generation functions, product-credit reservation,
 deterministic idempotency hashes, bounded run leases, and retry-idempotent completion. Initial AI
 history loads the newest page and older pages use an exclusive `(created_at, id)` cursor.
+
+Deleting an AI chat uses the `delete_ai_conversation` RPC. Because AI conversations are
+owner-scoped, the row and dependent owner-only history are deleted by cascade. The underlying
+built-in AI contact or custom persona is not deleted. Active generation runs block deletion so a
+reserved credit cannot be orphaned outside the normal completion/failure lifecycle.
 
 Curated memories are explicit owner-managed rows. Direct AI image and PDF/TXT/Markdown uploads use
 separate private buckets and server-only analysis caches. Forwarded human text is an immutable
@@ -303,20 +320,23 @@ joining the same private topic at once (which would otherwise wedge the subscrip
 
 ## Messaging frontend
 
-The human text-messaging UI lives under `apps/web/src/features/messaging` and is wired into the
-authenticated shell through two routes:
+The unified chat UI lives under `apps/web/src/features/messaging` and is wired into the
+authenticated shell through Messages routes:
 
 ```text
-/app/messages                    inbox (list pane) + placeholder/active conversation
-/app/messages/:conversationId    a single direct conversation
+/app/messages                       inbox (list pane) + placeholder/active conversation
+/app/messages/:conversationId       a single direct human conversation
+/app/messages/ai/:conversationId    a single owner-scoped AI conversation
 ```
 
-`MessagingLayout` renders the conversation list in a resizable collection panel and the active
-conversation through an `<Outlet/>`. On wide screens both panes show (list | conversation). On
-narrow screens a single pane shows at a time, chosen by a `data-view` attribute derived from the
-route param, giving full-screen conversation routing on mobile-web. The conversation id is
-validated as a UUID before any query runs; an invalid id renders the same generic "unavailable"
-screen as an inaccessible conversation.
+`MessagingLayout` renders human and AI conversation entries in one resizable collection panel and
+the active conversation through an `<Outlet/>`. The `/app/contacts/ai` route owns the AI contacts
+catalogue for creating or opening AI contacts; created AI conversations navigate back into Messages.
+The legacy `/app/ai` index redirects to that Contacts tab. On wide screens both panes show (list |
+conversation). On narrow screens a single pane shows at a time, chosen by a `data-view` attribute
+derived from the route param, giving full-screen conversation routing on mobile-web. The
+conversation id is validated as a UUID before any query runs; an invalid id renders the same generic
+"unavailable" screen as an inaccessible conversation.
 
 `ConversationPage.jsx` composes route-level states and delegates coordination to
 `useConversationController`, `useConversationSelection`, and `useConversationDialogs`. Query,

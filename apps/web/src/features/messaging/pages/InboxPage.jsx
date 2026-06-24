@@ -9,6 +9,9 @@ export function InboxPage() {
 
   return (
     <div className="conversation-placeholder">
+      <span className="conversation-placeholder-mark" aria-hidden="true">
+        C
+      </span>
       <p className="conversation-placeholder-title">Your conversations</p>
       <p>Select a conversation to read and reply, or start one from your contacts.</p>
     </div>

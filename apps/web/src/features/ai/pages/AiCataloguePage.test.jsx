@@ -41,6 +41,7 @@ const AGENT = {
 function baseMocks() {
   aiApi.listAiAgents.mockResolvedValue([AGENT]);
   aiApi.getMyAiAccess.mockResolvedValue(makeAccess());
+  aiApi.listMyAiConversations.mockResolvedValue([]);
   aiApi.listMyCustomPersonas.mockResolvedValue([]);
   aiApi.getAiProviderMetadata.mockResolvedValue({
     status: 'ok',
@@ -75,17 +76,39 @@ describe('AiCataloguePage built-in', () => {
 
     renderWithAi(
       <Routes>
-        <Route path="/app/ai" element={<AiCataloguePage />} />
-        <Route path="/app/ai/:conversationId" element={<div>conversation opened</div>} />
+        <Route path="/app/contacts/ai" element={<AiCataloguePage />} />
+        <Route path="/app/messages/ai/:conversationId" element={<div>conversation opened</div>} />
       </Routes>,
-      { initialEntries: ['/app/ai'] },
+      { initialEntries: ['/app/contacts/ai'] },
     );
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Open conversation' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add to Contacts' }));
 
     await waitFor(() =>
       expect(aiApi.getOrCreateAiConversation).toHaveBeenCalledWith({ agentId: AGENT_ID }),
     );
+    expect(await screen.findByText('conversation opened')).toBeInTheDocument();
+  });
+
+  it('marks an existing built-in conversation as already in contacts and opens chat', async () => {
+    baseMocks();
+    aiApi.listMyAiConversations.mockResolvedValue([
+      makeConversation({ id: CONVERSATION_ID, display_name: 'Council Assistant' }),
+    ]);
+
+    renderWithAi(
+      <Routes>
+        <Route path="/app/contacts/ai" element={<AiCataloguePage />} />
+        <Route path="/app/messages/ai/:conversationId" element={<div>conversation opened</div>} />
+      </Routes>,
+      { initialEntries: ['/app/contacts/ai'] },
+    );
+
+    const added = await screen.findByRole('button', { name: 'In Contacts' });
+    expect(added).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: /Open chat with Council Assistant/ }));
+
+    expect(aiApi.getOrCreateAiConversation).not.toHaveBeenCalled();
     expect(await screen.findByText('conversation opened')).toBeInTheDocument();
   });
 });
@@ -160,9 +183,7 @@ describe('AiCataloguePage personas', () => {
     renderWithAi(<AiCataloguePage />);
     await openPersonaTab();
 
-    expect(
-      within(screen.getByLabelText('AI assistants')).getByText(/Archived/),
-    ).toBeInTheDocument();
+    expect(within(screen.getByLabelText('AI contacts')).getByText(/Archived/)).toBeInTheDocument();
     await userEvent.click(await screen.findByRole('button', { name: 'Restore' }));
     await waitFor(() => expect(aiApi.restoreCustomPersona).toHaveBeenCalledWith(PERSONA_ID));
   });

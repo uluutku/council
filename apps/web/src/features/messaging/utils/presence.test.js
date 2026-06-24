@@ -10,6 +10,7 @@ describe('presenceLabel', () => {
         new Date('2026-06-23T10:00:00.000Z').getTime(),
       ),
     ).toBe('Last seen 5 minutes ago');
+    expect(presenceLabel({ is_online: false, last_seen_at: null })).toBe('Offline');
     expect(presenceLabel({ is_online: null, last_seen_at: null })).toBe('');
   });
 });

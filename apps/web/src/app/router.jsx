@@ -6,10 +6,13 @@ import { AuthenticatedLayout } from './layouts/AuthenticatedLayout.jsx';
 import { SettingsLayout } from './layouts/SettingsLayout.jsx';
 import { ContactsLayout } from './layouts/ContactsLayout.jsx';
 import { MessagingLayout } from './layouts/MessagingLayout.jsx';
-import { AiLayout } from './layouts/AiLayout.jsx';
+import { ArtifactsLayout } from './layouts/ArtifactsLayout.jsx';
 import { GuestRoute } from './router/GuestRoute.jsx';
 import { ProtectedRoute } from './router/ProtectedRoute.jsx';
 import { OnboardingRoute } from './router/OnboardingRoute.jsx';
+import { LegacyAiCatalogueRedirect } from './router/LegacyAiCatalogueRedirect.jsx';
+import { LegacyAiConversationRedirect } from './router/LegacyAiConversationRedirect.jsx';
+import { LegacyContactsRedirect } from './router/LegacyContactsRedirect.jsx';
 import { LandingPage } from '../routes/LandingPage.jsx';
 import { AppHomePage } from '../routes/AppHomePage.jsx';
 import { NotFoundPage } from '../routes/NotFoundPage.jsx';
@@ -44,14 +47,6 @@ const AccessSettingsPage = lazyNamed(
 const ContactsPage = lazyNamed(
   () => import('../features/contacts/pages/ContactsPage.jsx'),
   'ContactsPage',
-);
-const DiscoverContactsPage = lazyNamed(
-  () => import('../features/contacts/pages/DiscoverContactsPage.jsx'),
-  'DiscoverContactsPage',
-);
-const ContactRequestsPage = lazyNamed(
-  () => import('../features/contacts/pages/ContactRequestsPage.jsx'),
-  'ContactRequestsPage',
 );
 const BlockedUsersPage = lazyNamed(
   () => import('../features/contacts/pages/BlockedUsersPage.jsx'),
@@ -127,15 +122,15 @@ export const routes = [
             children: [
               { index: true, element: lazyRoute(<InboxPage />) },
               { path: 'search', element: lazyRoute(<MessageSearchPage />) },
+              { path: 'ai/:conversationId', element: lazyRoute(<AiConversationPage />) },
               { path: ':conversationId', element: lazyRoute(<ConversationPage />) },
             ],
           },
           {
             path: 'ai',
-            element: <AiLayout />,
             children: [
-              { index: true, element: lazyRoute(<AiCataloguePage />) },
-              { path: ':conversationId', element: lazyRoute(<AiConversationPage />) },
+              { index: true, element: <LegacyAiCatalogueRedirect /> },
+              { path: ':conversationId', element: <LegacyAiConversationRedirect /> },
             ],
           },
           {
@@ -143,12 +138,19 @@ export const routes = [
             element: <ContactsLayout />,
             children: [
               { index: true, element: lazyRoute(<ContactsPage />) },
-              { path: 'discover', element: lazyRoute(<DiscoverContactsPage />) },
-              { path: 'requests', element: lazyRoute(<ContactRequestsPage />) },
+              { path: 'ai', element: lazyRoute(<AiCataloguePage />) },
+              { path: 'discover', element: <LegacyContactsRedirect /> },
+              { path: 'requests', element: <LegacyContactsRedirect /> },
             ],
           },
-          { path: 'artifacts', element: lazyRoute(<ArtifactsPage />) },
-          { path: 'artifacts/:artifactId', element: lazyRoute(<ArtifactDetailPage />) },
+          {
+            path: 'artifacts',
+            element: <ArtifactsLayout />,
+            children: [
+              { index: true, element: lazyRoute(<ArtifactsPage />) },
+              { path: ':artifactId', element: lazyRoute(<ArtifactDetailPage />) },
+            ],
+          },
           {
             path: 'settings',
             element: <SettingsLayout />,

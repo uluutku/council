@@ -4,6 +4,7 @@ import {
   aiConversationListSchema,
   aiConversationSchema,
   aiDeletedMemoryCountSchema,
+  deletedAiConversationSchema,
   aiMemoryInputSchema,
   aiMemoryListSchema,
   aiMemorySchema,
@@ -47,6 +48,14 @@ export async function listMyAiConversations(client = getSupabaseClient()) {
   const { data, error } = await client.rpc('list_my_ai_conversations', { p_limit: 30 });
   if (error) throw toAiApiError(error);
   return aiConversationListSchema.parse(data ?? []);
+}
+
+export async function deleteAiConversation(conversationId, client = getSupabaseClient()) {
+  const { data, error } = await client.rpc('delete_ai_conversation', {
+    p_conversation_id: conversationId,
+  });
+  if (error) throw toAiApiError(error);
+  return deletedAiConversationSchema.parse(data);
 }
 
 export async function listAiMessages(

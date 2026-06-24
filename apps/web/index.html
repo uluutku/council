@@ -7,13 +7,16 @@
       name="description"
       content="Council combines private human messaging and persistent AI contacts."
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <title>Council</title>
     <script>
       (() => {
-        const theme = localStorage.getItem('council.theme');
-        document.documentElement.dataset.theme = ['light', 'dark', 'system'].includes(theme)
-          ? theme
-          : 'system';
+        document.documentElement.dataset.theme = 'light';
       })();
     </script>
   </head>

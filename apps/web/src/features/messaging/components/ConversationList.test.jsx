@@ -91,4 +91,49 @@ describe('ConversationList', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Load more conversations' }));
     expect(onLoadMore).toHaveBeenCalled();
   });
+
+  it('opens card options without muting immediately', async () => {
+    const user = userEvent.setup();
+    const onToggleMute = vi.fn();
+    const onDeleteChat = vi.fn();
+    renderList({ conversations: [makeConversation()], onToggleMute, onDeleteChat });
+
+    await user.click(screen.getByRole('button', { name: 'More options for Bjorn' }));
+
+    expect(onToggleMute).not.toHaveBeenCalled();
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /delete chat/i })).toBeEnabled();
+
+    await user.click(screen.getByRole('menuitem', { name: /mute chat/i }));
+    expect(onToggleMute).toHaveBeenCalledWith(expect.objectContaining({ peer_id: PEER_ID }));
+
+    await user.click(screen.getByRole('button', { name: 'More options for Bjorn' }));
+    await user.click(screen.getByRole('menuitem', { name: /delete chat/i }));
+    expect(onDeleteChat).toHaveBeenCalledWith(expect.objectContaining({ peer_id: PEER_ID }));
+  });
+
+  it('offers unmute, remove, and block actions from the card menu', async () => {
+    const user = userEvent.setup();
+    const onToggleMute = vi.fn();
+    const onRemoveContact = vi.fn();
+    const onBlockUser = vi.fn();
+    renderList({
+      conversations: [makeConversation({ is_muted: true })],
+      onToggleMute,
+      onRemoveContact,
+      onBlockUser,
+    });
+
+    await user.click(screen.getByRole('button', { name: 'More options for Bjorn' }));
+    await user.click(screen.getByRole('menuitem', { name: /unmute chat/i }));
+    expect(onToggleMute).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole('button', { name: 'More options for Bjorn' }));
+    await user.click(screen.getByRole('menuitem', { name: /remove contact/i }));
+    expect(onRemoveContact).toHaveBeenCalledWith(expect.objectContaining({ peer_id: PEER_ID }));
+
+    await user.click(screen.getByRole('button', { name: 'More options for Bjorn' }));
+    await user.click(screen.getByRole('menuitem', { name: /block user/i }));
+    expect(onBlockUser).toHaveBeenCalledWith(expect.objectContaining({ peer_id: PEER_ID }));
+  });
 });

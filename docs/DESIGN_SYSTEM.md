@@ -19,55 +19,53 @@ Core semantic color tokens:
 - `--message-incoming`, `--message-outgoing`, `--message-outgoing-text`
 - `--focus-ring`, `--selection`
 
-### Color palette (final values)
+### Color Palette
 
-The palette is a neutral slate/graphite foundation with a single restrained indigo Council accent
-(matching the product's auth/marketing direction). Status colors carry a paired muted `-soft`
-background for chips, banners, and inline notices. AI identity uses a calm steel-blue
-(`--ai-accent`) that is deliberately distinct from the indigo action accent so AI and human
-surfaces never read as the same thing.
+Council is a light-mode application in this phase. The palette follows `DESIGN.md` and the
+designer chat export: a pale lavender surface system, Primary Indigo for global actions,
+navigation, and outgoing chat bubbles, Human Blue as a secondary/informational color, and AI Violet
+for synthetic intelligence touchpoints.
 
-| Token                          | Light                 | Dark / System         |
-| ------------------------------ | --------------------- | --------------------- |
-| `--background`                 | `#e9edf1`             | `#0f1318`             |
-| `--surface`                    | `#f7f9fb`             | `#161b21`             |
-| `--surface-elevated`           | `#ffffff`             | `#1d242b`             |
-| `--surface-hover`              | `#eef2f6`             | `#232b33`             |
-| `--surface-active`             | `#e3eaf1`             | `#28383b`             |
-| `--surface-muted`              | `#f1f4f7`             | `#12161b`             |
-| `--text-primary`               | `#161b22`             | `#e9eef2`             |
-| `--text-secondary`             | `#515a66`             | `#aeb8c2`             |
-| `--text-tertiary`              | `#6c7682`             | `#828d98`             |
-| `--border`                     | `#d6dde5`             | `#2a323b`             |
-| `--border-strong`              | `#b5bfca`             | `#3f4a55`             |
-| `--divider`                    | `#e5e9ef`             | `#222a31`             |
-| `--accent`                     | `#4f46e5`             | `#8c88f7`             |
-| `--accent-hover`               | `#4338ca`             | `#a5a1fb`             |
-| `--accent-soft`                | `#e7e6fb`             | `#2a2756`             |
-| `--accent-contrast`            | `#ffffff`             | `#131233`             |
-| `--ai-accent`                  | `#3a6aa3`             | `#7fa6d6`             |
-| `--ai-accent-soft`             | `#e0e8f3`             | `#1c2738`             |
-| `--success` / `--success-soft` | `#1d7a49` / `#dcefe3` | `#6fc795` / `#15291d` |
-| `--warning` / `--warning-soft` | `#92600f` / `#f5ead2` | `#e0ad62` / `#2c2414` |
-| `--danger` / `--danger-soft`   | `#b23a3a` / `#f6e1e0` | `#ef8a8a` / `#342020` |
-| `--info` / `--info-soft`       | `#2f6aa3` / `#dde8f3` | `#84b4e6` / `#16222f` |
-| `--message-incoming`           | `#ffffff`             | `#1e252c`             |
-| `--message-outgoing`           | `#e4e2fb`             | `#302c61`             |
-| `--message-outgoing-text`      | `#1f1b4d`             | `#eae9fb`             |
-| `--focus-ring`                 | `#6366f1`             | `#8c88f7`             |
-| `--selection`                  | `#e7e6fc`             | `#2a2756`             |
+| Token                          | Value                 |
+| ------------------------------ | --------------------- |
+| `--background`                 | `#fbf8ff`             |
+| `--surface`                    | `#fbf8ff`             |
+| `--surface-elevated`           | `#ffffff`             |
+| `--surface-hover`              | `#f9fafb`             |
+| `--surface-active`             | `#e7e7f5`             |
+| `--surface-muted`              | `#f3f2ff`             |
+| `--text-primary`               | `#191b25`             |
+| `--text-secondary`             | `#464555`             |
+| `--text-tertiary`              | `#777587`             |
+| `--border`                     | `#c7c4d8`             |
+| `--border-strong`              | `#777587`             |
+| `--divider`                    | `#d9d9e7`             |
+| `--accent`                     | `#3525cd`             |
+| `--accent-hover`               | `#4d44e3`             |
+| `--accent-soft`                | `#e2dfff`             |
+| `--accent-contrast`            | `#ffffff`             |
+| `--ai-accent`                  | `#5c00ca`             |
+| `--ai-accent-soft`             | `#f5f3ff`             |
+| `--success` / `--success-soft` | `#1d7a49` / `#dcefe3` |
+| `--warning` / `--warning-soft` | `#92600f` / `#f5ead2` |
+| `--danger` / `--danger-soft`   | `#ba1a1a` / `#ffdad6` |
+| `--info` / `--info-soft`       | `#0051d5` / `#dbe1ff` |
+| `--message-incoming`           | `#f2f4f7`             |
+| `--message-outgoing`           | `#3525cd`             |
+| `--message-outgoing-text`      | `#ffffff`             |
+| `--focus-ring`                 | `#4d44e3`             |
+| `--selection`                  | `#e7e7f5`             |
 
 Rules:
 
-- The indigo `--accent` is the only brand action color. White (`--accent-contrast`) text on
-  `--accent` and dark text on the lightened dark-mode accent both clear WCAG AA for UI text.
-- Navigation and collection-row selected states are soft tints (`--accent-soft`, `--selection`),
-  never a full saturated fill.
-- The outgoing message tint is intentionally low-saturation so long bubbles never glare.
+- The indigo `--accent` is the only global action color. White (`--accent-contrast`) text on
+  `--accent` clears WCAG AA for UI text.
+- Navigation and collection-row selected states use a soft tint plus a 4px active-edge indicator.
+- Human outgoing messages use Primary Indigo (`#3525cd`) as shown in the designer export. AI
+  assistant replies use faint violet surfaces (`#f5f3ff`) with a violet border (`#ddd6fe`).
 - Status backgrounds always use the `-soft` token; never tint with ad-hoc `color-mix` per surface.
-- AI identity color is `--ai-accent`; per-agent avatar hues remain derived but must stay muted.
-- Dark mode uses layered slate surfaces (`#0f1318` → `#1d242b`), never pure black, and lightened
-  (not glowing) accents.
+- AI identity color is `--ai-accent`; per-agent avatar hues remain derived from the violet family
+  and must stay muted.
 
 Layout and interaction tokens:
 
@@ -87,21 +85,31 @@ while they are redesigned.
 
 Authenticated routes render inside a full-height application shell:
 
-- Desktop: navigation rail plus a content area.
-- Messages: navigation rail, resizable collection panel, and main conversation panel.
+- Desktop: branded label navigation sidebar plus a content area.
+- Messages: navigation sidebar, resizable collection panel, and main conversation panel.
+- Contacts: navigation sidebar, resizable collection panel, and selected Human/AI contact surface;
+  Human contacts contains accepted contacts, discovery, and requests in one content view.
+- Artifacts: navigation sidebar, resizable collection panel, and selected library/detail surface.
+- Settings and Pro Status: navigation sidebar, resizable collection panel, and selected account
+  surface.
 - Mobile: one panel at a time, with bottom navigation and route-preserving back behavior.
 
-The message collection panel defaults near 368 pixels and is clamped between 300 and 480 pixels.
-Its preferred width is stored locally. Each application panel owns its own scrolling; authenticated
-pages should not rely on browser-level page scrolling.
+The desktop navigation sidebar is 16rem wide to match the designer export. The message collection
+panel defaults to 320 pixels and is clamped between 320 and 480 pixels. Its preferred width is
+stored locally. Each application panel owns its own scrolling; authenticated pages should not rely
+on browser-level page scrolling.
 
 ## Components
 
-Shared primitives (all token-based, light + dark):
+Shared primitives (all token-based, light mode):
 
-- `MessengerShell`, navigation rail, mobile bottom navigation.
-- `MessagingLayout` / collection-panel model — also adopted by the AI area (`AiLayout`) so AI and
-  human messaging share the resizable collection panel + content panel by construction.
+- `MessengerShell`, branded navigation sidebar, mobile bottom navigation.
+- `MessagingLayout` / collection-panel model, shared by the primary app sections so panel headers,
+  selected rows, resizing, and scrolling behave consistently.
+- `ContactsLayout`, using the same collection-panel model for Human contacts and AI contacts rather
+  than horizontal top tabs; discovery and requests live inside Human contacts.
+- `ArtifactsLayout` and `SettingsLayout`, using the same collection-panel model for non-chat
+  sections rather than standalone centered pages.
 - `IconButton`, route skeletons, messaging empty / error / skeleton states.
 - Buttons: `.button`, `.button--secondary`, `.button--small`, `.button--full`, `.button--danger`
   — consistent sizing/radius, token fills with `--accent-contrast` text, hover/active/disabled and
@@ -120,6 +128,11 @@ accessible label. Do not mix icon packs.
 Conversation rows must keep a stable height and reserve room for unread and mute indicators so
 badges do not cause layout jumps. Human message content remains plain text with safe `http(s)`
 linkification only. Markdown is not enabled for human messages.
+
+The Messages surface lists both human conversations and AI character conversations. Human chat
+headers show the display name plus online/last-seen presence only; usernames are not shown in the
+active chat header. AI chat headers show the agent or persona name and its description, because AI
+contacts do not have last-seen presence and are treated as available unless archived.
 
 Message bubbles use compact padding, moderate radii, and subtle grouped-corner changes for adjacent
 messages from the same sender. Outgoing and incoming messages are distinct through semantic message
@@ -144,9 +157,8 @@ the authenticated application.
 
 ## Themes
 
-Light theme uses soft neutral application backgrounds, clear panels, hairline dividers, and a
-restrained indigo Council accent. Dark theme uses layered dark neutral surfaces rather than pure
-black, with muted text tuned for readability and non-glowing accents.
+Council currently ships as a light-mode application. Theme selection is intentionally not exposed
+in preferences; saved legacy dark/system values are normalized to light at runtime.
 
 The public authentication experience (login, register, recovery) is a full-screen split: a calm
 indigo-tinted marketing panel on the left and a focused auth card on the right, framed by a shared
@@ -188,12 +200,6 @@ Council should look like a serious daily communication product.
 These are intentionally deferred to the final whole-product polish pass; none break the build,
 tests, or the desktop experience:
 
-- **AI mobile model.** On phones the AI area shows the assistant catalogue (content panel) at the
-  `/app/ai` index and hides the conversation-list collection panel, so a phone user can browse and
-  start an assistant instead of an empty list. The trade-off is that the AI conversation list is
-  not shown on mobile at the index — a "recent AI chats" affordance could be added later.
-- **Content-page heading scale.** Artifacts still uses a larger heading than the compact headers on
-  contacts/settings. Harmonize the content-page (`.app-page`) heading scale across surfaces.
 - **`.auth-heading h1` shares a selector group** with `.settings-section h1` / `.app-page h1` at a
   marketing scale; auth/onboarding scope a more specific override. Split the combined selector so
   app and settings headings get their own scale.
