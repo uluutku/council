@@ -18,6 +18,7 @@ const KNOWN_CATEGORIES = new Set([
   'persona_not_found',
   'persona_limit_reached',
   'invalid_persona',
+  'invalid_avatar_path',
   'memory_not_found',
   'memory_limit_reached',
   'invalid_memory',

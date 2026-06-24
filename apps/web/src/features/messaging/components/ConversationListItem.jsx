@@ -1,4 +1,4 @@
-import { BellOff } from 'lucide-react';
+import { Ban, Bell, BellOff, Trash2, UserMinus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PeerAvatar } from './PeerAvatar.jsx';
 import { ConversationOptionsMenu } from './ConversationOptionsMenu.jsx';
@@ -97,12 +97,14 @@ export function ConversationListItem({
               key: 'mute',
               label: conversation.is_muted ? 'Unmute chat' : 'Mute chat',
               description: conversation.is_muted ? 'Notifications on' : 'Notifications off',
+              icon: conversation.is_muted ? Bell : BellOff,
               onSelect: () => onMuteToggle(conversation),
             },
             {
               key: 'delete',
               label: 'Delete chat',
               description: 'Clear from your inbox',
+              icon: Trash2,
               tone: 'danger',
               onSelect: () => onDeleteChat(conversation),
             },
@@ -110,12 +112,14 @@ export function ConversationListItem({
               key: 'remove',
               label: 'Remove contact',
               description: 'Keep message history',
+              icon: UserMinus,
               onSelect: () => onRemoveContact(conversation),
             },
             {
               key: 'block',
               label: 'Block user',
               description: 'Stop future contact',
+              icon: Ban,
               tone: 'danger',
               onSelect: () => onBlockUser(conversation),
             },

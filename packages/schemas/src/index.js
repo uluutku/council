@@ -770,7 +770,7 @@ export const aiAgentSchema = z
     slug: z.string().min(1).max(50),
     name: z.string().min(1).max(80),
     description: z.string().min(1).max(400),
-    avatar_key: z.string().max(512).nullable(),
+    avatar_key: z.string().max(512).nullable().optional().default(null),
     enabled: z.boolean(),
   })
   .strict();
@@ -797,6 +797,7 @@ export const aiConversationSchema = z
     persona_id: uuidSchema.nullable(),
     display_name: z.string().min(1).max(80),
     description: z.string().max(400).nullable(),
+    avatar_key: z.string().max(512).nullable().optional().default(null),
     archived: z.boolean(),
     created_at: timestampSchema,
     updated_at: timestampSchema,
@@ -818,6 +819,7 @@ export const aiPersonaSchema = z
     instructions: z.string().min(1).max(4000),
     tone: aiPersonaToneSchema,
     verbosity: aiPersonaVerbositySchema,
+    avatar_path: avatarPathSchema.optional().default(null),
     archived: z.boolean(),
     created_at: timestampSchema,
     updated_at: timestampSchema,
@@ -843,6 +845,7 @@ export const aiPersonaInputSchema = z
       .max(4000, 'Instructions must be at most 4000 characters.'),
     tone: aiPersonaToneSchema,
     verbosity: aiPersonaVerbositySchema,
+    avatar_path: avatarPathSchema.optional().default(null),
   })
   .strict();
 

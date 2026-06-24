@@ -1,4 +1,6 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { useSignedAvatarUrl } from '../../../hooks/useSignedAvatarUrl.js';
+import { PERSONA_AVATAR_BUCKET } from '../../../lib/avatarStorage.js';
 
 const TONES = ['warm', 'balanced', 'direct', 'playful', 'formal'];
 const VERBOSITIES = ['concise', 'balanced', 'detailed'];
@@ -26,6 +28,13 @@ export function PersonaEditor({ initial, onSubmit, onCancel, isSaving, errorMess
   const [instructions, setInstructions] = useState(initial?.instructions ?? '');
   const [tone, setTone] = useState(initial?.tone ?? 'balanced');
   const [verbosity, setVerbosity] = useState(initial?.verbosity ?? 'balanced');
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('');
+  const [removeAvatar, setRemoveAvatar] = useState(false);
+  const currentAvatarUrl = useSignedAvatarUrl(
+    PERSONA_AVATAR_BUCKET,
+    removeAvatar ? null : initial?.avatar_path,
+  );
 
   const trimmedName = name.trim();
   const canSave =
@@ -33,6 +42,23 @@ export function PersonaEditor({ initial, onSubmit, onCancel, isSaving, errorMess
     trimmedName.length >= 2 &&
     trimmedName.length <= 50 &&
     instructions.trim().length >= 1;
+  const avatarUrl = avatarPreviewUrl || currentAvatarUrl;
+
+  useEffect(
+    () => () => {
+      if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+    },
+    [avatarPreviewUrl],
+  );
+
+  function updateAvatarFile(file) {
+    setRemoveAvatar(false);
+    setAvatarFile(file ?? null);
+    setAvatarPreviewUrl((currentUrl) => {
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      return file ? URL.createObjectURL(file) : '';
+    });
+  }
 
   return (
     <form
@@ -40,13 +66,55 @@ export function PersonaEditor({ initial, onSubmit, onCancel, isSaving, errorMess
       aria-label={initial ? 'Edit persona' : 'Create persona'}
       onSubmit={(event) => {
         event.preventDefault();
-        if (canSave) onSubmit({ name: trimmedName, description, instructions, tone, verbosity });
+        if (canSave) {
+          onSubmit({
+            name: trimmedName,
+            description,
+            instructions,
+            tone,
+            verbosity,
+            avatar_path: removeAvatar ? null : (initial?.avatar_path ?? null),
+            avatarFile,
+          });
+        }
       }}
     >
       <h2 className="persona-editor-title">{initial ? 'Edit persona' : 'New persona'}</h2>
       <p className="persona-editor-note">
         Personas are private to your account. No one else can see, open, or chat with them.
       </p>
+
+      <div className="persona-avatar-field">
+        <span className="persona-avatar-preview" aria-hidden="true">
+          {avatarUrl ? <img src={avatarUrl} alt="" /> : (trimmedName || initial?.name || 'P')[0]}
+        </span>
+        <div className="persona-avatar-actions">
+          <label className="button button--secondary button--small" htmlFor={`${ids}-avatar`}>
+            Upload image
+          </label>
+          <input
+            id={`${ids}-avatar`}
+            className="sr-only"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={isSaving}
+            onChange={(event) => updateAvatarFile(event.target.files?.[0] ?? null)}
+          />
+          {initial?.avatar_path || avatarFile ? (
+            <button
+              type="button"
+              className="button button--secondary button--small"
+              disabled={isSaving}
+              onClick={() => {
+                updateAvatarFile(null);
+                setRemoveAvatar(Boolean(initial?.avatar_path));
+              }}
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       <div className="form-field">
         <label htmlFor={`${ids}-name`}>Name</label>

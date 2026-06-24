@@ -70,6 +70,9 @@ describe('onboarding and account settings pages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    delete document.documentElement.dataset.theme;
+    delete document.documentElement.dataset.themePreference;
+    document.documentElement.style.colorScheme = '';
   });
 
   it('shows an authoritative username conflict during onboarding', async () => {
@@ -129,27 +132,27 @@ describe('onboarding and account settings pages', () => {
     expect(screen.getByLabelText('Biography')).toHaveValue('Unsaved biography');
   });
 
-  it('persists privacy preferences through the settings wrapper with light appearance', async () => {
+  it('persists preferences and applies dark mode from the settings switch', async () => {
     const user = userEvent.setup();
     updateMySettings.mockResolvedValue({
       ...settings,
-      theme: 'light',
+      theme: 'dark',
       privacy_preferences: { ...settings.privacy_preferences, allow_contact_requests: false },
     });
     const auth = renderWithAuth(<PreferencesSettingsPage />);
 
-    expect(screen.queryByRole('button', { name: 'Dark' })).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText(/Dark mode/));
     await user.click(screen.getByLabelText(/Allow contact requests/));
     await user.click(screen.getByRole('button', { name: 'Save preferences' }));
 
     expect(updateMySettings).toHaveBeenCalledWith(
       expect.objectContaining({
-        theme: 'light',
+        theme: 'dark',
         privacy_preferences: expect.objectContaining({ allow_contact_requests: false }),
       }),
     );
     expect(await screen.findByText('Preferences saved.')).toBeInTheDocument();
-    expect(document.documentElement.dataset.theme).not.toBe('dark');
+    expect(document.documentElement.dataset.theme).toBe('dark');
     expect(auth.refreshProfile).toHaveBeenCalled();
   });
 

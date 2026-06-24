@@ -1,11 +1,13 @@
 import { peerInitials } from '../utils/peer.js';
+import { PROFILE_AVATAR_BUCKET } from '../../../lib/avatarStorage.js';
+import { useSignedAvatarUrl } from '../../../hooks/useSignedAvatarUrl.js';
 
-// Placeholder avatar shared by the inbox and conversation header. Avatar uploads
-// and Storage are out of scope, so a peer is represented by their initials.
 export function PeerAvatar({ peer, size = 'medium' }) {
+  const url = useSignedAvatarUrl(PROFILE_AVATAR_BUCKET, peer?.avatarPath);
+
   return (
     <span className="msg-avatar" data-size={size} aria-hidden="true">
-      {peerInitials(peer)}
+      {url ? <img src={url} alt="" /> : peerInitials(peer)}
     </span>
   );
 }

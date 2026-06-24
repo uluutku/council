@@ -8,6 +8,8 @@ import {
   Sparkles,
   UserPlus,
 } from 'lucide-react';
+import { useSignedAvatarUrl } from '../../../hooks/useSignedAvatarUrl.js';
+import { PERSONA_AVATAR_BUCKET } from '../../../lib/avatarStorage.js';
 
 // A card for a private custom persona in the "My personas" section.
 export function PersonaCard({
@@ -23,12 +25,13 @@ export function PersonaCard({
 }) {
   const primaryText = isInContacts ? 'In Contacts' : isAdding ? 'Adding...' : 'Add to Contacts';
   const PrimaryIcon = isInContacts ? Check : UserPlus;
+  const avatarUrl = useSignedAvatarUrl(PERSONA_AVATAR_BUCKET, persona.avatar_path);
 
   return (
     <article className="ai-agent-card" data-archived={persona.archived ? 'true' : undefined}>
       <div className="ai-agent-media" data-tone="custom">
         <span className="ai-agent-portrait" aria-hidden="true">
-          {persona.name.slice(0, 1)}
+          {avatarUrl ? <img src={avatarUrl} alt="" /> : persona.name.slice(0, 1)}
         </span>
         <span className="ai-card-badge" data-tone="custom">
           <Sparkles aria-hidden="true" size={12} strokeWidth={2.4} />

@@ -17,6 +17,12 @@ import { AiAccessSummary } from '../components/AiAccessSummary.jsx';
 import { PersonaCard } from '../components/PersonaCard.jsx';
 import { PersonaEditor } from '../components/PersonaEditor.jsx';
 import { AiProviderBadge } from '../components/AiProviderBadge.jsx';
+import {
+  PERSONA_AVATAR_BUCKET,
+  avatarUploadErrorMessage,
+  removeAvatarFile,
+  uploadAvatarFile,
+} from '../../../lib/avatarStorage.js';
 
 // The AI catalogue with two sections: built-in contacts and the user's private
 // custom personas. Opening any contact creates (or reuses) its single per-user
@@ -53,15 +59,36 @@ export function AiCataloguePage() {
 
   async function submitEditor(input) {
     setActionError('');
+    let uploadedAvatarPath = null;
+    const previousAvatarPath = editor.mode === 'edit' ? editor.persona.avatar_path : null;
     try {
+      const avatarPath = input.avatarFile
+        ? await uploadAvatarFile(PERSONA_AVATAR_BUCKET, input.avatarFile)
+        : input.avatar_path;
+      uploadedAvatarPath = input.avatarFile ? avatarPath : null;
+      const payload = {
+        name: input.name,
+        description: input.description,
+        instructions: input.instructions,
+        tone: input.tone,
+        verbosity: input.verbosity,
+        avatar_path: avatarPath,
+      };
+
       if (editor.mode === 'create') {
-        await personaMutations.create.mutateAsync(input);
+        await personaMutations.create.mutateAsync(payload);
       } else {
-        await personaMutations.update.mutateAsync({ personaId: editor.persona.id, input });
+        await personaMutations.update.mutateAsync({ personaId: editor.persona.id, input: payload });
+      }
+      if (previousAvatarPath && previousAvatarPath !== avatarPath) {
+        removeAvatarFile(PERSONA_AVATAR_BUCKET, previousAvatarPath).catch(() => {});
       }
       setEditor(null);
     } catch (error) {
-      setActionError(aiErrorMessage(error));
+      if (uploadedAvatarPath) {
+        removeAvatarFile(PERSONA_AVATAR_BUCKET, uploadedAvatarPath).catch(() => {});
+      }
+      setActionError(avatarUploadErrorMessage(error) ?? aiErrorMessage(error));
     }
   }
 

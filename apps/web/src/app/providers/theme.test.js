@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { applyTheme, THEME_STORAGE_KEY } from './theme.js';
+import { applyTheme, resolveTheme, THEME_STORAGE_KEY } from './theme.js';
 
 describe('applyTheme', () => {
   beforeEach(() => {
@@ -10,14 +10,25 @@ describe('applyTheme', () => {
   it('applies and persists the light theme', () => {
     applyTheme('light');
     expect(document.documentElement.dataset.theme).toBe('light');
+    expect(document.documentElement.dataset.themePreference).toBe('light');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
   });
 
-  it('normalizes unsupported and dark themes to light', () => {
+  it('applies and persists the dark theme', () => {
     applyTheme('dark');
-    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(document.documentElement.dataset.themePreference).toBe('dark');
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
+  });
 
+  it('normalizes unsupported themes to light', () => {
     applyTheme('contrast');
     expect(document.documentElement.dataset.theme).toBe('light');
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+  });
+
+  it('resolves the system theme from media preferences', () => {
+    window.matchMedia = () => ({ matches: true });
+    expect(resolveTheme('system')).toBe('dark');
   });
 });

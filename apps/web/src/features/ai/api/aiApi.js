@@ -172,33 +172,59 @@ export async function listMyCustomPersonas(client = getSupabaseClient()) {
   return aiPersonaListSchema.parse(data ?? []);
 }
 
+function isRpcSignatureMissing(error) {
+  const message = String(error?.message ?? '').toLowerCase();
+  return (
+    error?.code === 'PGRST202' ||
+    error?.code === '42883' ||
+    (message.includes('function') && message.includes('does not exist')) ||
+    message.includes('could not find the function')
+  );
+}
+
 export async function createCustomPersona(input, client = getSupabaseClient()) {
   const parsed = aiPersonaInputSchema.parse(input);
-  const { data, error } = await client
-    .rpc('create_custom_persona', {
-      p_name: parsed.name,
-      p_description: parsed.description,
-      p_instructions: parsed.instructions,
-      p_tone: parsed.tone,
-      p_verbosity: parsed.verbosity,
-    })
-    .single();
+  const params = {
+    p_name: parsed.name,
+    p_description: parsed.description,
+    p_instructions: parsed.instructions,
+    p_tone: parsed.tone,
+    p_verbosity: parsed.verbosity,
+    p_avatar_path: parsed.avatar_path,
+  };
+  let result = await client.rpc('create_custom_persona', params).single();
+
+  if (result.error && parsed.avatar_path === null && isRpcSignatureMissing(result.error)) {
+    const legacyParams = { ...params };
+    delete legacyParams.p_avatar_path;
+    result = await client.rpc('create_custom_persona', legacyParams).single();
+  }
+
+  const { data, error } = result;
   if (error) throw toAiApiError(error);
   return aiPersonaSchema.parse(data);
 }
 
 export async function updateCustomPersona(personaId, input, client = getSupabaseClient()) {
   const parsed = aiPersonaInputSchema.parse(input);
-  const { data, error } = await client
-    .rpc('update_custom_persona', {
-      p_persona_id: personaId,
-      p_name: parsed.name,
-      p_description: parsed.description,
-      p_instructions: parsed.instructions,
-      p_tone: parsed.tone,
-      p_verbosity: parsed.verbosity,
-    })
-    .single();
+  const params = {
+    p_persona_id: personaId,
+    p_name: parsed.name,
+    p_description: parsed.description,
+    p_instructions: parsed.instructions,
+    p_tone: parsed.tone,
+    p_verbosity: parsed.verbosity,
+    p_avatar_path: parsed.avatar_path,
+  };
+  let result = await client.rpc('update_custom_persona', params).single();
+
+  if (result.error && parsed.avatar_path === null && isRpcSignatureMissing(result.error)) {
+    const legacyParams = { ...params };
+    delete legacyParams.p_avatar_path;
+    result = await client.rpc('update_custom_persona', legacyParams).single();
+  }
+
+  const { data, error } = result;
   if (error) throw toAiApiError(error);
   return aiPersonaSchema.parse(data);
 }

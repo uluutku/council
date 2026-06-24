@@ -8,8 +8,11 @@ export function usePresence(userIds) {
     queryKey: messagingKeys.presence(ids),
     queryFn: () => getPresenceForUsers(ids),
     enabled: ids.length > 0,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 10_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
   });
   return new Map((query.data ?? []).map((presence) => [presence.user_id, presence]));
 }

@@ -7,6 +7,7 @@ people, built-in AI experts, built-in AI personas, and private custom AI charact
 contacts share an inbox but are always visibly distinguished.
 
 The core promise is private messaging and persistent AI contacts in one application.
+Users can choose light or dark appearance in account preferences.
 
 ## Target users
 
@@ -35,6 +36,8 @@ and Fact Checker. Medical diagnosis, legal-decision, and financial-adviser agent
 roles.
 
 Custom personas remain private and cannot initially be published or shared.
+Human profiles and private custom personas may have user-uploaded images. Built-in AI contact
+images are supplied by the server catalogue.
 
 ## Access model
 

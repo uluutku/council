@@ -8,6 +8,7 @@ const ERROR_MESSAGES = {
   network_unavailable: 'Council cannot reach the server.',
   session_expired: 'Your session has expired. Sign in again.',
   username_unavailable: 'That username is already in use.',
+  invalid_avatar_path: 'Choose an avatar from your account.',
   backend_unavailable: 'Council is temporarily unavailable. Try again.',
   unknown: 'Something went wrong. Try again.',
 };
@@ -51,6 +52,10 @@ export function mapSupabaseError(error) {
 
   if (code === '23505' || message.includes('username is already taken')) {
     return { category: 'username_unavailable', message: ERROR_MESSAGES.username_unavailable };
+  }
+
+  if (message.includes('invalid_avatar_path')) {
+    return { category: 'invalid_avatar_path', message: ERROR_MESSAGES.invalid_avatar_path };
   }
 
   if (code === 'refresh_token_not_found' || code === 'session_not_found') {

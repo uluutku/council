@@ -1,7 +1,8 @@
-import { Bot, Sparkles } from 'lucide-react';
+import { Sparkles, Trash2 } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
 import { ConversationOptionsMenu } from './ConversationOptionsMenu.jsx';
 import { formatConversationTimestamp, formatFullTimestamp } from '../utils/datetime.js';
+import { AiAvatar } from '../../ai/components/AiAvatar.jsx';
 
 function aiDescription(conversation) {
   return conversation.description?.trim() || 'Online';
@@ -37,9 +38,7 @@ export function AiConversationList({ conversations, selectedId, onDeleteChat = (
                   aria-current={conversation.id === selectedId ? 'page' : undefined}
                   aria-label={`AI conversation with ${name}`}
                 >
-                  <span className="msg-avatar" data-kind={kind} aria-hidden="true">
-                    <Bot size={20} strokeWidth={2} />
-                  </span>
+                  <AiAvatar name={name} kind={kind} avatarKey={conversation.avatar_key} />
                   <span className="conversation-item-body">
                     <span className="conversation-item-row">
                       <span className="conversation-item-name">{name}</span>
@@ -71,6 +70,7 @@ export function AiConversationList({ conversations, selectedId, onDeleteChat = (
                       key: 'delete',
                       label: 'Delete chat',
                       description: 'Remove this AI history',
+                      icon: Trash2,
                       tone: 'danger',
                       onSelect: () => onDeleteChat(conversation),
                     },

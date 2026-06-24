@@ -28,6 +28,12 @@ convenience only.
 Message media uses a private Storage bucket (`message-attachments`); see "Private attachment
 security" below. Access is checked before any short-lived signed URL is created.
 
+Profile and custom persona images use private Storage buckets (`profile-avatars` and
+`persona-avatars`). Uploads are limited to owner-prefixed paths, JPEG/PNG/WebP files, and 2 MB.
+Profile avatar reads require profile visibility; persona avatar reads require persona ownership.
+The profile and persona RPCs reject avatar paths outside the caller's owner prefix so a user
+cannot bind another user's private object even if they learn its path.
+
 ## Profile discovery and social privacy
 
 Direct profile-table reads are intentionally narrower than discovery. A user can read their own

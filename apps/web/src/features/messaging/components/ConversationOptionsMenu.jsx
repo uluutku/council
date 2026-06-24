@@ -78,19 +78,33 @@ export function ConversationOptionsMenu({ name, items }) {
         left: `${position.left}px`,
       }}
     >
-      {items.map((item) => (
-        <button
-          key={item.key}
-          type="button"
-          role="menuitem"
-          disabled={item.disabled}
-          data-tone={item.tone}
-          onClick={() => runAction(item.onSelect)}
-        >
-          <span>{item.label}</span>
-          {item.description ? <small>{item.description}</small> : null}
-        </button>
-      ))}
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <button
+            key={item.key}
+            type="button"
+            role="menuitem"
+            className="conversation-options-item"
+            disabled={item.disabled}
+            data-tone={item.tone}
+            onClick={() => runAction(item.onSelect)}
+          >
+            {Icon ? (
+              <Icon
+                className="conversation-options-icon"
+                aria-hidden="true"
+                size={16}
+                strokeWidth={2.2}
+              />
+            ) : null}
+            <span className="conversation-options-copy">
+              <span>{item.label}</span>
+              {item.description ? <small>{item.description}</small> : null}
+            </span>
+          </button>
+        );
+      })}
     </div>
   ) : null;
 

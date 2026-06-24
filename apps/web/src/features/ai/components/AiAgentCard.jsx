@@ -33,7 +33,7 @@ export function AiAgentCard({ agent, onOpen, onOpenChat, isOpening, isInContacts
     <article className="ai-agent-card">
       <div className="ai-agent-media" data-tone={tone}>
         <span className="ai-agent-portrait" aria-hidden="true">
-          {agent.name.slice(0, 1)}
+          {agent.avatar_key ? <img src={agent.avatar_key} alt="" /> : agent.name.slice(0, 1)}
         </span>
         <span className="ai-card-badge" data-tone={tone}>
           <Sparkles aria-hidden="true" size={12} strokeWidth={2.4} />

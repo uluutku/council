@@ -80,8 +80,9 @@ Browser-level page scrolling is avoided inside the authenticated shell where pra
 The visual system is based on semantic CSS custom properties documented in
 `docs/DESIGN_SYSTEM.md`. Legacy color variables remain mapped to the semantic tokens so older AI,
 artifact, contact, and settings surfaces can adopt the shell before their focused redesigns. The
-single icon family is `lucide-react`. The web app currently normalizes theme selection to the
-light Council design.
+single icon family is `lucide-react`. The web app applies the user theme preference stored in
+settings: light and dark apply directly, while `system` follows the browser
+`prefers-color-scheme` result.
 
 ## Account and social database boundary
 
@@ -151,6 +152,10 @@ through a strict internal-path allowlist before navigation.
 Presentational components call focused Auth and account API modules rather than using Supabase
 directly. Profile changes use `set_my_profile`; preferences use `update_my_settings`, which
 merges supported fields without deleting unrelated stored JSON keys.
+
+Profile avatars use the private `profile-avatars` Storage bucket. The browser uploads an image to
+an owner-prefixed path, then commits that path through `set_my_profile`; visible contacts resolve
+avatars through short-lived signed URLs after Storage SELECT RLS confirms profile visibility.
 
 Password recovery is marked only by Supabase's `PASSWORD_RECOVERY` event. Ordinary authenticated
 sessions can reach the same password form only after an explicit security-screen action stored
@@ -263,6 +268,10 @@ reserved credit cannot be orphaned outside the normal completion/failure lifecyc
 Curated memories are explicit owner-managed rows. Direct AI image and PDF/TXT/Markdown uploads use
 separate private buckets and server-only analysis caches. Forwarded human text is an immutable
 owner-only snapshot; the AI is never added to the human conversation.
+
+Built-in AI cards render server-supplied `avatar_key` values. Custom persona avatars use the
+private `persona-avatars` bucket and owner-prefixed paths stored on `ai_personas`; AI conversation
+list projections return that value as `avatar_key` so custom persona chats use the same image.
 
 ## Secure Realtime delivery
 

@@ -5,10 +5,12 @@ import { useAuth } from '../../../app/providers/AuthContext.js';
 import { updateMySettings } from '../api/profileApi.js';
 import { mapSupabaseError } from '../../auth/utils/authErrors.js';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
+import { applyTheme } from '../../../app/providers/theme.js';
 
 function preferencesFromSettings(settings) {
+  const theme = ['system', 'light', 'dark'].includes(settings.theme) ? settings.theme : 'light';
   return {
-    theme: 'light',
+    theme,
     notification_preferences: {
       message_notifications: settings.notification_preferences.message_notifications ?? true,
       message_previews: settings.notification_preferences.message_previews ?? false,
@@ -25,11 +27,14 @@ function preferencesFromSettings(settings) {
 function ToggleField({ label, description, checked, onChange, disabled }) {
   return (
     <label className="toggle-field">
-      <span>
+      <span className="toggle-copy">
         <strong>{label}</strong>
         <small>{description}</small>
       </span>
-      <input type="checkbox" checked={checked} onChange={onChange} disabled={disabled} />
+      <span className="toggle-control">
+        <input type="checkbox" checked={checked} onChange={onChange} disabled={disabled} />
+        <span className="toggle-switch" aria-hidden="true" />
+      </span>
     </label>
   );
 }
@@ -61,6 +66,14 @@ export function PreferencesSettingsPage() {
     setStatus('');
   }
 
+  function setDarkMode(enabled) {
+    setForm((current) => ({
+      ...current,
+      theme: enabled ? 'dark' : 'light',
+    }));
+    setStatus('');
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     const parsed = preferencesFormSchema.safeParse(form);
@@ -78,6 +91,7 @@ export function PreferencesSettingsPage() {
       const next = preferencesFromSettings(updated);
       setForm(next);
       setSavedForm(next);
+      applyTheme(next.theme);
       await refreshProfile();
       setStatus('Preferences saved.');
       setTone('success');
@@ -97,6 +111,17 @@ export function PreferencesSettingsPage() {
         <p>These values are private to your account and persist across sessions.</p>
       </header>
       <form className="stacked-form" onSubmit={handleSubmit}>
+        <fieldset className="panel preference-group">
+          <legend>Appearance</legend>
+          <ToggleField
+            label="Dark mode"
+            description="Use the low-light Council palette on every app screen."
+            checked={form.theme === 'dark'}
+            onChange={(event) => setDarkMode(event.target.checked)}
+            disabled={isSubmitting}
+          />
+        </fieldset>
+
         <fieldset className="panel preference-group">
           <legend>Notifications</legend>
           <p className="field-hint">

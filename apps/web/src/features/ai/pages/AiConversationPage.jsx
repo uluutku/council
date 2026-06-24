@@ -16,6 +16,7 @@ import { useUiStore } from '../../../stores/uiStore.js';
 import { useAiDocumentDraft } from '../hooks/useAiDocumentDraft.js';
 import { SaveArtifactDialog } from '../../artifacts/components/SaveArtifactDialog.jsx';
 import { createArtifact } from '../../artifacts/api/artifactsApi.js';
+import { AiAvatar } from '../components/AiAvatar.jsx';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -118,9 +119,13 @@ export function AiConversationPage() {
   return (
     <section className="ai-conversation" aria-label={`Conversation with ${displayName}`}>
       <header className="ai-conversation-header">
-        <span className="ai-conversation-avatar" aria-hidden="true">
-          AI
-        </span>
+        <AiAvatar
+          className="ai-conversation-avatar"
+          name={displayName}
+          kind={kind}
+          avatarKey={conversation?.avatar_key}
+          iconSize={22}
+        />
         <div className="ai-conversation-identity">
           <h1>
             <span className="ai-conversation-name">{displayName}</span>

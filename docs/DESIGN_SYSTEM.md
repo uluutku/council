@@ -21,10 +21,12 @@ Core semantic color tokens:
 
 ### Color Palette
 
-Council is a light-mode application in this phase. The palette follows `DESIGN.md` and the
+Council supports light and dark appearance modes. The light palette follows `DESIGN.md` and the
 designer chat export: a pale lavender surface system, Primary Indigo for global actions,
 navigation, and outgoing chat bubbles, Human Blue as a secondary/informational color, and AI Violet
-for synthetic intelligence touchpoints.
+for synthetic intelligence touchpoints. The dark palette is implemented as semantic token
+overrides, preserving the same information hierarchy with layered charcoal surfaces, softened
+borders, and premium lavender accent values that stay calmer than the light-mode indigo.
 
 | Token                          | Value                 |
 | ------------------------------ | --------------------- |
@@ -101,7 +103,7 @@ on browser-level page scrolling.
 
 ## Components
 
-Shared primitives (all token-based, light mode):
+Shared primitives (all token-based across light and dark mode):
 
 - `MessengerShell`, branded navigation sidebar, mobile bottom navigation.
 - `MessagingLayout` / collection-panel model, shared by the primary app sections so panel headers,
@@ -157,8 +159,14 @@ the authenticated application.
 
 ## Themes
 
-Council currently ships as a light-mode application. Theme selection is intentionally not exposed
-in preferences; saved legacy dark/system values are normalized to light at runtime.
+Theme selection is exposed in Preferences as a dark-mode switch backed by the existing
+`user_settings.theme` value. The application still accepts `system`, `light`, and `dark` at the
+runtime boundary; the switch saves explicit `light` or `dark`, while existing `system` values
+continue to follow `prefers-color-scheme`.
+
+All app surfaces must use semantic tokens rather than hardcoded light colors. If a component needs a
+theme-specific treatment, scope it to `:root[data-theme='dark']` and keep layout, spacing, and
+interaction states identical between themes.
 
 The public authentication experience (login, register, recovery) is a full-screen split: a calm
 indigo-tinted marketing panel on the left and a focused auth card on the right, framed by a shared

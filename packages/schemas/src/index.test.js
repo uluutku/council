@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   applicationConfigSchema,
   aiSendInputSchema,
+  aiConversationSchema,
+  aiPersonaSchema,
   blockedUserItemSchema,
   contactActionResultSchema,
   contactListItemSchema,
@@ -56,6 +58,41 @@ import {
   conversationChangedEventSchema,
   conversationCreatedEventSchema,
 } from './index.js';
+
+describe('AI contact contracts', () => {
+  it('accepts pre-avatar AI conversation rows from an older database migration', () => {
+    expect(
+      aiConversationSchema.parse({
+        id: '10000000-0000-4000-8000-000000000001',
+        kind: 'builtin',
+        agent_id: '20000000-0000-4000-8000-000000000002',
+        persona_id: null,
+        display_name: 'Council Assistant',
+        description: 'General assistant',
+        archived: false,
+        created_at: '2026-06-22T10:00:00+00:00',
+        updated_at: '2026-06-22T10:00:00+00:00',
+        last_message_at: null,
+      }).avatar_key,
+    ).toBeNull();
+  });
+
+  it('accepts pre-avatar custom persona rows from an older database migration', () => {
+    expect(
+      aiPersonaSchema.parse({
+        id: '30000000-0000-4000-8000-000000000003',
+        name: 'My Coach',
+        description: '',
+        instructions: 'Help me plan.',
+        tone: 'balanced',
+        verbosity: 'concise',
+        archived: false,
+        created_at: '2026-06-22T10:00:00+00:00',
+        updated_at: '2026-06-22T10:00:00+00:00',
+      }).avatar_path,
+    ).toBeNull();
+  });
+});
 
 describe('aiSendInputSchema', () => {
   const conversationId = '10000000-0000-4000-8000-000000000001';
