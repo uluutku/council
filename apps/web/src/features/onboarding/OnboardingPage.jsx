@@ -7,6 +7,7 @@ import { useAuth } from '../../app/providers/AuthContext.js';
 import { setMyProfile } from '../profile/api/profileApi.js';
 import { mapSupabaseError } from '../auth/utils/authErrors.js';
 import { getFieldErrors } from '../auth/utils/validation.js';
+import { DEFAULT_APP_PATH } from '../auth/utils/safeRedirect.js';
 import { usePageTitle } from '../../hooks/usePageTitle.js';
 
 export function OnboardingPage() {
@@ -36,7 +37,7 @@ export function OnboardingPage() {
         status_text: profile?.status_text ?? null,
       });
       await refreshProfile();
-      navigate('/app', { replace: true });
+      navigate(DEFAULT_APP_PATH, { replace: true });
     } catch (error) {
       setStatus(mapSupabaseError(error).message);
     } finally {

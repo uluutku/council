@@ -72,17 +72,21 @@ navigation, and the Supabase JavaScript SDK is created from validated browser-sa
 
 The authenticated web application uses a full-height messenger shell. Desktop primary tabs render
 inside a branded label navigation sidebar and a panel-owned content area. Messages, Contacts,
-Artifacts, Settings, and Pro Status use the same resizable collection-panel plus content-panel
-section model so navigation placement, scrolling, selected rows, and panel resizing are consistent
-across the app. Narrow screens switch to a single route-driven panel with mobile bottom navigation.
-Browser-level page scrolling is avoided inside the authenticated shell where practical.
+Artifacts, and Settings use the same resizable collection-panel plus content-panel section model
+so navigation placement, scrolling, selected rows, and panel resizing are consistent across the
+app. The rail account section exposes standalone Pro and Profile pages; the Profile control shows
+the signed-in user's current profile image or initial and uses their display name. Narrow screens
+switch to a single route-driven panel with mobile bottom navigation. Browser-level page scrolling
+is avoided inside the authenticated shell where practical.
 
 The visual system is based on semantic CSS custom properties documented in
 `docs/DESIGN_SYSTEM.md`. Legacy color variables remain mapped to the semantic tokens so older AI,
 artifact, contact, and settings surfaces can adopt the shell before their focused redesigns. The
 single icon family is `lucide-react`. The web app applies the user theme preference stored in
 settings: light and dark apply directly, while `system` follows the browser
-`prefers-color-scheme` result.
+`prefers-color-scheme` result. The chat background is stored in
+`user_settings.appearance_preferences.chat_background` and applied as a root data attribute so the
+human and AI message-history panes share the same account preference.
 
 ## Account and social database boundary
 
@@ -147,11 +151,13 @@ all `account` query keys after Supabase completes the session operation.
 
 Guest, onboarding, and protected guards wait for hydration before rendering or redirecting.
 Protected redirects carry only an internal route in navigation state. Login passes that value
-through a strict internal-path allowlist before navigation.
+through a strict internal-path allowlist before navigation. Unsafe or absent authenticated return
+paths fall back to `/app/messages`, which is also the authenticated `/app` index redirect.
 
 Presentational components call focused Auth and account API modules rather than using Supabase
-directly. Profile changes use `set_my_profile`; preferences use `update_my_settings`, which
-merges supported fields without deleting unrelated stored JSON keys.
+directly. Profile changes use `set_my_profile`; Appearance, Notifications, and Privacy settings
+use `update_my_settings`, which merges supported fields, including appearance preferences, without
+deleting unrelated stored JSON keys.
 
 Profile avatars use the private `profile-avatars` Storage bucket. The browser uploads an image to
 an owner-prefixed path, then commits that path through `set_my_profile`; visible contacts resolve
@@ -260,6 +266,16 @@ can read bounded history but cannot create assistant messages or mutate runs dir
 deterministic idempotency hashes, bounded run leases, and retry-idempotent completion. Initial AI
 history loads the newest page and older pages use an exclusive `(created_at, id)` cursor.
 
+The server-only `service_role` has explicit insert access to `ai_messages` and `ai_runs` for
+controlled worker writes and database maintenance/test setup; browser clients remain restricted to
+RPCs and read-only message listing policies.
+
+AI text drafts are stored in browser `localStorage` under a key scoped by signed-in user id and AI
+conversation id. They are cleared only after the generation request is accepted by the in-flight
+chat hook. Image and document draft uploads remain volatile because their private upload lifecycle
+is server-authorized and should not be reconstructed from browser storage. The AI composer enforces
+the same 8,000-character client limit as the server boundary and exposes a near-limit counter.
+
 Deleting an AI chat uses the `delete_ai_conversation` RPC. Because AI conversations are
 owner-scoped, the row and dependent owner-only history are deleted by cascade. The underlying
 built-in AI contact or custom persona is not deleted. Active generation runs block deletion so a
@@ -350,7 +366,9 @@ conversation id is validated as a UUID before any query runs; an invalid id rend
 `ConversationPage.jsx` composes route-level states and delegates coordination to
 `useConversationController`, `useConversationSelection`, and `useConversationDialogs`. Query,
 realtime, optimistic send, attachment, receipt, typing, mutation, selection, forwarding, and
-dialog behavior remain backed by the existing hooks and database contracts.
+dialog behavior remain backed by the existing hooks and database contracts. Reply previews jump to
+loaded target messages directly; when the target is outside the current page, the controller loads a
+bounded authorized message window with `get_message_window` before scrolling and highlighting.
 
 ### Query and cache ownership
 
@@ -377,6 +395,19 @@ row is written into the message cache and the optimistic placeholder is removed,
 echo and any refetch converge to exactly one message (de-duplicated by id). A failed send stays
 visible with retry/remove controls; retry reuses the same client id and payload, which the backend
 treats idempotently. Optimistic messages are never marked delivered or read.
+
+Text drafts are stored in browser `localStorage` under a key scoped by user id and conversation id,
+then cleared once a send enters the optimistic pipeline. Text-only messages can be queued locally
+when the browser is offline or the send fails with the network/backend-unavailable category. Queued
+items are validated on read, capped per user, rendered as optimistic "Queued" messages in the
+active conversation, and drained on online/focus/pageshow/visibility resume with the original client
+message id. The authenticated shell also drains queued items for inactive conversations, while the
+active `ConversationPage` drains its own visible queue so the optimistic UI and retry/remove controls
+remain coherent. Successful drains remove the local queue entry before removing the optimistic
+placeholder. Non-network send failures leave the existing failed-send UI or, for inactive shell
+drains, remove the stale queue item so it is not retried indefinitely. Attachment drafts are
+excluded from durable local queueing; attachment uploads continue to use the online staged storage
+flow.
 
 ### Realtime lifecycle and gap recovery
 

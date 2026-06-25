@@ -8,6 +8,7 @@ import { OptimisticAttachments } from './MessageAttachments.jsx';
 // arrives.
 export function OptimisticMessage({ item, onRetry, onRemove }) {
   const failed = item.status === 'failed';
+  const queued = item.status === 'queued';
   const tokens = tokenizeMessageContent(item.content);
 
   return (
@@ -16,6 +17,10 @@ export function OptimisticMessage({ item, onRetry, onRemove }) {
         {failed ? (
           <span className="message-receipt" data-status="failed" role="alert">
             Not sent
+          </span>
+        ) : queued ? (
+          <span className="message-receipt" data-status="queued" role="status">
+            Queued
           </span>
         ) : (
           <span className="message-receipt" data-status="sending" role="status">
@@ -38,14 +43,18 @@ export function OptimisticMessage({ item, onRetry, onRemove }) {
             )}
           </p>
         ) : null}
-        {failed ? (
-          <div className="message-actions" role="group" aria-label="Failed message actions">
+        {failed || queued ? (
+          <div
+            className="message-actions"
+            role="group"
+            aria-label={queued ? 'Queued message actions' : 'Failed message actions'}
+          >
             <button
               type="button"
               className="message-action"
               onClick={() => onRetry(item.clientMessageId)}
             >
-              Retry
+              {queued ? 'Send now' : 'Retry'}
             </button>
             <button
               type="button"

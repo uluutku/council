@@ -156,7 +156,7 @@ select is(
       '  Council_User ',
       ' Council User ',
       'Foundation profile',
-      'avatars/11000000/photo.webp',
+      'users/11000000-0000-0000-0000-000000000001/11000000-0000-4000-8000-000000000001.webp',
       'Available'
     )
   ).username,
@@ -237,24 +237,24 @@ select throws_ok(
       null
     )
   $$,
-  '23514',
-  null,
+  'P0001',
+  'invalid_avatar_path',
   'remote avatar URLs are rejected'
 );
 select throws_ok(
   $$
     select public.set_my_profile('alice', null, null, '/absolute/avatar.png', null)
   $$,
-  '23514',
-  null,
+  'P0001',
+  'invalid_avatar_path',
   'absolute avatar paths are rejected'
 );
 select throws_ok(
   $$
     select public.set_my_profile('alice', null, null, 'avatars/../secret.png', null)
   $$,
-  '23514',
-  null,
+  'P0001',
+  'invalid_avatar_path',
   'avatar parent traversal is rejected'
 );
 select ok(

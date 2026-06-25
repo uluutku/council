@@ -8,14 +8,18 @@ import {
   Users,
   UserRound,
 } from 'lucide-react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { matchPath, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../providers/AuthContext.js';
 import { mapSupabaseError } from '../../features/auth/utils/authErrors.js';
 import { useRouteFocus } from '../../hooks/useRouteFocus.js';
+import { useSignedAvatarUrl } from '../../hooks/useSignedAvatarUrl.js';
+import { PROFILE_AVATAR_BUCKET } from '../../lib/avatarStorage.js';
+import { DEFAULT_APP_PATH } from '../../features/auth/utils/safeRedirect.js';
 import { usePendingRequestCount } from '../../features/contacts/hooks/usePendingRequestCount.js';
 import { useUnreadCount } from '../../features/messaging/hooks/useUnreadCount.js';
 import { useInboxRealtime } from '../../features/messaging/hooks/useInboxRealtime.js';
+import { useOfflineQueueDrain } from '../../features/messaging/hooks/useOfflineQueueDrain.js';
 import { usePresenceHeartbeat } from '../../features/messaging/hooks/usePresenceHeartbeat.js';
 
 function CountBadge({ count, label, accessible = true }) {
@@ -59,13 +63,18 @@ export function MessengerShell() {
   usePresenceHeartbeat();
 
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const location = useLocation();
+  const { profile, signOut, user } = useAuth();
   const pendingRequests = usePendingRequestCount();
   const unreadMessages = useUnreadCount();
   const [logoutError, setLogoutError] = useState('');
   const [isSigningOut, setIsSigningOut] = useState(false);
   const name = profile?.display_name || profile?.username || 'Account';
   const initial = name.slice(0, 1).toUpperCase();
+  const avatarUrl = useSignedAvatarUrl(PROFILE_AVATAR_BUCKET, profile?.avatar_path);
+  const activeConversationId =
+    matchPath('/app/messages/:conversationId', location.pathname)?.params.conversationId ?? null;
+  useOfflineQueueDrain(user?.id ?? null, activeConversationId);
 
   async function handleLogout() {
     setLogoutError('');
@@ -85,7 +94,12 @@ export function MessengerShell() {
     <div className="app-shell">
       <aside className="navigation-rail" aria-label="Primary">
         <div className="rail-brand">
-          <NavLink className="rail-mark" to="/app" aria-label="Council home" title="Council">
+          <NavLink
+            className="rail-mark"
+            to={DEFAULT_APP_PATH}
+            aria-label="Council home"
+            title="Council"
+          >
             <Shield aria-hidden="true" size={24} strokeWidth={2.25} />
           </NavLink>
           <div className="rail-brand-copy" aria-hidden="true">
@@ -109,32 +123,44 @@ export function MessengerShell() {
             countLabel={`${pendingRequests} pending incoming requests`}
           />
           <NavItem to="/app/artifacts" label="Artifacts" icon={Archive} />
-          <NavItem to="/app/settings/profile" label="Settings" icon={Settings} />
-          <NavItem
-            to="/app/settings/access"
-            label="Pro Status"
-            ariaLabel="Premium access"
-            icon={Award}
-          />
+          <NavItem to="/app/settings/appearance" label="Settings" icon={Settings} />
         </nav>
         <div className="rail-account">
-          <span className="rail-avatar" aria-hidden="true">
-            {initial}
-          </span>
-          <span className="rail-profile-label" aria-hidden="true">
-            Profile
-          </span>
-          <span className="sr-only">Signed in as {name}</span>
-          <button
-            type="button"
-            className="rail-link rail-link--button"
-            onClick={handleLogout}
-            disabled={isSigningOut}
-            aria-label={isSigningOut ? 'Logging out' : 'Log out'}
-            title={isSigningOut ? 'Logging out' : 'Log out'}
+          <NavLink
+            className={({ isActive }) =>
+              isActive ? 'rail-account-link active' : 'rail-account-link'
+            }
+            to="/app/pro"
+            aria-label="Pro plan"
           >
-            <LogOut aria-hidden="true" size={20} strokeWidth={2} />
-          </button>
+            <Award aria-hidden="true" size={20} strokeWidth={2} />
+            <span>Pro plan</span>
+          </NavLink>
+          <div className="rail-account-row">
+            <NavLink
+              className={({ isActive }) =>
+                isActive ? 'rail-profile-link active' : 'rail-profile-link'
+              }
+              to="/app/profile"
+              aria-label={`Profile: ${name}`}
+            >
+              <span className="rail-avatar" aria-hidden="true">
+                {avatarUrl ? <img src={avatarUrl} alt="" /> : initial}
+              </span>
+              <span className="rail-profile-label">{name}</span>
+            </NavLink>
+            <span className="sr-only">Signed in as {name}</span>
+            <button
+              type="button"
+              className="rail-link rail-link--button"
+              onClick={handleLogout}
+              disabled={isSigningOut}
+              aria-label={isSigningOut ? 'Logging out' : 'Log out'}
+              title={isSigningOut ? 'Logging out' : 'Log out'}
+            >
+              <LogOut aria-hidden="true" size={20} strokeWidth={2} />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -163,7 +189,7 @@ export function MessengerShell() {
           count={pendingRequests}
           countLabel={`${pendingRequests} pending incoming requests`}
         />
-        <MobileNavItem to="/app/settings/profile" label="Settings" icon={UserRound} />
+        <MobileNavItem to="/app/settings/appearance" label="Settings" icon={UserRound} />
       </nav>
     </div>
   );

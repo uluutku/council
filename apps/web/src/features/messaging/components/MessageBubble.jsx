@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Check, CheckCheck } from 'lucide-react';
 import { DeletedMessage } from './DeletedMessage.jsx';
 import { EditMessageForm } from './EditMessageForm.jsx';
 import { MessageActions } from './MessageActions.jsx';
@@ -27,6 +28,16 @@ function MessageText({ content }) {
   );
 }
 
+function MessageReceiptIcon({ status }) {
+  const label = RECEIPT_LABEL[status] ?? 'Sent';
+  const Icon = status === 'sent' ? Check : CheckCheck;
+  return (
+    <span className="message-receipt" data-status={status} aria-label={label} title={label}>
+      <Icon className="message-receipt-icon" aria-hidden="true" size={15} strokeWidth={2.5} />
+    </span>
+  );
+}
+
 export function MessageBubble({
   message,
   isOwn,
@@ -34,6 +45,7 @@ export function MessageBubble({
   canSend,
   senderName,
   showSender,
+  showTimestamp = true,
   groupPosition = 'single',
   replyReference,
   receiptStatus,
@@ -56,6 +68,8 @@ export function MessageBubble({
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const isDeleted = message.deleted_at !== null;
   const attachments = message.attachments ?? [];
+  const showEdited = !isDeleted && Boolean(message.edited_at);
+  const showMeta = showTimestamp || showEdited || Boolean(receiptStatus);
   const activeEmojis = (message.reactions ?? [])
     .filter((reaction) => reaction.user_id === currentUserId)
     .map((reaction) => reaction.emoji);
@@ -92,20 +106,22 @@ export function MessageBubble({
           </span>
         </label>
       ) : null}
-      {!isEditing ? (
+      {!isEditing && showMeta ? (
         <p className="message-meta">
-          {!isOwn && showSender ? <span>{senderName} · </span> : null}
-          <time dateTime={message.created_at} title={formatFullTimestamp(message.created_at)}>
-            {formatMessageTime(message.created_at)}
-          </time>
-          {!isDeleted && message.edited_at ? (
-            <span className="message-edited"> · edited</span>
+          {!isOwn && showSender && showTimestamp ? <span>{senderName} · </span> : null}
+          {showTimestamp ? (
+            <time dateTime={message.created_at} title={formatFullTimestamp(message.created_at)}>
+              {formatMessageTime(message.created_at)}
+            </time>
+          ) : null}
+          {showEdited ? (
+            <span className="message-edited">{showTimestamp ? ' · edited' : 'edited'}</span>
           ) : null}
           {isOwn && receiptStatus ? (
-            <span className="message-receipt" data-status={receiptStatus}>
-              {' · '}
-              {RECEIPT_LABEL[receiptStatus]}
-            </span>
+            <>
+              {showTimestamp || showEdited ? <span aria-hidden="true"> · </span> : null}
+              <MessageReceiptIcon status={receiptStatus} />
+            </>
           ) : null}
         </p>
       ) : null}

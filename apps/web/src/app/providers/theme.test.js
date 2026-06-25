@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { applyTheme, resolveTheme, THEME_STORAGE_KEY } from './theme.js';
+import {
+  applyChatBackground,
+  applyTheme,
+  CHAT_BACKGROUND_STORAGE_KEY,
+  resolveTheme,
+  THEME_STORAGE_KEY,
+} from './theme.js';
 
 describe('applyTheme', () => {
   beforeEach(() => {
     localStorage.clear();
     delete document.documentElement.dataset.theme;
+    delete document.documentElement.dataset.chatBackground;
   });
 
   it('applies and persists the light theme', () => {
@@ -30,5 +37,15 @@ describe('applyTheme', () => {
   it('resolves the system theme from media preferences', () => {
     window.matchMedia = () => ({ matches: true });
     expect(resolveTheme('system')).toBe('dark');
+  });
+
+  it('applies and persists the chat background preference', () => {
+    applyChatBackground('grid');
+    expect(document.documentElement.dataset.chatBackground).toBe('grid');
+    expect(localStorage.getItem(CHAT_BACKGROUND_STORAGE_KEY)).toBe('grid');
+
+    applyChatBackground('custom');
+    expect(document.documentElement.dataset.chatBackground).toBe('clean');
+    expect(localStorage.getItem(CHAT_BACKGROUND_STORAGE_KEY)).toBe('clean');
   });
 });

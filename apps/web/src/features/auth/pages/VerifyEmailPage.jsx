@@ -5,6 +5,7 @@ import { AuthCard } from '../components/AuthCard.jsx';
 import { FormStatus } from '../../../components/FormStatus.jsx';
 import { resendVerificationEmail } from '../api/authApi.js';
 import { mapSupabaseError } from '../utils/authErrors.js';
+import { DEFAULT_APP_PATH } from '../utils/safeRedirect.js';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
 import { useAuth } from '../../../app/providers/AuthContext.js';
 
@@ -53,7 +54,7 @@ export function VerifyEmailPage() {
   if (user?.email_confirmed_at) {
     return (
       <AuthCard eyebrow="Email verified" title="Your email is confirmed">
-        <Link className="button button--full" to={isOnboarded ? '/app' : '/onboarding'}>
+        <Link className="button button--full" to={isOnboarded ? DEFAULT_APP_PATH : '/onboarding'}>
           Continue to Council
         </Link>
       </AuthCard>

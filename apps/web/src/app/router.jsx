@@ -1,4 +1,4 @@
-import { createBrowserRouter, createMemoryRouter } from 'react-router-dom';
+import { createBrowserRouter, createMemoryRouter, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { PublicLayout } from './layouts/PublicLayout.jsx';
 import { AuthLayout } from './layouts/AuthLayout.jsx';
@@ -14,7 +14,6 @@ import { LegacyAiCatalogueRedirect } from './router/LegacyAiCatalogueRedirect.js
 import { LegacyAiConversationRedirect } from './router/LegacyAiConversationRedirect.jsx';
 import { LegacyContactsRedirect } from './router/LegacyContactsRedirect.jsx';
 import { LandingPage } from '../routes/LandingPage.jsx';
-import { AppHomePage } from '../routes/AppHomePage.jsx';
 import { NotFoundPage } from '../routes/NotFoundPage.jsx';
 import { LoginPage } from '../features/auth/pages/LoginPage.jsx';
 import { RegisterPage } from '../features/auth/pages/RegisterPage.jsx';
@@ -22,6 +21,7 @@ import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage.jsx';
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage.jsx';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage.jsx';
 import { OnboardingPage } from '../features/onboarding/OnboardingPage.jsx';
+import { DEFAULT_APP_PATH } from '../features/auth/utils/safeRedirect.js';
 import { RouteSkeleton } from '../components/RouteSkeleton.jsx';
 
 function lazyNamed(loader, exportName) {
@@ -115,7 +115,7 @@ export const routes = [
       {
         element: <AuthenticatedLayout />,
         children: [
-          { index: true, element: <AppHomePage /> },
+          { index: true, element: <Navigate to={DEFAULT_APP_PATH} replace /> },
           {
             path: 'messages',
             element: <MessagingLayout />,
@@ -151,14 +151,28 @@ export const routes = [
               { path: ':artifactId', element: lazyRoute(<ArtifactDetailPage />) },
             ],
           },
+          { path: 'pro', element: lazyRoute(<AccessSettingsPage />) },
+          { path: 'profile', element: lazyRoute(<ProfileSettingsPage />) },
           {
             path: 'settings',
             element: <SettingsLayout />,
             children: [
-              { index: true, element: lazyRoute(<ProfileSettingsPage />) },
-              { path: 'profile', element: lazyRoute(<ProfileSettingsPage />) },
-              { path: 'preferences', element: lazyRoute(<PreferencesSettingsPage />) },
-              { path: 'access', element: lazyRoute(<AccessSettingsPage />) },
+              { index: true, element: <Navigate to="/app/settings/appearance" replace /> },
+              { path: 'profile', element: <Navigate to="/app/profile" replace /> },
+              {
+                path: 'appearance',
+                element: lazyRoute(<PreferencesSettingsPage section="appearance" />),
+              },
+              {
+                path: 'notifications',
+                element: lazyRoute(<PreferencesSettingsPage section="notifications" />),
+              },
+              {
+                path: 'privacy',
+                element: lazyRoute(<PreferencesSettingsPage section="privacy" />),
+              },
+              { path: 'preferences', element: <Navigate to="/app/settings/appearance" replace /> },
+              { path: 'access', element: <Navigate to="/app/pro" replace /> },
               { path: 'security', element: lazyRoute(<SecuritySettingsPage />) },
               { path: 'blocked', element: lazyRoute(<BlockedUsersPage />) },
             ],

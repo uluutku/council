@@ -25,7 +25,7 @@ function formFromProfile(profile) {
 }
 
 export function ProfileSettingsPage() {
-  usePageTitle('Profile settings');
+  usePageTitle('Profile');
   const { profile, refreshProfile } = useAuth();
   const [form, setForm] = useState(() => formFromProfile(profile));
   const [savedForm, setSavedForm] = useState(() => formFromProfile(profile));

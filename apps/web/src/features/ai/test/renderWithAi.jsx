@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
+import { AuthContext } from '../../../app/providers/AuthContext.js';
 
 // Minimal provider wrapper for AI feature tests. The AI pages read server state
 // through TanStack Query and the router only; the api/stream modules are mocked
@@ -9,15 +10,31 @@ export function renderWithAi(children, { initialEntries = ['/'] } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  const auth = {
+    session: { user: { id: USER_ID, email: 'ai-user@example.test' } },
+    user: { id: USER_ID, email: 'ai-user@example.test' },
+    profile: { id: USER_ID, username: 'ai-user', display_name: 'AI User' },
+    settings: {},
+    isAuthenticated: true,
+    isOnboarded: true,
+    isHydrating: false,
+    accountError: null,
+    refreshProfile: () => Promise.resolve(),
+    signOut: () => Promise.resolve(),
+    client: {},
+  };
   const utils = render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={initialEntries}>{children}</MemoryRouter>
+      <AuthContext.Provider value={auth}>
+        <MemoryRouter initialEntries={initialEntries}>{children}</MemoryRouter>
+      </AuthContext.Provider>
     </QueryClientProvider>,
   );
   return { ...utils, queryClient };
 }
 
 export const AGENT_ID = 'a0000000-0000-4000-8000-000000000001';
+export const USER_ID = 'b0000000-0000-4000-8000-000000000001';
 export const CONVERSATION_ID = 'c0000000-0000-4000-8000-000000000002';
 
 export function makeAccess(overrides = {}) {

@@ -83,10 +83,10 @@ describe('authentication pages', () => {
     signInWithEmail.mockResolvedValue({ user: { id: 'user-1' } });
     getMyProfileWithRetry.mockResolvedValue({ username: 'council_user' });
     renderRoutes(
-      { pathname: '/login', state: { returnTo: '/app/settings/profile' } },
+      { pathname: '/login', state: { returnTo: '/app/profile' } },
       <>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/app/settings/profile" element={<p>Protected destination</p>} />
+        <Route path="/app/profile" element={<p>Protected destination</p>} />
       </>,
     );
 

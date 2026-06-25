@@ -128,8 +128,10 @@ test.describe('surface UI review', () => {
         ['/app/contacts/requests', 'contacts-requests'],
         ['/app/artifacts', 'artifacts-list'],
         ['/app/settings', 'settings-profile'],
-        ['/app/settings/preferences', 'settings-preferences'],
-        ['/app/settings/access', 'settings-access'],
+        ['/app/pro', 'pro-plan'],
+        ['/app/settings/appearance', 'settings-appearance'],
+        ['/app/settings/notifications', 'settings-notifications'],
+        ['/app/settings/privacy', 'settings-privacy'],
         ['/app/settings/security', 'settings-security'],
         ['/app/settings/blocked', 'settings-blocked'],
       ];

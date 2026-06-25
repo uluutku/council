@@ -67,6 +67,13 @@ export function isSameCalendarDay(a, b) {
   );
 }
 
+export function isSameMinute(a, b) {
+  const dateA = toDate(a);
+  const dateB = toDate(b);
+  if (!dateA || !dateB) return false;
+  return Math.floor(dateA.getTime() / 60000) === Math.floor(dateB.getTime() / 60000);
+}
+
 // Full timestamp for an accessible title attribute / screen readers.
 export function formatFullTimestamp(value) {
   const date = toDate(value);

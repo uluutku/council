@@ -15,7 +15,7 @@ export async function registerAndOnboard(page, user) {
   await page.getByLabel('Username').fill(user.username);
   await page.getByLabel('Display name').fill(user.displayName);
   await page.getByRole('button', { name: 'Continue to Council' }).click();
-  await expect(page).toHaveURL(/\/app$/);
+  await expect(page).toHaveURL(/\/app\/messages$/);
 }
 
 export async function openDiscover(page) {

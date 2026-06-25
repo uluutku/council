@@ -20,6 +20,21 @@ vi.mock('../features/contacts/api/contactsApi.js', () => ({
   unblockUser: vi.fn(),
 }));
 
+vi.mock('../features/ai/api/aiApi.js', () => ({
+  getMyAiAccess: vi.fn().mockResolvedValue({
+    access_state: 'trial_available',
+    trial_credits_remaining: 10,
+    trial_expires_at: null,
+    pro_expires_at: null,
+    pro_credits_remaining: 0,
+  }),
+}));
+
+vi.mock('../features/access/api/accessApi.js', () => ({
+  listMyPremiumGrants: vi.fn().mockResolvedValue([]),
+  redeemPremiumCode: vi.fn(),
+}));
+
 const onboardedAuth = {
   session: { user: { id: 'user-1' } },
   user: { id: 'user-1', email: 'user@example.com' },
@@ -70,11 +85,11 @@ describe('application routes', () => {
   });
 
   it('redirects a guest from protected content to login', async () => {
-    const router = renderRoute('/app/settings/profile');
+    const router = renderRoute('/app/profile');
 
     expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/login');
-    expect(router.state.location.state.returnTo).toBe('/app/settings/profile');
+    expect(router.state.location.state.returnTo).toBe('/app/profile');
   });
 
   it('redirects an authenticated user without a username to onboarding', async () => {
@@ -102,10 +117,13 @@ describe('application routes', () => {
       isOnboarded: true,
     });
 
-    expect(
-      await screen.findByRole('heading', { name: 'Welcome, Council User' }),
-    ).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe('/app');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/messages'));
+  });
+
+  it('redirects the app index to messages for onboarded users', async () => {
+    const router = renderRoute('/app', onboardedAuth);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/messages'));
   });
 
   it('renders the not-found route', async () => {
@@ -147,7 +165,7 @@ describe('application routes', () => {
         created_at: '2026-06-21T22:00:00+00:00',
       },
     ]);
-    renderRoute('/app', onboardedAuth);
+    renderRoute('/app/messages', onboardedAuth);
 
     expect(await screen.findByLabelText('1 pending incoming requests')).toBeInTheDocument();
   });
@@ -161,12 +179,53 @@ describe('application routes', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/settings/security'));
   });
 
-  it('exposes a blocked-users link in settings navigation', async () => {
-    renderRoute('/app/settings/profile', onboardedAuth);
+  it('exposes settings links without standalone account pages in settings navigation', async () => {
+    renderRoute('/app/settings/appearance', onboardedAuth);
 
+    expect(await screen.findByRole('link', { name: 'Appearance' })).toHaveAttribute(
+      'href',
+      '/app/settings/appearance',
+    );
+    expect(await screen.findByRole('link', { name: 'Notifications' })).toHaveAttribute(
+      'href',
+      '/app/settings/notifications',
+    );
+    expect(await screen.findByRole('link', { name: 'Privacy' })).toHaveAttribute(
+      'href',
+      '/app/settings/privacy',
+    );
+    expect(screen.queryByRole('link', { name: 'Preferences' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Profile' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Pro Status' })).not.toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Blocked users' })).toHaveAttribute(
       'href',
       '/app/settings/blocked',
     );
+  });
+
+  it('renders profile as a standalone app page and redirects the old settings profile path', async () => {
+    const profileRouter = renderRoute('/app/profile', onboardedAuth);
+
+    expect(await screen.findByRole('heading', { name: 'Profile' })).toBeInTheDocument();
+    expect(profileRouter.state.location.pathname).toBe('/app/profile');
+
+    const legacyRouter = renderRoute('/app/settings/profile', onboardedAuth);
+    await waitFor(() => expect(legacyRouter.state.location.pathname).toBe('/app/profile'));
+  });
+
+  it('renders Pro as a standalone app page and redirects the old settings access path', async () => {
+    const proRouter = renderRoute('/app/pro', onboardedAuth);
+
+    expect(await screen.findByRole('heading', { name: 'Access' })).toBeInTheDocument();
+    expect(proRouter.state.location.pathname).toBe('/app/pro');
+
+    const legacyRouter = renderRoute('/app/settings/access', onboardedAuth);
+    await waitFor(() => expect(legacyRouter.state.location.pathname).toBe('/app/pro'));
+  });
+
+  it('redirects legacy settings preferences to appearance', async () => {
+    const router = renderRoute('/app/settings/preferences', onboardedAuth);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/settings/appearance'));
   });
 });

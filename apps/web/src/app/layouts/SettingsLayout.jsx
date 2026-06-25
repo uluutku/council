@@ -1,25 +1,25 @@
-import { Award, CircleSlash, ShieldCheck, SlidersHorizontal, UserRound } from 'lucide-react';
+import { Bell, CircleSlash, Eye, Palette, ShieldCheck } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useCollectionPanelWidth } from './useCollectionPanelWidth.js';
 
 const settingsSections = [
   {
-    to: '/app/settings/profile',
-    icon: UserRound,
-    title: 'Profile',
-    description: 'Name, username, and presence',
+    to: '/app/settings/appearance',
+    icon: Palette,
+    title: 'Appearance',
+    description: 'Theme and chat background',
   },
   {
-    to: '/app/settings/preferences',
-    icon: SlidersHorizontal,
-    title: 'Preferences',
-    description: 'Notifications and privacy',
+    to: '/app/settings/notifications',
+    icon: Bell,
+    title: 'Notifications',
+    description: 'Message alerts and sound',
   },
   {
-    to: '/app/settings/access',
-    icon: Award,
-    title: 'Pro Status',
-    description: 'Credits, trial, and plan',
+    to: '/app/settings/privacy',
+    icon: Eye,
+    title: 'Privacy',
+    description: 'Presence and discovery',
   },
   {
     to: '/app/settings/security',
@@ -48,7 +48,7 @@ export function SettingsLayout() {
         <div className="messaging-sidebar-header">
           <div>
             <h1>Settings</h1>
-            <p>Account and access</p>
+            <p>Account controls</p>
           </div>
         </div>
         <nav className="contact-collection-list settings-nav" aria-label="Settings">

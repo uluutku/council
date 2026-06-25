@@ -146,7 +146,7 @@ test.describe('realtime text messaging', () => {
       await b.page.locator('.message-search-groups a', { hasText: searchable }).click();
       await expect(ownMessageRow(b.page, searchable)).toHaveClass(/message-row--highlight/);
 
-      await b.page.goto('/app/settings/preferences');
+      await b.page.goto('/app/settings/notifications');
       await expect(b.page.getByText(/Browser permission:/)).toBeVisible();
       await expect(b.page.getByText(/while Council is open/i).first()).toBeVisible();
     } finally {

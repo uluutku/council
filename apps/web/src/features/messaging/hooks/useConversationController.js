@@ -7,6 +7,7 @@ import { messagingKeys } from '../../../lib/query-keys/messaging.js';
 import { getMessageWindow, setConversationMute } from '../api/messagingApi.js';
 import { isConversationAccessError, messagingErrorMessage } from '../api/messagingErrorMessages.js';
 import { useAttachmentDraft } from './useAttachmentDraft.js';
+import { useConversationDraft } from './useConversationDraft.js';
 import { useConversationDialogs } from './useConversationDialogs.js';
 import { useConversationMessages } from './useConversationMessages.js';
 import { useConversationRealtime } from './useConversationRealtime.js';
@@ -35,7 +36,8 @@ export function useConversationController(conversationId) {
   const messagesState = useConversationMessages(isValidId ? conversationId : null);
   const messages = messagesState.messages;
   const mutations = useMessageMutations(conversationId);
-  const sender = useSendMessage(conversationId);
+  const sender = useSendMessage(conversationId, currentUserId);
+  const textDraft = useConversationDraft(currentUserId, conversationId);
   const attachmentDraft = useAttachmentDraft(conversationId);
   const typing = useTypingIndicator(isValidId ? conversationId : null);
   const selection = useConversationSelection(messages);
@@ -111,6 +113,18 @@ export function useConversationController(conversationId) {
       .catch(() => {});
   }, [conversationId, isValidId, queryClient, targetMessageId]);
 
+  const loadMessageWindow = useCallback(
+    async (messageId) => {
+      if (!isValidId || !messageId) return;
+      const windowMessages = await getMessageWindow(conversationId, messageId);
+      queryClient.setQueryData(messagingKeys.messages(conversationId), {
+        pages: [windowMessages],
+        pageParams: [null],
+      });
+    },
+    [conversationId, isValidId, queryClient],
+  );
+
   const cancelSelection = useCallback(() => {
     dialogs.setForwardDialogOpen(false);
     selection.cancelSelection();
@@ -134,10 +148,13 @@ export function useConversationController(conversationId) {
       typing.stop();
       const drafts = attachmentDraft.hasAny ? attachmentDraft.consume() : [];
       const clientMessageId = sender.send(content, replyTarget?.id ?? null, drafts);
-      if (clientMessageId) setReplyTarget(null);
+      if (clientMessageId) {
+        textDraft.clear();
+        setReplyTarget(null);
+      }
       return clientMessageId;
     },
-    [sender, replyTarget, attachmentDraft, typing],
+    [sender, replyTarget, attachmentDraft, textDraft, typing],
   );
 
   const handleSaveEdit = useCallback(
@@ -193,6 +210,7 @@ export function useConversationController(conversationId) {
     messagesState,
     messages,
     sender,
+    textDraft,
     attachmentDraft,
     typing,
     peerReceipt,
@@ -212,6 +230,7 @@ export function useConversationController(conversationId) {
     setEditError,
     handleSend,
     handleSaveEdit,
+    loadMessageWindow,
     confirmDelete,
     handleToggleReaction,
   };

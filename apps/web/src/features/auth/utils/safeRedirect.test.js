@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getSafeReturnPath } from './safeRedirect.js';
+import { DEFAULT_APP_PATH, getSafeReturnPath } from './safeRedirect.js';
 
 describe('getSafeReturnPath', () => {
   it('preserves approved internal application destinations', () => {
-    expect(getSafeReturnPath('/app/settings/profile?section=identity')).toBe(
-      '/app/settings/profile?section=identity',
+    expect(getSafeReturnPath('/app/profile?section=identity')).toBe(
+      '/app/profile?section=identity',
     );
   });
 
@@ -15,6 +15,6 @@ describe('getSafeReturnPath', () => {
     '/login',
     null,
   ])('normalizes unsafe destination %s', (destination) => {
-    expect(getSafeReturnPath(destination)).toBe('/app');
+    expect(getSafeReturnPath(destination)).toBe(DEFAULT_APP_PATH);
   });
 });

@@ -98,6 +98,7 @@ export const userSettingsUpdateSchema = z
     theme: z.enum(['system', 'light', 'dark']).optional(),
     notification_preferences: preferenceObjectSchema.optional(),
     privacy_preferences: preferenceObjectSchema.optional(),
+    appearance_preferences: preferenceObjectSchema.optional(),
     ai_preferences: preferenceObjectSchema.optional(),
   })
   .strict()
@@ -1335,9 +1336,18 @@ export const privacyPreferencesSchema = z
   })
   .strict();
 
+export const chatBackgroundSchema = z.enum(['clean', 'grid', 'paper', 'midnight']);
+
+export const appearancePreferencesSchema = z
+  .object({
+    chat_background: chatBackgroundSchema,
+  })
+  .strict();
+
 export const preferencesFormSchema = z
   .object({
     theme: z.enum(['system', 'light', 'dark']),
+    appearance_preferences: appearancePreferencesSchema,
     notification_preferences: notificationPreferencesSchema,
     privacy_preferences: privacyPreferencesSchema,
   })
@@ -1357,6 +1367,7 @@ export const preferencesFormSchema = z
 /** @typedef {z.infer<typeof loginFormSchema>} LoginForm */
 /** @typedef {z.infer<typeof usernameOnboardingSchema>} UsernameOnboarding */
 /** @typedef {z.infer<typeof profileFormSchema>} ProfileForm */
+/** @typedef {z.infer<typeof appearancePreferencesSchema>} AppearancePreferences */
 /** @typedef {z.infer<typeof preferencesFormSchema>} PreferencesForm */
 /** @typedef {z.infer<typeof directConversationResultSchema>} DirectConversationResult */
 /** @typedef {z.infer<typeof conversationListItemSchema>} ConversationListItem */

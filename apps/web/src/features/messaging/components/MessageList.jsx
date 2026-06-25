@@ -3,7 +3,7 @@ import { MessageBubble } from './MessageBubble.jsx';
 import { OptimisticMessage } from './OptimisticMessage.jsx';
 import { DateSeparator } from './DateSeparator.jsx';
 import { MessageListSkeleton } from './MessagingFeedback.jsx';
-import { isSameCalendarDay } from '../utils/datetime.js';
+import { isSameCalendarDay, isSameMinute } from '../utils/datetime.js';
 import { previewExcerpt } from '../utils/messageContent.js';
 import { deriveOutgoingReceipt } from '../utils/receipts.js';
 import { peerName } from '../utils/peer.js';
@@ -16,9 +16,9 @@ function buildReplyReference(message, messageById, currentUserId, peer) {
   if (!target) {
     return {
       authorLabel: 'Replying to',
-      excerpt: 'Original message unavailable',
+      excerpt: 'Open original message',
       muted: true,
-      canJump: false,
+      canJump: true,
     };
   }
 
@@ -60,6 +60,7 @@ export function MessageList({
   selectedMessageIds = new Set(),
   onSelectMessage,
   highlightMessageId = null,
+  onLoadMessageWindow,
 }) {
   const scrollRef = useRef(null);
   const nearBottomRef = useRef(true);
@@ -141,17 +142,29 @@ export function MessageList({
     prevOutgoingCountRef.current = outgoing.length;
   }, [messages, outgoing]);
 
-  const jumpToMessage = useCallback((messageId) => {
-    const element = document.getElementById(`message-${messageId}`);
-    if (!element) return;
-    element.scrollIntoView({ block: 'center' });
-    setHighlightedMessageId(messageId);
-    element.focus({ preventScroll: true });
-    window.setTimeout(
-      () => setHighlightedMessageId((current) => (current === messageId ? null : current)),
-      4_000,
-    );
-  }, []);
+  const jumpToMessage = useCallback(
+    async (messageId) => {
+      let element = document.getElementById(`message-${messageId}`);
+      if (!element && onLoadMessageWindow) {
+        try {
+          await onLoadMessageWindow(messageId);
+        } catch {
+          return;
+        }
+        await new Promise((resolve) => window.requestAnimationFrame(resolve));
+        element = document.getElementById(`message-${messageId}`);
+      }
+      if (!element) return;
+      element.scrollIntoView?.({ block: 'center' });
+      setHighlightedMessageId(messageId);
+      element.focus({ preventScroll: true });
+      window.setTimeout(
+        () => setHighlightedMessageId((current) => (current === messageId ? null : current)),
+        4_000,
+      );
+    },
+    [onLoadMessageWindow],
+  );
 
   useEffect(() => {
     if (highlightMessageId && messages.some((message) => message.id === highlightMessageId)) {
@@ -191,21 +204,25 @@ export function MessageList({
       rows.push(<DateSeparator key={`sep-${message.id}`} timestamp={message.created_at} />);
       lastSenderId = null;
     }
-    const sameDayAsPrevious = lastTimestamp
-      ? isSameCalendarDay(lastTimestamp, message.created_at)
+    const previousTimestamp = lastTimestamp;
+    const sameDayAsPrevious = previousTimestamp
+      ? isSameCalendarDay(previousTimestamp, message.created_at)
       : false;
     lastTimestamp = message.created_at;
 
     const isOwn = message.sender_user_id === currentUserId;
-    const showSender = !isOwn && message.sender_user_id !== lastSenderId;
     const previousSenderId = lastSenderId;
     lastSenderId = message.sender_user_id;
     const nextMessage = messages[index + 1];
-    const joinsPrevious = sameDayAsPrevious && previousSenderId === message.sender_user_id;
+    const joinsPrevious =
+      sameDayAsPrevious &&
+      previousSenderId === message.sender_user_id &&
+      isSameMinute(previousTimestamp, message.created_at);
     const joinsNext =
       Boolean(nextMessage) &&
       isSameCalendarDay(message.created_at, nextMessage.created_at) &&
-      nextMessage.sender_user_id === message.sender_user_id;
+      nextMessage.sender_user_id === message.sender_user_id &&
+      isSameMinute(message.created_at, nextMessage.created_at);
     const groupPosition =
       joinsPrevious && joinsNext
         ? 'middle'
@@ -214,6 +231,7 @@ export function MessageList({
           : joinsNext
             ? 'start'
             : 'single';
+    const showSender = !isOwn && !joinsPrevious;
 
     rows.push(
       <MessageBubble
@@ -224,6 +242,7 @@ export function MessageList({
         canSend={canSend}
         senderName={peerName(peer)}
         showSender={showSender}
+        showTimestamp={!joinsPrevious}
         groupPosition={groupPosition}
         replyReference={
           message.reply_to_message_id

@@ -2,6 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import { MessagesSquare } from 'lucide-react';
 import { useAuth } from '../providers/AuthContext.js';
 import { useRouteFocus } from '../../hooks/useRouteFocus.js';
+import { DEFAULT_APP_PATH } from '../../features/auth/utils/safeRedirect.js';
 
 // Full-screen chrome for the public authentication experience: a top brand bar,
 // the split marketing + auth-card content (the routed page), and a site footer.
@@ -22,7 +23,7 @@ export function AuthLayout() {
         </Link>
         <nav className="auth-topbar-nav" aria-label="Account">
           {isAuthenticated ? (
-            <NavLink to={isOnboarded ? '/app' : '/onboarding'}>Open Council</NavLink>
+            <NavLink to={isOnboarded ? DEFAULT_APP_PATH : '/onboarding'}>Open Council</NavLink>
           ) : (
             <>
               <NavLink to="/login">Sign in</NavLink>

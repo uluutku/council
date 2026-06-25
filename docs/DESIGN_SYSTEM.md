@@ -17,6 +17,7 @@ Core semantic color tokens:
 - `--success`, `--success-soft`, `--warning`, `--warning-soft`, `--danger`, `--danger-soft`,
   `--info`, `--info-soft`
 - `--message-incoming`, `--message-outgoing`, `--message-outgoing-text`
+- `--chat-background-base`, `--chat-background-image`, `--chat-background-size`
 - `--focus-ring`, `--selection`
 
 ### Color Palette
@@ -25,38 +26,41 @@ Council supports light and dark appearance modes. The light palette follows `DES
 designer chat export: a pale lavender surface system, Primary Indigo for global actions,
 navigation, and outgoing chat bubbles, Human Blue as a secondary/informational color, and AI Violet
 for synthetic intelligence touchpoints. The dark palette is implemented as semantic token
-overrides, preserving the same information hierarchy with layered charcoal surfaces, softened
-borders, and premium lavender accent values that stay calmer than the light-mode indigo.
+overrides with black and graphite surfaces, cool off-white text, muted borders, a luminous
+indigo-lavender action accent, and cool blue AI accents.
 
-| Token                          | Value                 |
-| ------------------------------ | --------------------- |
-| `--background`                 | `#fbf8ff`             |
-| `--surface`                    | `#fbf8ff`             |
-| `--surface-elevated`           | `#ffffff`             |
-| `--surface-hover`              | `#f9fafb`             |
-| `--surface-active`             | `#e7e7f5`             |
-| `--surface-muted`              | `#f3f2ff`             |
-| `--text-primary`               | `#191b25`             |
-| `--text-secondary`             | `#464555`             |
-| `--text-tertiary`              | `#777587`             |
-| `--border`                     | `#c7c4d8`             |
-| `--border-strong`              | `#777587`             |
-| `--divider`                    | `#d9d9e7`             |
-| `--accent`                     | `#3525cd`             |
-| `--accent-hover`               | `#4d44e3`             |
-| `--accent-soft`                | `#e2dfff`             |
-| `--accent-contrast`            | `#ffffff`             |
-| `--ai-accent`                  | `#5c00ca`             |
-| `--ai-accent-soft`             | `#f5f3ff`             |
-| `--success` / `--success-soft` | `#1d7a49` / `#dcefe3` |
-| `--warning` / `--warning-soft` | `#92600f` / `#f5ead2` |
-| `--danger` / `--danger-soft`   | `#ba1a1a` / `#ffdad6` |
-| `--info` / `--info-soft`       | `#0051d5` / `#dbe1ff` |
-| `--message-incoming`           | `#f2f4f7`             |
-| `--message-outgoing`           | `#3525cd`             |
-| `--message-outgoing-text`      | `#ffffff`             |
-| `--focus-ring`                 | `#4d44e3`             |
-| `--selection`                  | `#e7e7f5`             |
+| Token                          | Value                     |
+| ------------------------------ | ------------------------- |
+| `--background`                 | `#fbf8ff`                 |
+| `--surface`                    | `#fbf8ff`                 |
+| `--surface-elevated`           | `#ffffff`                 |
+| `--surface-hover`              | `#f9fafb`                 |
+| `--surface-active`             | `#e7e7f5`                 |
+| `--surface-muted`              | `#f3f2ff`                 |
+| `--text-primary`               | `#191b25`                 |
+| `--text-secondary`             | `#464555`                 |
+| `--text-tertiary`              | `#777587`                 |
+| `--border`                     | `#c7c4d8`                 |
+| `--border-strong`              | `#777587`                 |
+| `--divider`                    | `#d9d9e7`                 |
+| `--accent`                     | `#3525cd`                 |
+| `--accent-hover`               | `#4d44e3`                 |
+| `--accent-soft`                | `#e2dfff`                 |
+| `--accent-contrast`            | `#ffffff`                 |
+| `--ai-accent`                  | `#5c00ca`                 |
+| `--ai-accent-soft`             | `#f5f3ff`                 |
+| `--success` / `--success-soft` | `#1d7a49` / `#dcefe3`     |
+| `--warning` / `--warning-soft` | `#92600f` / `#f5ead2`     |
+| `--danger` / `--danger-soft`   | `#ba1a1a` / `#ffdad6`     |
+| `--info` / `--info-soft`       | `#0051d5` / `#dbe1ff`     |
+| `--message-incoming`           | `#f2f4f7`                 |
+| `--message-outgoing`           | `#3525cd`                 |
+| `--message-outgoing-text`      | `#ffffff`                 |
+| `--chat-background-base`       | `var(--surface-elevated)` |
+| `--chat-background-image`      | `none`                    |
+| `--chat-background-size`       | `auto`                    |
+| `--focus-ring`                 | `#4d44e3`                 |
+| `--selection`                  | `#e7e7f5`                 |
 
 Rules:
 
@@ -92,14 +96,23 @@ Authenticated routes render inside a full-height application shell:
 - Contacts: navigation sidebar, resizable collection panel, and selected Human/AI contact surface;
   Human contacts contains accepted contacts, discovery, and requests in one content view.
 - Artifacts: navigation sidebar, resizable collection panel, and selected library/detail surface.
-- Settings and Pro Status: navigation sidebar, resizable collection panel, and selected account
-  surface.
+- Pro plan and Profile: standalone app pages opened from the rail account section.
+- Settings: navigation sidebar, resizable collection panel, and selected account surface for
+  appearance, notifications, privacy, security, and blocked users.
 - Mobile: one panel at a time, with bottom navigation and route-preserving back behavior.
 
 The desktop navigation sidebar is 16rem wide to match the designer export. The message collection
 panel defaults to 320 pixels and is clamped between 320 and 480 pixels. Its preferred width is
 stored locally. Each application panel owns its own scrolling; authenticated pages should not rely
 on browser-level page scrolling.
+
+The public landing page is a quiet dark product surface with restrained typography, a wide
+messenger workspace preview, and product sections for direct human messaging, persistent labeled
+AI contacts, artifacts, and the private but server-readable privacy model. It should avoid generic
+AI landing-page tropes such as oversized glow typography, fake agent dashboards, and decorative
+purple gradients. The authenticated `/app` index redirects to `/app/messages`; Messages is the
+default product surface after login, onboarding, account recovery, and the public "Open Council"
+entry points.
 
 ## Components
 
@@ -137,8 +150,11 @@ active chat header. AI chat headers show the agent or persona name and its descr
 contacts do not have last-seen presence and are treated as available unless archived.
 
 Message bubbles use compact padding, moderate radii, and subtle grouped-corner changes for adjacent
-messages from the same sender. Outgoing and incoming messages are distinct through semantic message
-tokens, not loud gradients or novelty styling.
+messages from the same sender in the same minute. Only the first message in a same-minute sender
+group shows the timestamp, and grouped rows do not add extra list spacing between bubbles. Edited
+labels may still appear without repeating the time. Outgoing receipt indicators use one tick for
+sent, two neutral ticks for delivered, and two blue ticks for read. Outgoing and incoming messages
+are distinct through semantic message tokens, not loud gradients or novelty styling.
 
 The composer is part of the conversation surface, not a detached decorative capsule. It keeps the
 attachment action, multiline input, reply preview, upload state, retry/error feedback, Enter to
@@ -159,10 +175,15 @@ the authenticated application.
 
 ## Themes
 
-Theme selection is exposed in Preferences as a dark-mode switch backed by the existing
+Theme selection is exposed in Settings > Appearance as a dark-mode switch backed by the existing
 `user_settings.theme` value. The application still accepts `system`, `light`, and `dark` at the
 runtime boundary; the switch saves explicit `light` or `dark`, while existing `system` values
 continue to follow `prefers-color-scheme`.
+
+Chat background selection is exposed in Settings > Appearance and backed by
+`user_settings.appearance_preferences.chat_background`. Supported values are `clean`, `grid`,
+`paper`, and `midnight`. The selected value is applied on the root element as
+`data-chat-background`, and only the message-history panes consume the background variables.
 
 All app surfaces must use semantic tokens rather than hardcoded light colors. If a component needs a
 theme-specific treatment, scope it to `:root[data-theme='dark']` and keep layout, spacing, and

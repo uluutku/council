@@ -68,6 +68,7 @@ export async function updateMySettings(settings, client = getSupabaseClient()) {
       p_theme: settings.theme,
       p_notification_preferences: settings.notification_preferences,
       p_privacy_preferences: settings.privacy_preferences,
+      p_appearance_preferences: settings.appearance_preferences,
     })
     .single();
 

@@ -1,6 +1,11 @@
 import { useEffect } from 'react';
 import { useAuth } from './AuthContext.js';
-import { applyTheme, THEME_STORAGE_KEY } from './theme.js';
+import {
+  applyChatBackground,
+  applyTheme,
+  CHAT_BACKGROUND_STORAGE_KEY,
+  THEME_STORAGE_KEY,
+} from './theme.js';
 
 export function ThemeController() {
   const { settings } = useAuth();
@@ -17,6 +22,12 @@ export function ThemeController() {
     media.addEventListener('change', updateSystemTheme);
     return () => media.removeEventListener('change', updateSystemTheme);
   }, [settings?.theme]);
+
+  useEffect(() => {
+    const fallback = localStorage.getItem(CHAT_BACKGROUND_STORAGE_KEY) ?? 'clean';
+    const preference = settings?.appearance_preferences?.chat_background ?? fallback;
+    applyChatBackground(preference);
+  }, [settings?.appearance_preferences?.chat_background]);
 
   return null;
 }

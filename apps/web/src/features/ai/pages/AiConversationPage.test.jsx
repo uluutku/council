@@ -44,6 +44,7 @@ function renderConversation() {
 }
 
 beforeEach(() => {
+  localStorage.clear();
   aiApi.listMyAiConversations.mockResolvedValue([]);
   aiApi.getMyAiAccess.mockResolvedValue(makeAccess());
   aiApi.getAiProviderMetadata.mockResolvedValue({
@@ -59,7 +60,10 @@ beforeEach(() => {
   });
   aiApi.listAiMemories.mockResolvedValue([]);
 });
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  localStorage.clear();
+});
 
 describe('AiConversationPage', () => {
   it('loads and renders persisted history', async () => {
@@ -222,6 +226,46 @@ describe('AiConversationPage', () => {
     await waitFor(() => expect(streamAiChat).toHaveBeenCalledTimes(1));
     // Credits reflect the consumed generation.
     expect(await screen.findByText('18')).toBeInTheDocument();
+  });
+
+  it('restores an unsent AI text draft after remount and clears it after send', async () => {
+    const server = [];
+    aiApi.listAiMessages.mockImplementation(async () => [...server]);
+    streamAiChat.mockImplementation(async ({ clientMessageId, content, onEvent }) => {
+      server.push(
+        makeAiMessage({ id: 'du', role: 'user', content, client_message_id: clientMessageId }),
+        makeAiMessage({ id: 'da', role: 'assistant', content: 'Saved draft answer' }),
+      );
+      onEvent({
+        type: 'done',
+        message: {
+          id: 'da',
+          role: 'assistant',
+          content: 'Saved draft answer',
+          created_at: '2026-06-22T10:00:00+00:00',
+        },
+        credits_remaining: 18,
+      });
+    });
+
+    const firstRender = renderConversation();
+    await userEvent.type(
+      await screen.findByLabelText('Message the assistant'),
+      'remember this ask',
+    );
+    firstRender.unmount();
+
+    const secondRender = renderConversation();
+    const restored = await screen.findByLabelText('Message the assistant');
+    expect(restored).toHaveValue('remember this ask');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(await screen.findByText('Saved draft answer')).toBeInTheDocument();
+    secondRender.unmount();
+
+    const thirdRender = renderConversation();
+    expect(await screen.findByLabelText('Message the assistant')).toHaveValue('');
+    thirdRender.unmount();
   });
 
   it('shows a retryable error when generation fails, then recovers on retry', async () => {

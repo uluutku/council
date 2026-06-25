@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { FileText, Image, Send, Square } from 'lucide-react';
 import { AiImageDraftList } from './AiImageDraftList.jsx';
 import { AI_IMAGE_ACCEPT, aiImageRejectionMessage } from '../utils/aiImages.js';
@@ -6,6 +6,7 @@ import { AiDocumentDraftList } from './AiDocumentDraftList.jsx';
 import { AI_DOCUMENT_ACCEPT, aiDocumentRejectionMessage } from '../utils/aiDocuments.js';
 
 const MAX_LENGTH = 8000;
+const COUNTER_THRESHOLD = 500;
 const EMPTY_DOCUMENTS = {
   drafts: [],
   hasAny: false,
@@ -28,6 +29,7 @@ export function AiComposer({
   isStreaming,
   disabled,
   initialValue = '',
+  onDraftChange = () => {},
   contactName = 'the assistant',
   images,
   documents = EMPTY_DOCUMENTS,
@@ -42,6 +44,7 @@ export function AiComposer({
   const [isDragging, setIsDragging] = useState(false);
 
   const trimmed = value.trim();
+  const remaining = MAX_LENGTH - value.length;
   const imagesBlocking = images.hasAny && !images.allReady;
   const documentsBlocking = documents.hasAny && !documents.allReady;
   const canSend =
@@ -56,8 +59,12 @@ export function AiComposer({
     if (!canSend) return;
     const selected = images.consume();
     const selectedDocuments = documents.consume();
-    if (selectedDocuments.length > 0) onSend(trimmed, selected, selectedDocuments);
-    else onSend(trimmed, selected);
+    const sent =
+      selectedDocuments.length > 0
+        ? onSend(trimmed, selected, selectedDocuments)
+        : onSend(trimmed, selected);
+    if (sent === false) return;
+    onDraftChange('');
     setValue('');
     setImageRejections([]);
     setDocumentRejections([]);
@@ -86,6 +93,13 @@ export function AiComposer({
       submit();
     }
   }
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 176)}px`;
+  }, [value]);
 
   return (
     <form
@@ -206,7 +220,10 @@ export function AiComposer({
           maxLength={MAX_LENGTH}
           placeholder={disabled ? 'AI is unavailable' : `Message ${contactName}`}
           disabled={disabled || isStreaming}
-          onChange={(event) => setValue(event.target.value)}
+          onChange={(event) => {
+            setValue(event.target.value);
+            onDraftChange(event.target.value);
+          }}
           onKeyDown={handleKeyDown}
           onCompositionStart={() => {
             composingRef.current = true;
@@ -246,6 +263,11 @@ export function AiComposer({
       {documents.isUploading ? (
         <p className="ai-composer-hint" role="status">
           Preparing documents…
+        </p>
+      ) : null}
+      {remaining <= COUNTER_THRESHOLD ? (
+        <p className="ai-composer-counter" data-over={remaining < 0 ? 'true' : undefined}>
+          {value.length} / {MAX_LENGTH}
         </p>
       ) : null}
     </form>

@@ -34,25 +34,25 @@ test.describe('authentication and account settings', () => {
       await page.getByLabel('Display name').fill('Council Test User');
       await page.getByRole('button', { name: 'Continue to Council' }).click();
 
-      await expect(page).toHaveURL(/\/app$/);
-      await expect(page.getByRole('heading', { name: 'Welcome, Council Test User' })).toBeVisible();
+      await expect(page).toHaveURL(/\/app\/messages$/);
+      await expect(page.getByRole('heading', { name: 'Messages' })).toBeVisible();
 
       await page.reload();
-      await expect(page).toHaveURL(/\/app$/);
-      await expect(page.getByText(`@${username}`)).toBeVisible();
+      await expect(page).toHaveURL(/\/app\/messages$/);
+      await expect(page.getByRole('heading', { name: 'Messages' })).toBeVisible();
     });
 
     await test.step('logout, protected redirect, and login', async () => {
       await page.getByRole('button', { name: 'Log out' }).click();
       await expect(page).toHaveURL(/\/login$/);
 
-      await page.goto('/app/settings/profile');
+      await page.goto('/app/profile');
       await expect(page).toHaveURL(/\/login$/);
 
       await page.getByLabel('Email').fill(firstEmail);
       await page.getByLabel('Password').fill(password);
       await page.getByRole('button', { name: 'Log in' }).click();
-      await expect(page).toHaveURL(/\/app\/settings\/profile$/);
+      await expect(page).toHaveURL(/\/app\/profile$/);
     });
 
     await test.step('profile changes persist through reload', async () => {
@@ -67,20 +67,23 @@ test.describe('authentication and account settings', () => {
       await expect(page.getByText('Updated Council User').first()).toBeVisible();
     });
 
-    await test.step('preferences and theme persist through reload', async () => {
-      await page.goto('/app/settings/preferences');
-      await page.getByRole('button', { name: 'Dark' }).click();
+    await test.step('appearance and privacy settings persist through reload', async () => {
+      await page.goto('/app/settings/appearance');
+      await page.getByLabel('Dark mode').check();
+      await page.getByRole('button', { name: 'Save appearance' }).click();
+      await expect(page.getByText('Appearance saved.')).toBeVisible();
+
+      await page.goto('/app/settings/privacy');
       await page.getByLabel(/Allow contact requests/).uncheck();
-      await page.getByRole('button', { name: 'Save preferences' }).click();
-      await expect(page.getByText('Preferences saved.')).toBeVisible();
+      await page.getByRole('button', { name: 'Save privacy' }).click();
+      await expect(page.getByText('Privacy saved.')).toBeVisible();
 
       await page.reload();
       await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-      await expect(page.getByRole('button', { name: 'Dark' })).toHaveAttribute(
-        'data-selected',
-        'true',
-      );
       await expect(page.getByLabel(/Allow contact requests/)).not.toBeChecked();
+
+      await page.goto('/app/settings/appearance');
+      await expect(page.getByLabel('Dark mode')).toBeChecked();
     });
 
     await test.step('username conflict is reported clearly', async () => {
@@ -136,7 +139,7 @@ test.describe('authentication and account settings', () => {
         await loginPage.getByLabel('Email').fill(firstEmail);
         await loginPage.getByLabel('Password').fill(updatedPassword);
         await loginPage.getByRole('button', { name: 'Log in' }).click();
-        await expect(loginPage).toHaveURL(/\/app$/);
+        await expect(loginPage).toHaveURL(/\/app\/messages$/);
       } finally {
         await loginContext.close();
       }

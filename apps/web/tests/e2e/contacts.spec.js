@@ -180,19 +180,19 @@ test.describe('contact discovery and management', () => {
 
     try {
       // B opts out of stranger discovery.
-      await b.page.goto('/app/settings/preferences');
+      await b.page.goto('/app/settings/privacy');
       await b.page.getByLabel(/Allow contact requests/).uncheck();
-      await b.page.getByRole('button', { name: 'Save preferences' }).click();
-      await expect(b.page.getByText('Preferences saved.')).toBeVisible();
+      await b.page.getByRole('button', { name: 'Save privacy' }).click();
+      await expect(b.page.getByText('Privacy saved.')).toBeVisible();
 
       await search(a.page, b.user.username);
       await expect(a.page.getByText('No people matched that search.')).toBeVisible();
 
       // B opts back in.
-      await b.page.goto('/app/settings/preferences');
+      await b.page.goto('/app/settings/privacy');
       await b.page.getByLabel(/Allow contact requests/).check();
-      await b.page.getByRole('button', { name: 'Save preferences' }).click();
-      await expect(b.page.getByText('Preferences saved.')).toBeVisible();
+      await b.page.getByRole('button', { name: 'Save privacy' }).click();
+      await expect(b.page.getByText('Privacy saved.')).toBeVisible();
 
       await search(a.page, b.user.username);
       await expect(a.page.getByText(`@${b.user.username}`)).toBeVisible();

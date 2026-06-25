@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
+import { useAuth } from '../../../app/providers/AuthContext.js';
 import { aiConversationsQueryOptions, aiMessagesQueryOptions } from '../queries/aiQueries.js';
 import { useAiChat } from '../hooks/useAiChat.js';
 import { useAiAccess } from '../hooks/useAiAccess.js';
@@ -17,6 +18,7 @@ import { useAiDocumentDraft } from '../hooks/useAiDocumentDraft.js';
 import { SaveArtifactDialog } from '../../artifacts/components/SaveArtifactDialog.jsx';
 import { createArtifact } from '../../artifacts/api/artifactsApi.js';
 import { AiAvatar } from '../components/AiAvatar.jsx';
+import { clearAiDraft, loadAiDraft, saveAiDraft } from '../utils/aiDraftStorage.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -37,6 +39,7 @@ export function AiConversationPage() {
   const { conversationId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const pendingAiForward = useUiStore((state) => state.pendingAiForward);
   const clearPendingAiForward = useUiStore((state) => state.clearPendingAiForward);
   const isValidId = typeof conversationId === 'string' && UUID_PATTERN.test(conversationId);
@@ -50,7 +53,8 @@ export function AiConversationPage() {
   const chat = useAiChat(conversationId);
   const images = useAiImageDraft(conversationId);
   const documents = useAiDocumentDraft(conversationId);
-  const [draft, setDraft] = useState('');
+  const currentUserId = user?.id ?? null;
+  const [, setDraftRevision] = useState(0);
   const [draftKey, setDraftKey] = useState(0);
   const [memoryPanel, setMemoryPanel] = useState(null);
   const [artifactMessage, setArtifactMessage] = useState(null);
@@ -85,10 +89,34 @@ export function AiConversationPage() {
     return () => window.clearTimeout(timer);
   }, [chat, clearPendingAiForward, conversationId, location.state, pendingAiForward]);
 
-  const handleSelectStarter = useCallback((prompt) => {
-    setDraft(prompt);
-    setDraftKey((key) => key + 1);
-  }, []);
+  const draft = loadAiDraft(currentUserId, conversationId);
+  const updateDraft = useCallback(
+    (value) => {
+      saveAiDraft(currentUserId, conversationId, value);
+      setDraftRevision((revision) => revision + 1);
+    },
+    [conversationId, currentUserId],
+  );
+
+  const handleSelectStarter = useCallback(
+    (prompt) => {
+      updateDraft(prompt);
+      setDraftKey((key) => key + 1);
+    },
+    [updateDraft],
+  );
+
+  const handleSend = useCallback(
+    (content, selectedImages, selectedDocuments) => {
+      const sent = chat.send(content, selectedImages, selectedDocuments);
+      if (sent) {
+        clearAiDraft(currentUserId, conversationId);
+        setDraftRevision((revision) => revision + 1);
+      }
+      return sent;
+    },
+    [chat, conversationId, currentUserId],
+  );
 
   const handleRememberMessage = useCallback((message) => {
     setMemoryPanel({
@@ -194,11 +222,12 @@ export function AiConversationPage() {
       ) : (
         <AiComposer
           key={draftKey}
-          onSend={chat.send}
+          onSend={handleSend}
           onStop={chat.stop}
           isStreaming={chat.isStreaming}
           disabled={composerDisabled}
           initialValue={draft}
+          onDraftChange={updateDraft}
           contactName={displayName}
           images={images}
           documents={documents}

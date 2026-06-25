@@ -1,6 +1,6 @@
 begin;
 
-select plan(14);
+select plan(19);
 
 insert into auth.users (
   id,
@@ -42,7 +42,9 @@ set
   notification_preferences =
     notification_preferences || '{"future_notification_key": "preserve"}'::jsonb,
   privacy_preferences =
-    privacy_preferences || '{"future_privacy_key": {"nested": true}}'::jsonb
+    privacy_preferences || '{"future_privacy_key": {"nested": true}}'::jsonb,
+  appearance_preferences =
+    appearance_preferences || '{"future_appearance_key": "preserve"}'::jsonb
 where user_id = '10000000-0000-0000-0000-000000000001';
 
 set local request.jwt.claim.sub = '10000000-0000-0000-0000-000000000001';
@@ -53,7 +55,8 @@ select is(
     public.update_my_settings(
       'dark',
       '{"sound": false}'::jsonb,
-      '{"allow_contact_requests": false}'::jsonb
+      '{"allow_contact_requests": false}'::jsonb,
+      '{"chat_background": "grid"}'::jsonb
     )
   ).theme,
   'dark',
@@ -79,6 +82,15 @@ select is(
 );
 select is(
   (
+    select appearance_preferences ->> 'chat_background'
+    from public.user_settings
+    where user_id = '10000000-0000-0000-0000-000000000001'
+  ),
+  'grid',
+  'a supported appearance preference is updated'
+);
+select is(
+  (
     select notification_preferences ->> 'future_notification_key'
     from public.user_settings
     where user_id = '10000000-0000-0000-0000-000000000001'
@@ -94,6 +106,15 @@ select is(
   ),
   '{"nested": true}'::jsonb,
   'unknown existing privacy keys are preserved'
+);
+select is(
+  (
+    select appearance_preferences ->> 'future_appearance_key'
+    from public.user_settings
+    where user_id = '10000000-0000-0000-0000-000000000001'
+  ),
+  'preserve',
+  'unknown existing appearance keys are preserved'
 );
 
 reset role;
@@ -157,6 +178,31 @@ select throws_ok(
   '22023',
   'privacy preference values must be booleans',
   'privacy values must be booleans'
+);
+select throws_ok(
+  $$ select public.update_my_settings(null, null, null, '[]'::jsonb) $$,
+  '22023',
+  'appearance preferences must be an object',
+  'appearance arrays are rejected'
+);
+select throws_ok(
+  $$ select public.update_my_settings(null, null, null, '{"unknown": true}'::jsonb) $$,
+  '22023',
+  'appearance preferences contain an unsupported key',
+  'new unsupported appearance keys are rejected'
+);
+select throws_ok(
+  $$
+    select public.update_my_settings(
+      null,
+      null,
+      null,
+      '{"chat_background": null}'::jsonb
+    )
+  $$,
+  '22023',
+  'chat background must be clean, grid, paper, or midnight',
+  'invalid chat backgrounds are rejected'
 );
 select throws_ok(
   $$ select public.update_my_settings(null, null, null) $$,

@@ -15,8 +15,9 @@ only owner reads; narrow RPCs create, edit, hard-delete, clear, and change mode.
 must be a user message from the same AI conversation.
 
 The Memory dialog lists every item and supports add, edit, delete, delete-all confirmation, mode
-switching, and a confirm-before-save Remember action on the user's own AI messages. Memory query
-keys include the conversation ID and all queries are cleared on sign-out.
+switching, saved/remaining count, search, category filtering, a 500-character editor counter, and a
+confirm-before-save Remember action on the user's own AI messages. Memory query keys include the
+conversation ID and all queries are cleared on sign-out.
 
 Server context places curated memories after platform/contact/style instructions and before recent
 history. Deterministic ordering and hard deletion make changes effective on the next generation.

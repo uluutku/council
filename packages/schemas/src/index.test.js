@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applicationConfigSchema,
   aiSendInputSchema,
+  appearancePreferencesSchema,
   aiConversationSchema,
   aiPersonaSchema,
   blockedUserItemSchema,
@@ -249,10 +250,10 @@ describe('social contract schemas', () => {
   it('requires preference values to be JSON objects', () => {
     expect(
       userSettingsUpdateSchema.parse({
-        privacy_preferences: { allow_contact_requests: false },
+        appearance_preferences: { chat_background: 'grid' },
       }),
     ).toEqual({
-      privacy_preferences: { allow_contact_requests: false },
+      appearance_preferences: { chat_background: 'grid' },
     });
     expect(userSettingsUpdateSchema.safeParse({ notification_preferences: [] }).success).toBe(
       false,
@@ -351,10 +352,24 @@ describe('account form schemas', () => {
     ).toBe(false);
   });
 
+  it('validates appearance preferences', () => {
+    expect(
+      appearancePreferencesSchema.parse({
+        chat_background: 'midnight',
+      }).chat_background,
+    ).toBe('midnight');
+    expect(appearancePreferencesSchema.safeParse({ chat_background: 'custom' }).success).toBe(
+      false,
+    );
+  });
+
   it('validates the complete preferences form', () => {
     expect(
       preferencesFormSchema.parse({
         theme: 'dark',
+        appearance_preferences: {
+          chat_background: 'paper',
+        },
         notification_preferences: {
           message_notifications: true,
           message_previews: false,

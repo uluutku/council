@@ -8,7 +8,7 @@ import { FormStatus } from '../../../components/FormStatus.jsx';
 import { signInWithEmail } from '../api/authApi.js';
 import { getMyProfileWithRetry } from '../../profile/api/profileApi.js';
 import { mapSupabaseError } from '../utils/authErrors.js';
-import { getSafeReturnPath } from '../utils/safeRedirect.js';
+import { DEFAULT_APP_PATH, getSafeReturnPath } from '../utils/safeRedirect.js';
 import { getFieldErrors } from '../utils/validation.js';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
 import { accountKeys } from '../../../lib/query-keys/account.js';
@@ -41,7 +41,7 @@ export function LoginPage() {
         staleTime: 30_000,
       });
       setPassword('');
-      const requestedPath = getSafeReturnPath(location.state?.returnTo, '/app');
+      const requestedPath = getSafeReturnPath(location.state?.returnTo, DEFAULT_APP_PATH);
       navigate(profile.username ? requestedPath : '/onboarding', { replace: true });
     } catch (error) {
       setPassword('');

@@ -7,7 +7,8 @@ describe('AiAccessSummary', () => {
   it('shows remaining trial credits', () => {
     render(<AiAccessSummary access={makeAccess({ trial_credits_remaining: 7 })} />);
     expect(screen.getByText('7')).toBeInTheDocument();
-    expect(screen.getByText(/trial credits remaining/i)).toBeInTheDocument();
+    expect(screen.getByText('AI trial balance')).toBeInTheDocument();
+    expect(screen.getByText(/trial credits/i)).toBeInTheDocument();
   });
 
   it('explains an exhausted trial without offering a fake upgrade', () => {
@@ -16,6 +17,7 @@ describe('AiAccessSummary', () => {
         access={makeAccess({ access_state: 'credits_exhausted', trial_credits_remaining: 0 })}
       />,
     );
+    expect(screen.getByText('Trial credits used')).toBeInTheDocument();
     expect(screen.getByText(/trial credits are used up/i)).toBeInTheDocument();
     expect(screen.getByText(/Pro billing is not available/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /upgrade/i })).not.toBeInTheDocument();
@@ -23,6 +25,7 @@ describe('AiAccessSummary', () => {
 
   it('explains an expired trial', () => {
     render(<AiAccessSummary access={makeAccess({ access_state: 'trial_expired' })} />);
+    expect(screen.getByText('Trial ended')).toBeInTheDocument();
     expect(screen.getByText(/Your AI trial has ended/i)).toBeInTheDocument();
   });
 
@@ -38,6 +41,8 @@ describe('AiAccessSummary', () => {
         })}
       />,
     );
-    expect(screen.getByText('42').closest('p')).toHaveTextContent('42 Premium credits remaining');
+    expect(screen.getByText('Premium balance')).toBeInTheDocument();
+    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.getByText('Premium credits')).toBeInTheDocument();
   });
 });

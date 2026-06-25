@@ -29,11 +29,13 @@ export function MessageComposer({
   onCancelReply,
   onSend,
   autoFocusKey,
+  initialValue = '',
+  onDraftChange = () => {},
   attachments = EMPTY_ATTACHMENTS,
   onTypingChange = () => {},
   onBlur = () => {},
 }) {
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(initialValue);
   const [rejections, setRejections] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const composingRef = useRef(false);
@@ -71,6 +73,7 @@ export function MessageComposer({
     const clientMessageId = onSend(trimmed);
     if (clientMessageId) {
       onTypingChange(false);
+      onDraftChange('');
       setValue('');
       setRejections([]);
       textareaRef.current?.focus();
@@ -167,8 +170,10 @@ export function MessageComposer({
           maxLength={MAX_LENGTH}
           placeholder="Write a message..."
           onChange={(event) => {
-            setValue(event.target.value);
-            onTypingChange(event.target.value.trim().length > 0);
+            const nextValue = event.target.value;
+            setValue(nextValue);
+            onDraftChange(nextValue);
+            onTypingChange(nextValue.trim().length > 0);
           }}
           onBlur={() => {
             onTypingChange(false);

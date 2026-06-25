@@ -19,6 +19,7 @@ vi.mock('../api/messagingApi.js', () => ({
   createOrGetDirectConversation: vi.fn(),
   listMyConversations: vi.fn(),
   listConversationMessages: vi.fn(),
+  getMessageWindow: vi.fn(),
   sendMessage: vi.fn(),
   editMessage: vi.fn(),
   deleteMessage: vi.fn(),
@@ -81,6 +82,13 @@ vi.mock('../realtime/conversationSubscription.js', () => ({
 
 import * as messagingApi from '../api/messagingApi.js';
 
+function setNavigatorOnline(value) {
+  Object.defineProperty(window.navigator, 'onLine', {
+    configurable: true,
+    value,
+  });
+}
+
 // A small in-memory server model so that optimistic sends, realtime-triggered
 // refetches, and idempotent retries all converge against one source of truth.
 function installServer({ conversation = makeConversation(), messages = [] } = {}) {
@@ -93,6 +101,13 @@ function installServer({ conversation = makeConversation(), messages = [] } = {}
       ? sorted.filter((message) => message.sequence < input.before_sequence)
       : sorted;
     return filtered.slice(0, input.result_limit ?? 50);
+  });
+  messagingApi.getMessageWindow.mockImplementation(async (_conversationId, messageId) => {
+    const target = state.messages.find((message) => message.id === messageId);
+    if (!target) return [];
+    return state.messages
+      .filter((message) => Math.abs(message.sequence - target.sequence) <= 20)
+      .sort((a, b) => a.sequence - b.sequence);
   });
   messagingApi.sendMessage.mockImplementation(
     async ({ client_message_id, content, reply_to_message_id }) => {
@@ -163,10 +178,14 @@ function openConversation(state) {
 beforeEach(() => {
   resetMessageCounter();
   capturedConversationEvent = null;
+  localStorage.clear();
+  setNavigatorOnline(true);
 });
 
 afterEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
+  setNavigatorOnline(true);
 });
 
 describe('ConversationPage rendering', () => {
@@ -214,10 +233,97 @@ describe('ConversationPage rendering', () => {
     expect(await screen.findByText('This conversation is unavailable.')).toBeInTheDocument();
   });
 
+  it('loads the original message window before jumping to an unloaded reply target', async () => {
+    const user = userEvent.setup();
+    const original = makeMessage({ sender_user_id: PEER_ID, content: 'older original' });
+    const reply = makeMessage({
+      sender_user_id: ME_ID,
+      content: 'reply loaded first',
+      reply_to_message_id: original.id,
+    });
+    installServer({ messages: [original, reply] });
+    messagingApi.listConversationMessages.mockResolvedValueOnce([reply]);
+
+    openConversation();
+
+    expect(await screen.findByText('reply loaded first')).toBeInTheDocument();
+    expect(screen.queryByText('older original')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /open original message/i }));
+
+    expect(
+      await screen.findByText('older original', { selector: '.message-text span' }),
+    ).toBeInTheDocument();
+    expect(messagingApi.getMessageWindow).toHaveBeenCalledWith(CONVERSATION_ID, original.id);
+  });
+
   it('shows the empty conversation prompt when there are no messages', async () => {
     installServer({ messages: [] });
     openConversation();
     expect(await screen.findByText('Start your conversation.')).toBeInTheDocument();
+  });
+
+  it('shows one timestamp for same-sender messages sent in the same minute', async () => {
+    installServer({
+      messages: [
+        makeMessage({
+          sender_user_id: PEER_ID,
+          content: 'first same minute',
+          created_at: '2026-06-22T10:00:05+00:00',
+        }),
+        makeMessage({
+          sender_user_id: PEER_ID,
+          content: 'second same minute',
+          created_at: '2026-06-22T10:00:45+00:00',
+        }),
+        makeMessage({
+          sender_user_id: PEER_ID,
+          content: 'next minute',
+          created_at: '2026-06-22T10:01:00+00:00',
+        }),
+      ],
+    });
+    const { container } = openConversation();
+
+    expect(await screen.findByText('next minute')).toBeInTheDocument();
+    expect(container.querySelectorAll('.message-meta time')).toHaveLength(2);
+  });
+
+  it('renders outgoing receipt ticks for sent, delivered, and read states', async () => {
+    const message = makeMessage({ sender_user_id: ME_ID, content: 'receipt tracked' });
+    installServer({ messages: [message] });
+    openConversation();
+
+    expect(await screen.findByText('receipt tracked')).toBeInTheDocument();
+    expect(screen.getByLabelText('Sent')).toBeInTheDocument();
+
+    capturedConversationEvent?.({
+      id: '99999999-9999-4999-8999-999999999991',
+      version: 1,
+      event: 'receipt.changed',
+      occurred_at: '2026-06-22T10:00:02+00:00',
+      conversation_id: CONVERSATION_ID,
+      entity_id: CONVERSATION_ID,
+      actor_user_id: PEER_ID,
+      read_sequence: 0,
+      delivered_sequence: message.sequence,
+    });
+
+    expect(await screen.findByLabelText('Delivered')).toBeInTheDocument();
+
+    capturedConversationEvent?.({
+      id: '99999999-9999-4999-8999-999999999992',
+      version: 1,
+      event: 'receipt.changed',
+      occurred_at: '2026-06-22T10:00:03+00:00',
+      conversation_id: CONVERSATION_ID,
+      entity_id: CONVERSATION_ID,
+      actor_user_id: PEER_ID,
+      read_sequence: message.sequence,
+      delivered_sequence: message.sequence,
+    });
+
+    expect(await screen.findByLabelText('Read')).toBeInTheDocument();
   });
 });
 
@@ -258,9 +364,10 @@ describe('ConversationPage optimistic send', () => {
   it('keeps a failed send visible and converges to one message after retry with the same client id', async () => {
     const user = userEvent.setup();
     installServer({ messages: [] });
-    // Fail the first attempt, then fall back to the converging implementation.
+    // Fail the first attempt with a non-network error, then fall back to the converging
+    // implementation. Network/backend-unavailable text sends are now durable queued.
     const realImplementation = messagingApi.sendMessage.getMockImplementation();
-    messagingApi.sendMessage.mockRejectedValueOnce(new MessagingApiError('backend_unavailable'));
+    messagingApi.sendMessage.mockRejectedValueOnce(new MessagingApiError('unknown_error'));
 
     openConversation();
     await screen.findByText('Start your conversation.');
@@ -278,6 +385,42 @@ describe('ConversationPage optimistic send', () => {
 
     const [firstCall, secondCall] = messagingApi.sendMessage.mock.calls;
     expect(firstCall[0].client_message_id).toBe(secondCall[0].client_message_id);
+  });
+
+  it('restores an unsent text draft after the conversation remounts', async () => {
+    const user = userEvent.setup();
+    installServer({ messages: [] });
+    const firstRender = openConversation();
+
+    await screen.findByText('Start your conversation.');
+    await user.type(screen.getByLabelText('Message'), 'persist this draft');
+    firstRender.unmount();
+
+    openConversation();
+    expect(await screen.findByLabelText('Message')).toHaveValue('persist this draft');
+  });
+
+  it('queues a text message while offline and drains it on reconnect', async () => {
+    const user = userEvent.setup();
+    installServer({ messages: [] });
+    setNavigatorOnline(false);
+    openConversation();
+
+    await screen.findByText('Start your conversation.');
+    await user.type(screen.getByLabelText('Message'), 'queued while offline');
+    await user.keyboard('{Enter}');
+
+    expect(await screen.findByText('Queued')).toBeInTheDocument();
+    expect(messagingApi.sendMessage).not.toHaveBeenCalled();
+
+    setNavigatorOnline(true);
+    window.dispatchEvent(new Event('online'));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('queued while offline')).toHaveLength(1);
+    });
+    expect(screen.queryByText('Queued')).not.toBeInTheDocument();
+    expect(messagingApi.sendMessage).toHaveBeenCalledTimes(1);
   });
 });
 

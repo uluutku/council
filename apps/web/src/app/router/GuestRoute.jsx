@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../providers/AuthContext.js';
-import { getSafeReturnPath } from '../../features/auth/utils/safeRedirect.js';
+import { DEFAULT_APP_PATH, getSafeReturnPath } from '../../features/auth/utils/safeRedirect.js';
 import { AccountDataError, AuthLoading } from './AuthStateView.jsx';
 
 export function GuestRoute() {
@@ -15,7 +15,7 @@ export function GuestRoute() {
     // auth-state-change re-render here can race the login navigation and drop
     // the requested path.
     const destination = isOnboarded
-      ? getSafeReturnPath(location.state?.returnTo, '/app')
+      ? getSafeReturnPath(location.state?.returnTo, DEFAULT_APP_PATH)
       : '/onboarding';
     return <Navigate to={destination} replace />;
   }

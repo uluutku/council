@@ -66,4 +66,13 @@ describe('MessageComposer', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Cancel reply' }));
     expect(onCancelReply).toHaveBeenCalled();
   });
+
+  it('restores and reports a durable draft value', async () => {
+    const onDraftChange = vi.fn();
+    const { textarea } = setup({ initialValue: 'saved draft', onDraftChange });
+
+    expect(textarea).toHaveValue('saved draft');
+    await userEvent.type(textarea, ' plus');
+    expect(onDraftChange).toHaveBeenLastCalledWith('saved draft plus');
+  });
 });

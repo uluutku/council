@@ -43,6 +43,9 @@ const settings = {
     show_last_seen: true,
     allow_contact_requests: true,
   },
+  appearance_preferences: {
+    chat_background: 'clean',
+  },
 };
 
 function renderWithAuth(element, authOverrides = {}) {
@@ -72,6 +75,7 @@ describe('onboarding and account settings pages', () => {
     localStorage.clear();
     delete document.documentElement.dataset.theme;
     delete document.documentElement.dataset.themePreference;
+    delete document.documentElement.dataset.chatBackground;
     document.documentElement.style.colorScheme = '';
   });
 
@@ -132,28 +136,48 @@ describe('onboarding and account settings pages', () => {
     expect(screen.getByLabelText('Biography')).toHaveValue('Unsaved biography');
   });
 
-  it('persists preferences and applies dark mode from the settings switch', async () => {
+  it('persists appearance settings and applies dark mode from the settings switch', async () => {
     const user = userEvent.setup();
     updateMySettings.mockResolvedValue({
       ...settings,
       theme: 'dark',
-      privacy_preferences: { ...settings.privacy_preferences, allow_contact_requests: false },
+      appearance_preferences: { chat_background: 'grid' },
     });
-    const auth = renderWithAuth(<PreferencesSettingsPage />);
+    const auth = renderWithAuth(<PreferencesSettingsPage section="appearance" />);
 
     await user.click(screen.getByLabelText(/Dark mode/));
-    await user.click(screen.getByLabelText(/Allow contact requests/));
-    await user.click(screen.getByRole('button', { name: 'Save preferences' }));
+    await user.click(screen.getByLabelText('Grid'));
+    await user.click(screen.getByRole('button', { name: 'Save appearance' }));
 
     expect(updateMySettings).toHaveBeenCalledWith(
       expect.objectContaining({
         theme: 'dark',
+        appearance_preferences: expect.objectContaining({ chat_background: 'grid' }),
+      }),
+    );
+    expect(await screen.findByText('Appearance saved.')).toBeInTheDocument();
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(document.documentElement.dataset.chatBackground).toBe('grid');
+    expect(auth.refreshProfile).toHaveBeenCalled();
+  });
+
+  it('persists privacy settings from the privacy page', async () => {
+    const user = userEvent.setup();
+    updateMySettings.mockResolvedValue({
+      ...settings,
+      privacy_preferences: { ...settings.privacy_preferences, allow_contact_requests: false },
+    });
+    renderWithAuth(<PreferencesSettingsPage section="privacy" />);
+
+    await user.click(screen.getByLabelText(/Allow contact requests/));
+    await user.click(screen.getByRole('button', { name: 'Save privacy' }));
+
+    expect(updateMySettings).toHaveBeenCalledWith(
+      expect.objectContaining({
         privacy_preferences: expect.objectContaining({ allow_contact_requests: false }),
       }),
     );
-    expect(await screen.findByText('Preferences saved.')).toBeInTheDocument();
-    expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(auth.refreshProfile).toHaveBeenCalled();
+    expect(await screen.findByText('Privacy saved.')).toBeInTheDocument();
   });
 
   it('logs out from the authenticated shell and navigates to login', async () => {

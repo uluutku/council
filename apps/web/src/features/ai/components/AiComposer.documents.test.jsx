@@ -87,4 +87,20 @@ describe('AiComposer documents', () => {
     );
     expect(screen.getByText(/must be a PDF, TXT, or Markdown file/i)).toBeInTheDocument();
   });
+
+  it('shows a character counter near the AI message limit', () => {
+    render(
+      <AiComposer
+        onSend={vi.fn()}
+        onStop={vi.fn()}
+        isStreaming={false}
+        disabled={false}
+        images={images}
+        documents={documents()}
+        initialValue={'x'.repeat(7600)}
+      />,
+    );
+
+    expect(screen.getByText('7600 / 8000')).toBeInTheDocument();
+  });
 });

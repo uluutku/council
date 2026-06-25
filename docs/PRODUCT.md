@@ -7,7 +7,7 @@ people, built-in AI experts, built-in AI personas, and private custom AI charact
 contacts share an inbox but are always visibly distinguished.
 
 The core promise is private messaging and persistent AI contacts in one application.
-Users can choose light or dark appearance in account preferences.
+Users can choose light or dark appearance and a chat background in account settings.
 
 ## Target users
 
@@ -21,6 +21,12 @@ use and cost.
 The first release supports human-to-human direct conversations and human-to-AI direct
 conversations. It is a responsive web application and may be installable as a PWA where
 practical. A native Flutter application is planned later.
+
+Human direct conversations preserve unsent text drafts per device and can queue text-only sends
+while the web client is offline. The queue drains on reconnect using the same backend idempotency
+contract as normal sends. Attachment drafts and attachment sends are not persisted offline in the
+first release because upload reservation, private storage cleanup, and signed object access remain
+server-authorized online flows.
 
 Human group chats, AI participants inside human conversations, AI-to-AI conversations, public
 channels, and a social feed are not in the first release.
@@ -38,6 +44,10 @@ roles.
 Custom personas remain private and cannot initially be published or shared.
 Human profiles and private custom personas may have user-uploaded images. Built-in AI contact
 images are supplied by the server catalogue.
+
+AI conversations preserve unsent text drafts per device. Memory controls show the contact's active
+mode, saved count, remaining capacity, search, and category filters so users can manage what an AI
+contact remembers without hidden automatic extraction.
 
 ## Access model
 

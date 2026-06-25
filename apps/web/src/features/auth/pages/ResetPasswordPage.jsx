@@ -7,6 +7,7 @@ import { FormStatus } from '../../../components/FormStatus.jsx';
 import { updatePassword } from '../api/authApi.js';
 import { mapSupabaseError } from '../utils/authErrors.js';
 import { getFieldErrors } from '../utils/validation.js';
+import { DEFAULT_APP_PATH } from '../utils/safeRedirect.js';
 import { useAuth } from '../../../app/providers/AuthContext.js';
 import { usePageTitle } from '../../../hooks/usePageTitle.js';
 import { clearPasswordChangeIntent, hasPasswordChangeIntent } from '../utils/passwordIntent.js';
@@ -82,7 +83,11 @@ export function ResetPasswordPage() {
   if (isComplete) {
     return (
       <AuthCard eyebrow="Password updated" title="Your password has been changed">
-        <button className="button button--full" type="button" onClick={() => navigate('/app')}>
+        <button
+          className="button button--full"
+          type="button"
+          onClick={() => navigate(DEFAULT_APP_PATH)}
+        >
           Continue to Council
         </button>
       </AuthCard>

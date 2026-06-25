@@ -38,6 +38,7 @@ function ConversationPageContent({ conversationId }) {
     mute,
     messagesState,
     sender,
+    textDraft,
     attachmentDraft,
     typing,
     peerReceipt,
@@ -57,6 +58,7 @@ function ConversationPageContent({ conversationId }) {
     setEditError,
     handleSend,
     handleSaveEdit,
+    loadMessageWindow,
     confirmDelete,
     handleToggleReaction,
     currentUserId,
@@ -145,6 +147,7 @@ function ConversationPageContent({ conversationId }) {
           selectedMessageIds={selection.selectedMessageIds}
           onSelectMessage={selection.selectMessage}
           highlightMessageId={targetMessageId}
+          onLoadMessageWindow={loadMessageWindow}
         />
       )}
 
@@ -154,6 +157,8 @@ function ConversationPageContent({ conversationId }) {
           onCancelReply={() => setReplyTarget(null)}
           onSend={handleSend}
           autoFocusKey={conversationId}
+          initialValue={textDraft.value}
+          onDraftChange={textDraft.update}
           attachments={attachmentDraft}
           onTypingChange={typing.update}
           onBlur={typing.stop}

@@ -29,8 +29,9 @@ rejected. Clients can update only the allowed profile columns on their own row.
 ### `user_settings`
 
 Settings are private owner-only rows keyed by `auth.users.id`. Theme is currently `system`,
-`light`, or `dark`. Notification, privacy, and AI preference columns must be top-level JSON
-objects. The schema deliberately does not define the complete future settings model.
+`light`, or `dark`. Notification, privacy, appearance, and AI preference columns must be
+top-level JSON objects. `appearance_preferences.chat_background` is one of `clean`, `grid`,
+`paper`, or `midnight`. The schema deliberately does not define the complete future settings model.
 
 ### `contact_relationships`
 
@@ -87,7 +88,7 @@ and only the profile/settings update columns required by their RLS policies.
 - `unblock_user`: idempotently removes only the caller block and restores nothing.
 - `list_my_contacts`: deterministic accepted-contact listing with minimal profile fields.
 - `list_my_contact_requests`: incoming/outgoing pending requests with an explicit direction.
-- `update_my_settings`: merges supported theme, notification, and privacy fields for
+- `update_my_settings`: merges supported theme, notification, privacy, and appearance fields for
   `auth.uid()` while preserving unrelated existing JSON keys.
 - `list_my_blocked_users`: returns only the authenticated user's own blocked targets with minimal
   profile fields.
@@ -97,9 +98,10 @@ transaction-level advisory lock so request, response, removal, block, and unbloc
 cannot race into duplicate or contradictory pair state.
 
 `update_my_settings` accepts no user ID. Notification and privacy patches must be JSON objects
-containing only currently supported boolean keys. Unsupported new keys and non-boolean values
-are rejected. Existing unknown keys are retained so later settings additions are not erased by
-an older client.
+containing only currently supported boolean keys. Appearance patches must be JSON objects
+containing only supported appearance keys, and chat backgrounds are restricted to the allowed
+enum. Unsupported new keys and invalid values are rejected. Existing unknown keys are retained so
+later settings additions are not erased by an older client.
 
 ### `list_my_blocked_users`
 

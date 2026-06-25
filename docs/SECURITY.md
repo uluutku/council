@@ -185,6 +185,13 @@ dropped from the cache on sign-out (`queryClient.clear()`), so no message conten
 receipt state survives a session change. Realtime channels are torn down on conversation change,
 route change, and logout.
 
+Unsent text drafts and text-only offline queue items are stored locally in the browser under keys
+scoped by signed-in user id and conversation id. They are validated before use, capped, and removed
+after successful send or explicit removal. This improves reliability on a single trusted device but
+is not a cross-device guarantee and is not end-to-end encrypted. Attachment drafts, object URLs,
+storage paths, signed URLs, credentials, prompts, AI memories, and tokens are not placed in the
+offline queue.
+
 AI chat deletion is limited to owner-scoped AI conversations. The browser can delete only its own
 AI conversation through a narrow RPC; cross-user IDs collapse to the normal unavailable error. The
 RPC rejects active generation runs so reserved credits stay under the existing run lifecycle.
@@ -197,7 +204,9 @@ depend on public storage.
 Authenticated clients cannot directly insert, update, or delete contact relationships or block
 rows. Cross-user actions are available only through explicit database functions that derive the
 actor from `auth.uid()`. Profile and settings updates use column-level grants plus own-row RLS;
-ownership IDs and creation timestamps are not client-writable.
+ownership IDs and creation timestamps are not client-writable. Appearance preferences, including
+chat background selection, remain private owner-only settings values and are validated by the same
+`update_my_settings` boundary as notification and privacy preferences.
 
 Security-definer functions must use a fixed safe search path, qualify protected objects, expose
 only minimal return shapes, and receive explicit execution grants. Anonymous execution is
@@ -220,7 +229,7 @@ security screen; an ordinary authenticated session is not treated as recovery.
 
 Navigation return paths are accepted only when they are internal `/app` or `/onboarding`
 destinations. Absolute URLs, protocol-relative URLs, JavaScript URLs, and guest-route loops are
-normalized to `/app`.
+normalized to `/app/messages`.
 
 Auth and database provider errors are mapped to fixed user-facing categories. Raw SQL, stack
 traces, sessions, verification links, and recovery tokens are never rendered or intentionally
@@ -259,6 +268,8 @@ AI message and run creation never go through a public insert RPC. The browser ca
 or delete AI messages, runs, or credit balances; assistant messages cannot be forged. All privileged
 writes are performed by the Edge Function through service-role-only functions that derive nothing
 sensitive from client input beyond the validated conversation id, client id, and bounded content.
+The server-only service role has explicit `ai_messages` and `ai_runs` insert privilege for
+controlled worker paths and maintenance/test setup; no browser role receives that privilege.
 
 Access is enforced server-side. A credit is reserved atomically before a generation and refunded
 exactly once on provider failure (guarded so a balance can never inflate). The trial starts once,
@@ -303,6 +314,11 @@ after platform/contact/style instructions and are marked unable to override plat
 Conversation-only mode does not retrieve them. Hard deletion removes memory from future context;
 clearing memory does not clear history. Memory content is excluded from logs, analytics, runtime
 metadata, and browser-visible assembled prompts. Sign-out clears memory query caches.
+
+Unsent AI text drafts are local browser data scoped by signed-in user id and AI conversation id.
+They are not sent to the provider until the user explicitly submits them. AI image/document drafts,
+signed URLs, extracted text, prompt context, memories, and credentials are not persisted in local
+draft storage.
 
 ### Private AI images (Task 012)
 

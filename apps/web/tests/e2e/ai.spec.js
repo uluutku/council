@@ -189,7 +189,7 @@ test.describe('AI contacts and personas', () => {
     const { context, page } = await newUserContext(browser, 'premium');
     try {
       const code = await createLocalPremiumCode({ days: 30, credits: 100 });
-      await page.goto('/app/settings/access');
+      await page.goto('/app/pro');
       await page.getByLabel('Premium access code').fill(code);
       await page.getByRole('button', { name: 'Redeem code' }).click();
       await expect(page.getByText('Premium access added.')).toBeVisible();
@@ -201,7 +201,7 @@ test.describe('AI contacts and personas', () => {
         timeout: 20_000,
       });
 
-      await page.goto('/app/settings/access');
+      await page.goto('/app/pro');
       await page.getByLabel('Premium access code').fill(code);
       await page.getByRole('button', { name: 'Redeem code' }).click();
       await expect(page.getByText('This access code is invalid or unavailable.')).toBeVisible();

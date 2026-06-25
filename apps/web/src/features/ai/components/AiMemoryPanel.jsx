@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { aiMemoriesQueryOptions, aiMemorySettingsQueryOptions } from '../queries/aiQueries.js';
 import { useAiMemoryMutations } from '../hooks/useAiMemoryMutations.js';
@@ -14,6 +14,8 @@ const CATEGORIES = [
   ['interest', 'Interest'],
   ['other', 'Other'],
 ];
+const MEMORY_LIMIT = 50;
+const EMPTY_MEMORIES = [];
 
 function categoryLabel(category) {
   return CATEGORIES.find(([value]) => value === category)?.[1] ?? 'Other';
@@ -29,6 +31,8 @@ export function AiMemoryPanel({ conversationId, initialDraft, onClose }) {
   const [sourceMessageId, setSourceMessageId] = useState(
     () => initialDraft?.sourceMessageId ?? null,
   );
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [error, setError] = useState('');
 
   function startAdd() {
@@ -99,7 +103,21 @@ export function AiMemoryPanel({ conversationId, initialDraft, onClose }) {
     }
   }
 
-  const memories = memoriesQuery.data ?? [];
+  const memories = memoriesQuery.data ?? EMPTY_MEMORIES;
+  const memoryMode = settingsQuery.data?.memory_mode ?? 'curated';
+  const remainingMemories = Math.max(0, MEMORY_LIMIT - memories.length);
+  const filteredMemories = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return memories.filter((memory) => {
+      const categoryMatches = categoryFilter === 'all' || memory.category === categoryFilter;
+      const searchMatches =
+        normalizedSearch.length === 0 ||
+        memory.content.toLowerCase().includes(normalizedSearch) ||
+        categoryLabel(memory.category).toLowerCase().includes(normalizedSearch);
+      return categoryMatches && searchMatches;
+    });
+  }, [categoryFilter, memories, search]);
+  const canAddMemory = memories.length < MEMORY_LIMIT;
   const busy =
     mutations.create.isPending ||
     mutations.update.isPending ||
@@ -128,10 +146,27 @@ export function AiMemoryPanel({ conversationId, initialDraft, onClose }) {
           </button>
         </header>
 
+        <div className="ai-memory-summary" aria-label="Memory summary">
+          <div>
+            <span>Mode</span>
+            <strong>{memoryMode === 'curated' ? 'Curated' : 'Conversation only'}</strong>
+          </div>
+          <div>
+            <span>Saved</span>
+            <strong>
+              {memories.length} / {MEMORY_LIMIT}
+            </strong>
+          </div>
+          <div>
+            <span>Remaining</span>
+            <strong>{remainingMemories}</strong>
+          </div>
+        </div>
+
         <label className="ai-memory-mode">
           Memory mode
           <select
-            value={settingsQuery.data?.memory_mode ?? 'curated'}
+            value={memoryMode}
             onChange={changeMode}
             disabled={settingsQuery.isPending || mutations.setMode.isPending}
           >
@@ -172,6 +207,7 @@ export function AiMemoryPanel({ conversationId, initialDraft, onClose }) {
                 required
               />
             </label>
+            <p className="ai-memory-counter">{content.length} / 500</p>
             <div className="dialog-actions">
               <button
                 type="button"
@@ -186,12 +222,45 @@ export function AiMemoryPanel({ conversationId, initialDraft, onClose }) {
             </div>
           </form>
         ) : (
-          <button type="button" className="button ai-memory-add" onClick={startAdd}>
+          <button
+            type="button"
+            className="button ai-memory-add"
+            onClick={startAdd}
+            disabled={!canAddMemory}
+          >
             Add memory
           </button>
         )}
 
         <div className="ai-memory-list">
+          {memories.length > 0 ? (
+            <div className="ai-memory-tools">
+              <label>
+                Search memories
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search saved details"
+                />
+              </label>
+              <label>
+                Filter category
+                <select
+                  value={categoryFilter}
+                  onChange={(event) => setCategoryFilter(event.target.value)}
+                >
+                  <option value="all">All categories</option>
+                  {CATEGORIES.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
+
           {memoriesQuery.isPending ? (
             <p>Loading memories…</p>
           ) : memories.length === 0 ? (
@@ -199,9 +268,11 @@ export function AiMemoryPanel({ conversationId, initialDraft, onClose }) {
               No saved memories. Save something you want this AI contact to remember in future
               conversations.
             </p>
+          ) : filteredMemories.length === 0 ? (
+            <p className="ai-memory-empty">No memories match that filter.</p>
           ) : (
             <ul>
-              {memories.map((memory) => (
+              {filteredMemories.map((memory) => (
                 <li key={memory.id}>
                   <div className="ai-memory-body">
                     <span className="ai-memory-category">{categoryLabel(memory.category)}</span>

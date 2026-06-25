@@ -1,6 +1,7 @@
 const ALLOWED_PREFIXES = ['/app', '/onboarding'];
+export const DEFAULT_APP_PATH = '/app/messages';
 
-export function getSafeReturnPath(candidate, fallback = '/app') {
+export function getSafeReturnPath(candidate, fallback = DEFAULT_APP_PATH) {
   if (typeof candidate !== 'string' || !candidate.startsWith('/') || candidate.startsWith('//')) {
     return fallback;
   }
