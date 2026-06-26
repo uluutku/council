@@ -59,6 +59,12 @@ Message bubbles use the Council indigo outgoing color, the web incoming-message 
 and the AI accent surface for assistant messages. The mobile implementation keeps Realtime as a
 refresh hint and continues to reconcile visible state through authoritative RPC reads.
 
+AI conversations use the same direct-chat treatment as human conversations: the header shows the
+actual AI contact or persona name and avatar, the user's message appears immediately using the
+same client id used for backend idempotency, assistant thinking and typing states remain visible
+while the stream is pending, and persisted AI history is rendered in the backend's authoritative
+chronological order.
+
 Background push delivery is represented by the client notification abstraction. Production
 background push still requires Firebase/APNs credentials and a backend dispatch configuration; the
 current verified path is foreground local notification support from Realtime hints.

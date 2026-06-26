@@ -439,10 +439,7 @@ class AiRepository {
         'p_before_id': null,
       },
     );
-    return asJsonMapList(
-      data,
-      'ai messages',
-    ).map(AiMessage.fromJson).toList().reversed.toList();
+    return asJsonMapList(data, 'ai messages').map(AiMessage.fromJson).toList();
   }
 
   Future<AiAccess> getAccess() async {

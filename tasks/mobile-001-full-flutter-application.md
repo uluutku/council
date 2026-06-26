@@ -26,3 +26,6 @@ Follow-up mobile parity fixes:
   appear in the Chats tab under AI chats.
 - Human and AI message bubbles now use Council indigo, neutral incoming surfaces, and AI accent
   surfaces aligned with the web design tokens.
+- AI conversation ordering now follows the backend chronological order without client reversal,
+  and AI sends render an immediate optimistic user bubble plus thinking/typing indicators until
+  the streamed assistant response is reconciled.

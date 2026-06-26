@@ -11,6 +11,7 @@ import '../../../app/theme/council_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../core/networking/ai_sse_parser.dart';
 import '../../../core/persistence/local_store.dart';
+import '../../../core/widgets/chat_background.dart';
 import '../../../core/widgets/common.dart';
 import '../../shared/data/council_repositories.dart';
 import '../../shared/domain/council_models.dart';
@@ -22,6 +23,18 @@ final aiAgentsProvider = FutureProvider<List<AiAgent>>(
 final aiConversationsProvider = FutureProvider<List<AiConversation>>(
   (ref) => ref.watch(aiRepositoryProvider).listConversations(),
 );
+final aiConversationProvider = FutureProvider.family<AiConversation?, String>((
+  ref,
+  id,
+) async {
+  final conversations = await ref
+      .watch(aiRepositoryProvider)
+      .listConversations();
+  for (final conversation in conversations) {
+    if (conversation.id == id) return conversation;
+  }
+  return null;
+});
 final aiMessagesProvider = FutureProvider.family<List<AiMessage>, String>(
   (ref, id) => ref.watch(aiRepositoryProvider).listMessages(id),
 );
@@ -415,6 +428,8 @@ class _AiConversationScreenState extends ConsumerState<AiConversationScreen> {
   final composer = TextEditingController();
   StreamSubscription<AiStreamEvent>? stream;
   String partial = '';
+  String? pendingUserText;
+  String? pendingClientMessageId;
   String? error;
 
   @override
@@ -450,9 +465,18 @@ class _AiConversationScreenState extends ConsumerState<AiConversationScreen> {
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(aiMessagesProvider(widget.conversationId));
+    final conversation = ref.watch(
+      aiConversationProvider(widget.conversationId),
+    );
+    final settings = ref.watch(settingsProvider).value;
+    final generating = stream != null;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI conversation'),
+        titleSpacing: 0,
+        title: AiConversationTitle(
+          conversation: conversation.value,
+          isTyping: generating,
+        ),
         actions: [
           IconButton(
             tooltip: 'Memory',
@@ -480,92 +504,55 @@ class _AiConversationScreenState extends ConsumerState<AiConversationScreen> {
         children: [
           if (error != null) ErrorBanner(error!),
           Expanded(
-            child: messages.when(
-              data: (items) => ListView(
-                padding: const EdgeInsets.all(12),
-                children: [
-                  for (final message in items)
-                    Align(
-                      alignment: message.role == 'user'
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.sizeOf(context).width * 0.86,
-                        ),
-                        child: AiMessageBubble(
+            child: SharedChatBackground(
+              background: settings?.chatBackground ?? 'clean',
+              child: messages.when(
+                data: (items) {
+                  final showPendingUser =
+                      pendingUserText != null &&
+                      !items.any(
+                        (message) =>
+                            message.clientMessageId == pendingClientMessageId,
+                      );
+                  return ListView(
+                    padding: const EdgeInsets.all(12),
+                    children: [
+                      for (final message in items)
+                        AiMessageRow(
                           role: message.role,
                           content: message.content,
                         ),
-                      ),
-                    ),
-                  if (partial.isNotEmpty)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.sizeOf(context).width * 0.86,
+                      if (showPendingUser)
+                        AiMessageRow(
+                          role: 'user',
+                          content: pendingUserText!,
+                          pending: true,
+                          footer: 'Sending',
                         ),
-                        child: AiMessageBubble(
+                      if (generating && partial.isEmpty) const AiTypingRow(),
+                      if (partial.isNotEmpty)
+                        AiMessageRow(
                           role: 'assistant',
                           content: partial,
                           pending: true,
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  );
+                },
+                error: (e, _) => ErrorBanner(AppError.from(e).message),
+                loading: () => const Center(child: CircularProgressIndicator()),
               ),
-              error: (e, _) => ErrorBanner(AppError.from(e).message),
-              loading: () => const Center(child: CircularProgressIndicator()),
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Attach image',
-                    onPressed: () =>
-                        ImagePicker().pickImage(source: ImageSource.gallery),
-                    icon: const Icon(Icons.image_outlined),
-                  ),
-                  IconButton(
-                    tooltip: 'Attach document',
-                    onPressed: () => FilePicker.platform.pickFiles(
-                      type: FileType.custom,
-                      allowedExtensions: const ['pdf', 'txt', 'md', 'markdown'],
-                    ),
-                    icon: const Icon(Icons.description_outlined),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: composer,
-                      minLines: 1,
-                      maxLines: 5,
-                      decoration: const InputDecoration(
-                        hintText: 'Ask this AI contact',
-                      ),
-                    ),
-                  ),
-                  stream == null
-                      ? IconButton.filled(
-                          tooltip: 'Send',
-                          onPressed: _send,
-                          icon: const Icon(Icons.send),
-                        )
-                      : IconButton.filledTonal(
-                          tooltip: 'Stop generation',
-                          onPressed: () {
-                            stream?.cancel();
-                            setState(() => stream = null);
-                          },
-                          icon: const Icon(Icons.stop),
-                        ),
-                ],
-              ),
-            ),
+          if (generating) AiTypingStatus(streaming: partial.isNotEmpty),
+          AiComposerBar(
+            controller: composer,
+            generating: generating,
+            onSend: _send,
+            onStop: () {
+              stream?.cancel();
+              setState(() => stream = null);
+            },
           ),
         ],
       ),
@@ -574,18 +561,21 @@ class _AiConversationScreenState extends ConsumerState<AiConversationScreen> {
 
   void _send() {
     final text = composer.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || stream != null) return;
+    final clientMessageId = const Uuid().v4();
     composer.clear();
     setState(() {
       error = null;
       partial = '';
+      pendingUserText = text;
+      pendingClientMessageId = clientMessageId;
     });
     stream = ref
         .read(aiRepositoryProvider)
         .streamMessage(
           conversationId: widget.conversationId,
           content: text,
-          clientMessageId: const Uuid().v4(),
+          clientMessageId: clientMessageId,
         )
         .listen(
           (event) {
@@ -594,11 +584,16 @@ class _AiConversationScreenState extends ConsumerState<AiConversationScreen> {
               setState(() {
                 stream = null;
                 partial = '';
+                pendingUserText = null;
+                pendingClientMessageId = null;
               });
               ref.invalidate(aiMessagesProvider(widget.conversationId));
+              ref.invalidate(aiConversationProvider(widget.conversationId));
+              ref.invalidate(aiConversationsProvider);
             }
-            if (event is AiStreamError)
+            if (event is AiStreamError) {
               setState(() => error = 'AI generation failed: ${event.category}');
+            }
           },
           onError: (Object e) => setState(() {
             error = AppError.from(e).message;
@@ -609,24 +604,337 @@ class _AiConversationScreenState extends ConsumerState<AiConversationScreen> {
   }
 }
 
-class AiMessageBubble extends StatelessWidget {
-  const AiMessageBubble({
+class AiConversationTitle extends StatelessWidget {
+  const AiConversationTitle({
+    required this.conversation,
+    required this.isTyping,
+    super.key,
+  });
+
+  final AiConversation? conversation;
+  final bool isTyping;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = conversation?.displayName ?? 'Assistant';
+    final custom = conversation?.kind == 'custom';
+    return Row(
+      children: [
+        AiContactAvatar(
+          name: name,
+          avatarKey: conversation?.avatarKey,
+          custom: custom,
+          radius: 18,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(
+                isTyping
+                    ? 'typing...'
+                    : custom
+                    ? 'Custom persona'
+                    : 'AI contact',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: isTyping
+                      ? context.councilColors.aiAccent
+                      : context.councilColors.textSecondary,
+                  fontWeight: isTyping ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class AiContactAvatar extends StatelessWidget {
+  const AiContactAvatar({
+    required this.name,
+    this.avatarKey,
+    this.custom = false,
+    this.radius = 20,
+    super.key,
+  });
+
+  final String name;
+  final String? avatarKey;
+  final bool custom;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.councilColors;
+    final image =
+        avatarKey != null &&
+        (avatarKey!.startsWith('https://') || avatarKey!.startsWith('http://'));
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: custom ? colors.accentSoft : colors.aiAccentSoft,
+      foregroundColor: custom ? colors.messageOutgoing : colors.aiAccent,
+      child: image
+          ? ClipOval(
+              child: Image.network(
+                avatarKey!,
+                width: radius * 2,
+                height: radius * 2,
+                fit: BoxFit.cover,
+              ),
+            )
+          : Text(name.characters.first.toUpperCase()),
+    );
+  }
+}
+
+class AiMessageRow extends StatelessWidget {
+  const AiMessageRow({
     required this.role,
     required this.content,
     this.pending = false,
+    this.footer,
     super.key,
   });
 
   final String role;
   final String content;
   final bool pending;
+  final String? footer;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = role == 'user';
+    return Align(
+      alignment: user ? Alignment.centerRight : Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * (user ? 0.82 : 0.86),
+        ),
+        child: AiMessageBubble(
+          role: role,
+          content: content,
+          pending: pending,
+          footer: footer,
+        ),
+      ),
+    );
+  }
+}
+
+class AiTypingRow extends StatelessWidget {
+  const AiTypingRow({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * 0.72,
+        ),
+        child: const AiTypingBubble(),
+      ),
+    );
+  }
+}
+
+class AiTypingStatus extends StatelessWidget {
+  const AiTypingStatus({required this.streaming, super.key});
+  final bool streaming;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Row(
+        children: [
+          Icon(
+            Icons.auto_awesome,
+            size: 14,
+            color: context.councilColors.aiAccent,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            streaming ? 'Typing...' : 'Thinking...',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: context.councilColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AiComposerBar extends StatelessWidget {
+  const AiComposerBar({
+    required this.controller,
+    required this.generating,
+    required this.onSend,
+    required this.onStop,
+    super.key,
+  });
+
+  final TextEditingController controller;
+  final bool generating;
+  final VoidCallback onSend;
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border.all(
+              color: context.councilColors.border.withValues(alpha: 0.55),
+            ),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Attach image',
+                  onPressed: () =>
+                      ImagePicker().pickImage(source: ImageSource.gallery),
+                  icon: const Icon(Icons.image_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Attach document',
+                  onPressed: () => FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: const ['pdf', 'txt', 'md', 'markdown'],
+                  ),
+                  icon: const Icon(Icons.description_outlined),
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    minLines: 1,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      hintText: 'Message',
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                      contentPadding: EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    textInputAction: TextInputAction.newline,
+                  ),
+                ),
+                generating
+                    ? IconButton.filledTonal(
+                        tooltip: 'Stop generation',
+                        onPressed: onStop,
+                        icon: const Icon(Icons.stop),
+                      )
+                    : IconButton.filled(
+                        tooltip: 'Send',
+                        onPressed: onSend,
+                        icon: const Icon(Icons.send),
+                      ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AiTypingBubble extends StatelessWidget {
+  const AiTypingBubble({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.councilColors;
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: colors.aiAccentSoft,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(8),
+          topRight: Radius.circular(18),
+          bottomLeft: Radius.circular(18),
+          bottomRight: Radius.circular(18),
+        ),
+        border: Border.all(color: colors.aiAccent.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const _TypingDots(),
+          const SizedBox(width: 8),
+          Text(
+            'Thinking...',
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypingDots extends StatelessWidget {
+  const _TypingDots();
+
+  @override
+  Widget build(BuildContext context) {
+    final color = context.councilColors.aiAccent;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var index = 0; index < 3; index += 1)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 1.5),
+            child: Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class AiMessageBubble extends StatelessWidget {
+  const AiMessageBubble({
+    required this.role,
+    required this.content,
+    this.pending = false,
+    this.footer,
+    super.key,
+  });
+
+  final String role;
+  final String content;
+  final bool pending;
+  final String? footer;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.councilColors;
     final user = role == 'user';
     return Opacity(
-      opacity: pending ? 0.72 : 1,
+      opacity: pending ? 0.78 : 1,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -644,15 +952,30 @@ class AiMessageBubble extends StatelessWidget {
                 : colors.aiAccent.withValues(alpha: 0.22),
           ),
         ),
-        child: user
-            ? Text(
-                content,
-                style: TextStyle(
-                  color: colors.messageOutgoingText,
-                  height: 1.45,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            user
+                ? Text(
+                    content,
+                    style: TextStyle(
+                      color: colors.messageOutgoingText,
+                      height: 1.45,
+                    ),
+                  )
+                : SafeMarkdown(content),
+            if (footer != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  footer!,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: user ? Colors.white70 : colors.textTertiary,
+                  ),
                 ),
-              )
-            : SafeMarkdown(content),
+              ),
+          ],
+        ),
       ),
     );
   }

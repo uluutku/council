@@ -72,5 +72,15 @@ void main() {
     expect(conversation.displayName, 'Code Council');
     expect(conversation.avatarKey, 'https://example.test/avatar.png');
     expect(conversation.lastMessageAt, '2026-06-26T00:01:00Z');
+
+    final message = AiMessage.fromJson({
+      'id': 'message-1',
+      'conversation_id': 'conversation-1',
+      'role': 'user',
+      'content': 'Hello',
+      'client_message_id': 'client-1',
+      'created_at': '2026-06-26T00:02:00Z',
+    });
+    expect(message.clientMessageId, 'client-1');
   });
 }

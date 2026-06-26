@@ -303,6 +303,7 @@ class AiMessage {
     required this.role,
     required this.content,
     required this.createdAt,
+    this.clientMessageId,
   });
 
   factory AiMessage.fromJson(JsonMap json) => AiMessage(
@@ -311,6 +312,7 @@ class AiMessage {
     role: requiredString(json, 'role'),
     content: requiredString(json, 'content'),
     createdAt: requiredString(json, 'created_at'),
+    clientMessageId: optionalString(json, 'client_message_id'),
   );
 
   final String id;
@@ -318,6 +320,7 @@ class AiMessage {
   final String role;
   final String content;
   final String createdAt;
+  final String? clientMessageId;
 }
 
 class AiAccess {

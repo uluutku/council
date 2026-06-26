@@ -321,9 +321,14 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     final messages = ref.watch(messagesProvider(widget.conversationId));
     final myId = ref.watch(authUserProvider).value?.id;
     final settings = ref.watch(settingsProvider).value;
+    final conversation = _findConversation(
+      ref.watch(conversationsProvider).value,
+      widget.conversationId,
+    );
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Conversation'),
+        titleSpacing: 0,
+        title: HumanConversationTitle(conversation: conversation),
         actions: [
           IconButton(
             tooltip: 'Mute',
@@ -408,27 +413,47 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             top: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Attach file',
-                    onPressed: _pickAttachment,
-                    icon: const Icon(Icons.attach_file),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border.all(
+                    color: context.councilColors.border.withValues(alpha: 0.55),
                   ),
-                  Expanded(
-                    child: TextField(
-                      controller: composer,
-                      minLines: 1,
-                      maxLines: 5,
-                      decoration: const InputDecoration(hintText: 'Message'),
-                    ),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Attach file',
+                        onPressed: _pickAttachment,
+                        icon: const Icon(Icons.attach_file),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: composer,
+                          minLines: 1,
+                          maxLines: 5,
+                          decoration: const InputDecoration(
+                            hintText: 'Message',
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            filled: false,
+                            contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          textInputAction: TextInputAction.newline,
+                        ),
+                      ),
+                      IconButton.filled(
+                        tooltip: 'Send',
+                        onPressed: _send,
+                        icon: const Icon(Icons.send),
+                      ),
+                    ],
                   ),
-                  IconButton.filled(
-                    tooltip: 'Send',
-                    onPressed: _send,
-                    icon: const Icon(Icons.send),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -533,6 +558,54 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+ConversationSummary? _findConversation(
+  List<ConversationSummary>? conversations,
+  String conversationId,
+) {
+  if (conversations == null) return null;
+  for (final conversation in conversations) {
+    if (conversation.id == conversationId) return conversation;
+  }
+  return null;
+}
+
+class HumanConversationTitle extends StatelessWidget {
+  const HumanConversationTitle({required this.conversation, super.key});
+
+  final ConversationSummary? conversation;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = conversation?.peerLabel ?? 'Contact';
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 18,
+          child: Text(label.characters.first.toUpperCase()),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(
+                'Direct message',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: context.councilColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
