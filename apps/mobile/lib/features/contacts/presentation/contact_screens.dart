@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -101,7 +103,18 @@ class _DiscoverContactsScreenState
     extends ConsumerState<DiscoverContactsScreen> {
   final query = TextEditingController();
   List<Contact> results = const [];
+  Timer? debounce;
   String? error;
+  bool loading = false;
+  String lastQuery = '';
+
+  @override
+  void dispose() {
+    debounce?.cancel();
+    query.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Discover')),
@@ -113,44 +126,100 @@ class _DiscoverContactsScreenState
           controller: query,
           leading: const Icon(Icons.search),
           hintText: 'Search by username',
+          onChanged: _queueSearch,
           onSubmitted: (_) => _search(),
         ),
         const SizedBox(height: 12),
-        FilledButton.tonalIcon(
-          onPressed: _search,
-          icon: const Icon(Icons.search),
-          label: const Text('Search'),
-        ),
+        if (loading) const LinearProgressIndicator(),
+        if (!loading && lastQuery.trim().length < 2)
+          const ListTile(
+            leading: Icon(Icons.person_search),
+            title: Text('Type at least 2 characters'),
+            subtitle: Text('Search is privacy-bounded by the backend.'),
+          ),
+        if (!loading && lastQuery.trim().length >= 2 && results.isEmpty)
+          const ListTile(
+            leading: Icon(Icons.search_off),
+            title: Text('No matching users'),
+            subtitle: Text('Try a username or display name.'),
+          ),
         for (final contact in results)
-          ListTile(
-            leading: CircleAvatar(
-              child: Text(contact.label.characters.first.toUpperCase()),
-            ),
-            title: Text(contact.label),
-            subtitle: Text('@${contact.username}'),
-            trailing: FilledButton.tonal(
-              onPressed: () async {
-                await ref
-                    .read(contactsRepositoryProvider)
-                    .sendRequest(contact.id);
-                if (mounted)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Request sent.')),
-                  );
-              },
-              child: const Text('Request'),
+          Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                child: Text(contact.label.characters.first.toUpperCase()),
+              ),
+              title: Text(contact.label),
+              subtitle: Text(
+                [
+                  '@${contact.username}',
+                  if (contact.statusText?.isNotEmpty == true)
+                    contact.statusText!,
+                ].join('\n'),
+              ),
+              isThreeLine: contact.statusText?.isNotEmpty == true,
+              trailing: FilledButton.tonal(
+                onPressed: () async {
+                  await ref
+                      .read(contactsRepositoryProvider)
+                      .sendRequest(contact.id);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Request sent.')),
+                    );
+                  }
+                },
+                child: const Text('Request'),
+              ),
             ),
           ),
       ],
     ),
   );
 
+  void _queueSearch(String value) {
+    lastQuery = value;
+    debounce?.cancel();
+    if (value.trim().length < 2) {
+      setState(() {
+        results = const [];
+        error = null;
+        loading = false;
+      });
+      return;
+    }
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    debounce = Timer(const Duration(milliseconds: 280), _search);
+  }
+
   Future<void> _search() async {
+    final current = query.text.trim();
+    lastQuery = current;
+    if (current.length < 2) {
+      setState(() {
+        results = const [];
+        loading = false;
+        error = null;
+      });
+      return;
+    }
     try {
-      results = await ref.read(contactsRepositoryProvider).search(query.text);
-      setState(() => error = null);
+      final found = await ref.read(contactsRepositoryProvider).search(current);
+      if (!mounted || current != query.text.trim()) return;
+      setState(() {
+        results = found;
+        error = null;
+        loading = false;
+      });
     } catch (e) {
-      setState(() => error = AppError.from(e).message);
+      if (!mounted) return;
+      setState(() {
+        error = AppError.from(e).message;
+        loading = false;
+      });
     }
   }
 }

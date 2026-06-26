@@ -2,6 +2,9 @@ import 'dart:convert';
 
 import 'package:council_mobile/core/configuration/mobile_environment.dart';
 import 'package:council_mobile/core/networking/ai_sse_parser.dart';
+import 'package:council_mobile/app/theme/council_theme.dart';
+import 'package:council_mobile/features/shared/domain/council_models.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -34,5 +37,40 @@ void main() {
     final parser = AiSseParser();
     parser.add(utf8.encode('data: {"type":"delta","text":"partial"}\n\n'));
     expect(parser.close, throwsFormatException);
+  });
+
+  test('theme settings map to Flutter theme modes', () {
+    expect(CouncilTheme.modeFromSetting('light'), ThemeMode.light);
+    expect(CouncilTheme.modeFromSetting('dark'), ThemeMode.dark);
+    expect(CouncilTheme.modeFromSetting('system'), ThemeMode.system);
+    expect(CouncilTheme.modeFromSetting(null), ThemeMode.system);
+  });
+
+  test('AI agent and conversation mapping preserves public avatar fields', () {
+    final agent = AiAgent.fromJson({
+      'id': 'agent-1',
+      'slug': 'coding-helper',
+      'name': 'Code Council',
+      'description': 'A coding agent',
+      'avatar_key': 'https://example.test/avatar.png',
+      'enabled': true,
+    });
+    expect(agent.slug, 'coding-helper');
+    expect(agent.avatarKey, 'https://example.test/avatar.png');
+
+    final conversation = AiConversation.fromJson({
+      'id': 'conversation-1',
+      'kind': 'builtin',
+      'agent_id': 'agent-1',
+      'display_name': 'Code Council',
+      'description': 'A coding agent',
+      'avatar_key': 'https://example.test/avatar.png',
+      'archived': false,
+      'updated_at': '2026-06-26T00:00:00Z',
+      'last_message_at': '2026-06-26T00:01:00Z',
+    });
+    expect(conversation.displayName, 'Code Council');
+    expect(conversation.avatarKey, 'https://example.test/avatar.png');
+    expect(conversation.lastMessageAt, '2026-06-26T00:01:00Z');
   });
 }

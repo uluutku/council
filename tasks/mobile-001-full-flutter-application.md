@@ -13,3 +13,16 @@ Important decisions:
 - Local mobile data is user-scoped and cleared on sign out.
 - Realtime remains a hint and screen state refreshes through authoritative RPC reads.
 - Production push delivery remains blocked by external Firebase/APNs credentials.
+
+Follow-up mobile parity fixes:
+
+- Theme, privacy, notification, and chat-background settings now read and write the existing
+  `user_settings` row through the same `user_id` contract used by web.
+- The app shell now applies saved theme mode instead of forcing system theme.
+- Discover search now runs live with debounce against the existing profile search RPC.
+- Built-in AI contacts now render as public metadata cards with tone tags, avatar handling, and
+  provider disclosure.
+- AI conversations now preserve backend `avatar_key`, `updated_at`, and `last_message_at`, and
+  appear in the Chats tab under AI chats.
+- Human and AI message bubbles now use Council indigo, neutral incoming surfaces, and AI accent
+  surfaces aligned with the web design tokens.

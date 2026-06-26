@@ -43,6 +43,22 @@ existing `ai-chat` Edge Function. It does not contain service-role keys, OpenRou
 keys, or Firebase service-account credentials. Local drafts and offline text queues are scoped by
 authenticated user id and cleared on sign out.
 
+## Product Behavior
+
+Mobile settings read `user_settings` by the authenticated `user_id`, matching the web frontend and
+RLS model. Theme changes are applied to the Flutter shell from the saved `system`, `light`, or
+`dark` value; chat background preferences drive the conversation surface for `clean`, `grid`,
+`paper`, and `midnight`.
+
+Discover search runs against the existing privacy-bounded profile search RPC as the user types,
+with debouncing and no email exposure. AI contacts render as catalogue cards with the same public
+agent metadata, tone tags, and provider disclosure as web. Started AI histories appear in the
+Chats tab under a separate AI chats section and keep their backend `avatar_key` metadata.
+
+Message bubbles use the Council indigo outgoing color, the web incoming-message neutral surface,
+and the AI accent surface for assistant messages. The mobile implementation keeps Realtime as a
+refresh hint and continues to reconcile visible state through authoritative RPC reads.
+
 Background push delivery is represented by the client notification abstraction. Production
 background push still requires Firebase/APNs credentials and a backend dispatch configuration; the
 current verified path is foreground local notification support from Realtime hints.

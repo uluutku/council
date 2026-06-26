@@ -8,9 +8,11 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../app/theme/council_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../core/persistence/local_store.dart';
 import '../../../core/widgets/common.dart';
+import '../../ai/presentation/ai_screens.dart';
 import '../../shared/data/council_repositories.dart';
 import '../../shared/domain/council_models.dart';
 
@@ -61,6 +63,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   @override
   Widget build(BuildContext context) {
     final conversations = ref.watch(conversationsProvider);
+    final aiConversations = ref.watch(aiConversationsProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chats'),
@@ -97,7 +100,10 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                     InboxFilter.muted => item.isMuted,
                   };
                 }).toList();
-                if (filtered.isEmpty) {
+                final aiItems = filter == InboxFilter.all
+                    ? aiConversations.value ?? const <AiConversation>[]
+                    : const <AiConversation>[];
+                if (filtered.isEmpty && aiItems.isEmpty) {
                   return const EmptyState(
                     icon: Icons.chat_bubble_outline,
                     title: 'No conversations',
@@ -105,43 +111,28 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                   );
                 }
                 return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(conversationsProvider),
-                  child: ListView.separated(
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final item = filtered[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          child: Text(
-                            item.peerLabel.characters.first.toUpperCase(),
-                          ),
+                  onRefresh: () async {
+                    ref.invalidate(conversationsProvider);
+                    ref.invalidate(aiConversationsProvider);
+                  },
+                  child: ListView(
+                    children: [
+                      if (filtered.isNotEmpty)
+                        const _InboxSectionHeader(label: 'Human chats'),
+                      for (final item in filtered)
+                        HumanConversationTile(item: item),
+                      if (aiItems.isNotEmpty)
+                        const _InboxSectionHeader(label: 'AI chats'),
+                      if (aiConversations.isLoading &&
+                          filter == InboxFilter.all)
+                        const LinearProgressIndicator(),
+                      for (final item in aiItems)
+                        AiConversationTile(conversation: item),
+                      if (aiConversations.hasError && filter == InboxFilter.all)
+                        ErrorBanner(
+                          AppError.from(aiConversations.error!).message,
                         ),
-                        title: Text(
-                          item.peerLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          item.preview ?? 'Attachment',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (item.isMuted)
-                              const Icon(
-                                Icons.notifications_off_outlined,
-                                size: 18,
-                              ),
-                            if (item.unreadCount > 0)
-                              Badge(label: Text('${item.unreadCount}')),
-                          ],
-                        ),
-                        onTap: () => context.push('/chats/${item.id}'),
-                      );
-                    },
+                    ],
                   ),
                 );
               },
@@ -151,6 +142,124 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _InboxSectionHeader extends StatelessWidget {
+  const _InboxSectionHeader({required this.label});
+  final String label;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
+    child: Text(
+      label,
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        color: context.councilColors.textSecondary,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+  );
+}
+
+class HumanConversationTile extends StatelessWidget {
+  const HumanConversationTile({required this.item, super.key});
+  final ConversationSummary item;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    leading: CircleAvatar(
+      child: Text(item.peerLabel.characters.first.toUpperCase()),
+    ),
+    title: Text(item.peerLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
+    subtitle: Text(
+      item.preview ?? 'Attachment',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    ),
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (item.isMuted)
+          const Icon(Icons.notifications_off_outlined, size: 18),
+        if (item.unreadCount > 0) Badge(label: Text('${item.unreadCount}')),
+      ],
+    ),
+    onTap: () => context.push('/chats/${item.id}'),
+  );
+}
+
+class AiConversationTile extends StatelessWidget {
+  const AiConversationTile({required this.conversation, super.key});
+  final AiConversation conversation;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.councilColors;
+    final kind = conversation.kind == 'custom' ? 'Custom' : 'AI';
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: conversation.kind == 'custom'
+            ? colors.accentSoft
+            : colors.aiAccentSoft,
+        foregroundColor: conversation.kind == 'custom'
+            ? colors.messageOutgoing
+            : colors.aiAccent,
+        child:
+            conversation.avatarKey != null &&
+                (conversation.avatarKey!.startsWith('https://') ||
+                    conversation.avatarKey!.startsWith('http://'))
+            ? ClipOval(
+                child: Image.network(
+                  conversation.avatarKey!,
+                  width: 40,
+                  height: 40,
+                  fit: BoxFit.cover,
+                ),
+              )
+            : Text(conversation.displayName.characters.first.toUpperCase()),
+      ),
+      title: Text(
+        conversation.displayName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Row(
+        children: [
+          Expanded(
+            child: Text(
+              conversation.description?.trim().isNotEmpty == true
+                  ? conversation.description!.trim()
+                  : 'Online',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: conversation.kind == 'custom'
+                  ? colors.accentSoft
+                  : colors.aiAccentSoft,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              child: Text(
+                kind,
+                style: TextStyle(
+                  color: conversation.kind == 'custom'
+                      ? colors.messageOutgoing
+                      : colors.aiAccent,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      onTap: () => context.push('/ai/${conversation.id}'),
     );
   }
 }
@@ -211,6 +320,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   Widget build(BuildContext context) {
     final messages = ref.watch(messagesProvider(widget.conversationId));
     final myId = ref.watch(authUserProvider).value?.id;
+    final settings = ref.watch(settingsProvider).value;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Conversation'),
@@ -244,95 +354,44 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         children: [
           if (error != null) ErrorBanner(error!),
           Expanded(
-            child: messages.when(
-              data: (items) {
-                if (items.isNotEmpty) {
-                  unawaited(
-                    ref
-                        .read(messagingRepositoryProvider)
-                        .markRead(widget.conversationId, items.last.sequence),
-                  );
-                }
-                return ListView.builder(
-                  reverse: false,
-                  padding: const EdgeInsets.all(12),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final message = items[index];
-                    final mine = message.senderUserId == myId;
-                    return Align(
-                      alignment: mine
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: GestureDetector(
-                        onLongPress: () => _showMessageActions(message),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: MediaQuery.sizeOf(context).width * 0.78,
-                          ),
-                          child: Card(
-                            color: mine
-                                ? Theme.of(context).colorScheme.primary
-                                : null,
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (message.isDeleted)
-                                    Text(
-                                      'Message deleted',
-                                      style: TextStyle(
-                                        color: mine ? Colors.white70 : null,
-                                      ),
-                                    )
-                                  else ...[
-                                    if (message.replyToMessageId != null)
-                                      Text(
-                                        'Reply',
-                                        style: TextStyle(
-                                          color: mine ? Colors.white70 : null,
-                                        ),
-                                      ),
-                                    if (message.content != null)
-                                      Text(
-                                        message.content!,
-                                        style: TextStyle(
-                                          color: mine ? Colors.white : null,
-                                        ),
-                                      ),
-                                    for (final attachment
-                                        in message.attachments)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 6),
-                                        child: Chip(
-                                          avatar: const Icon(
-                                            Icons.attach_file,
-                                            size: 16,
-                                          ),
-                                          label: Text(attachment.filename),
-                                        ),
-                                      ),
-                                  ],
-                                  if (message.editedAt != null)
-                                    Text(
-                                      'Edited',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.labelSmall,
-                                    ),
-                                ],
-                              ),
+            child: ChatBackground(
+              background: settings?.chatBackground ?? 'clean',
+              child: messages.when(
+                data: (items) {
+                  if (items.isNotEmpty) {
+                    unawaited(
+                      ref
+                          .read(messagingRepositoryProvider)
+                          .markRead(widget.conversationId, items.last.sequence),
+                    );
+                  }
+                  return ListView.builder(
+                    reverse: false,
+                    padding: const EdgeInsets.all(12),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final message = items[index];
+                      final mine = message.senderUserId == myId;
+                      return Align(
+                        alignment: mine
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: GestureDetector(
+                          onLongPress: () => _showMessageActions(message),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: MediaQuery.sizeOf(context).width * 0.78,
                             ),
+                            child: MessageBubble(message: message, mine: mine),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
-              error: (error, _) => ErrorBanner(AppError.from(error).message),
-              loading: () => const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                  );
+                },
+                error: (error, _) => ErrorBanner(AppError.from(error).message),
+                loading: () => const Center(child: CircularProgressIndicator()),
+              ),
             ),
           ),
           if (replyTo != null)
@@ -473,6 +532,155 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class ChatBackground extends StatelessWidget {
+  const ChatBackground({
+    required this.background,
+    required this.child,
+    super.key,
+  });
+  final String background;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final base = switch ((background, dark)) {
+      ('midnight', true) => const Color(0xFF030405),
+      ('midnight', false) => const Color(0xFFF2F3F8),
+      ('grid', true) => const Color(0xFF07090D),
+      ('grid', false) => const Color(0xFFF9F8FF),
+      ('paper', true) => const Color(0xFF080A0E),
+      ('paper', false) => const Color(0xFFFBFAFF),
+      _ => Theme.of(context).colorScheme.surface,
+    };
+    return DecoratedBox(
+      decoration: BoxDecoration(color: base),
+      child: CustomPaint(
+        painter: _ChatBackgroundPainter(background: background, dark: dark),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _ChatBackgroundPainter extends CustomPainter {
+  const _ChatBackgroundPainter({required this.background, required this.dark});
+  final String background;
+  final bool dark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..strokeWidth = 1
+      ..color = (dark ? Colors.white : const Color(0xFF3525CD)).withValues(
+        alpha: dark ? 0.07 : 0.055,
+      );
+    if (background == 'grid' || background == 'midnight') {
+      const step = 32.0;
+      for (var x = 0.0; x < size.width; x += step) {
+        canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+      }
+      for (var y = 0.0; y < size.height; y += step) {
+        canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+      }
+    }
+    if (background == 'paper') {
+      paint.color = (dark ? Colors.white : const Color(0xFF777587)).withValues(
+        alpha: dark ? 0.045 : 0.08,
+      );
+      for (var y = 22.0; y < size.height; y += 28) {
+        canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ChatBackgroundPainter oldDelegate) {
+    return oldDelegate.background != background || oldDelegate.dark != dark;
+  }
+}
+
+class MessageBubble extends StatelessWidget {
+  const MessageBubble({required this.message, required this.mine, super.key});
+  final Message message;
+  final bool mine;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.councilColors;
+    final textColor = mine
+        ? colors.messageOutgoingText
+        : Theme.of(context).colorScheme.onSurface;
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+      decoration: BoxDecoration(
+        color: mine ? colors.messageOutgoing : colors.messageIncoming,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(mine ? 18 : 8),
+          topRight: Radius.circular(mine ? 8 : 18),
+          bottomLeft: const Radius.circular(18),
+          bottomRight: const Radius.circular(18),
+        ),
+        border: Border.all(
+          color: mine ? colors.messageOutgoing : colors.messageIncomingBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (message.isDeleted)
+            Text(
+              'Message deleted',
+              style: TextStyle(
+                color: mine ? Colors.white70 : colors.textTertiary,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else ...[
+            if (message.replyToMessageId != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  'Reply',
+                  style: TextStyle(
+                    color: mine ? Colors.white70 : colors.textTertiary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            if (message.content != null)
+              Text(
+                message.content!,
+                style: TextStyle(color: textColor, height: 1.45),
+              ),
+            for (final attachment in message.attachments)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Chip(
+                  avatar: const Icon(Icons.attach_file, size: 16),
+                  label: Text(attachment.filename),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+          ],
+          if (message.editedAt != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Edited',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: mine ? Colors.white70 : colors.textTertiary,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

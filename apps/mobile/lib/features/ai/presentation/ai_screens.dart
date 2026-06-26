@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../app/theme/council_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../core/networking/ai_sse_parser.dart';
 import '../../../core/persistence/local_store.dart';
@@ -77,24 +78,15 @@ class AiHomeScreen extends ConsumerWidget {
               data: (items) => Column(
                 children: items
                     .map(
-                      (agent) => Card(
-                        child: ListTile(
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.auto_awesome),
-                          ),
-                          title: Text(agent.name),
-                          subtitle: Text(
-                            '${agent.description}\nProvider processed when you send.',
-                          ),
-                          isThreeLine: true,
-                          onTap: () async {
-                            final convo = await ref
-                                .read(aiRepositoryProvider)
-                                .openConversation(agentId: agent.id);
-                            if (context.mounted)
-                              context.push('/ai/${convo.id}');
-                          },
-                        ),
+                      (agent) => AiAgentCatalogueCard(
+                        agent: agent,
+                        onOpen: () async {
+                          final convo = await ref
+                              .read(aiRepositoryProvider)
+                              .openConversation(agentId: agent.id);
+                          ref.invalidate(aiConversationsProvider);
+                          if (context.mounted) context.push('/ai/${convo.id}');
+                        },
                       ),
                     )
                     .toList(),
@@ -132,6 +124,7 @@ class AiHomeScreen extends ConsumerWidget {
                                   final convo = await ref
                                       .read(aiRepositoryProvider)
                                       .openConversation(personaId: persona.id);
+                                  ref.invalidate(aiConversationsProvider);
                                   if (context.mounted)
                                     context.push('/ai/${convo.id}');
                                 },
@@ -149,6 +142,266 @@ class AiHomeScreen extends ConsumerWidget {
     );
   }
 }
+
+class AiAgentCatalogueCard extends StatelessWidget {
+  const AiAgentCatalogueCard({
+    required this.agent,
+    required this.onOpen,
+    super.key,
+  });
+
+  final AiAgent agent;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = _agentTone(agent);
+    final tags = _agentTags(tone);
+    final colors = context.councilColors;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 3 / 2,
+            child: _AgentMedia(agent: agent, tone: tone),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        agent.name,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: colors.aiAccentSoft,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: colors.aiAccent.withValues(alpha: 0.22),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        child: Text(
+                          'AI',
+                          style: TextStyle(
+                            color: colors.aiAccent,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  agent.description,
+                  style: TextStyle(color: colors.textSecondary, height: 1.35),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final tag in tags)
+                      Chip(
+                        label: Text(tag),
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: tag == tags.first
+                            ? colors.accentSoft
+                            : colors.surfaceMuted,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: onOpen,
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: const Text('Open chat'),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Provider processed only when you send.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AgentMedia extends StatelessWidget {
+  const _AgentMedia({required this.agent, required this.tone});
+  final AiAgent agent;
+  final _AgentTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.councilColors;
+    final stops = switch (tone) {
+      _AgentTone.creative => const [
+        Color(0xFFEADDFF),
+        Color(0xFFF3F2FF),
+        Colors.white,
+      ],
+      _AgentTone.study => const [
+        Color(0xFFDBE1FF),
+        Color(0xFFF3F2FF),
+        Colors.white,
+      ],
+      _AgentTone.code => const [
+        Color(0xFFE1E1F0),
+        Color(0xFFF3F2FF),
+        Colors.white,
+      ],
+      _AgentTone.research => const [
+        Color(0xFFDBE1FF),
+        Color(0xFFE2DFFF),
+        Colors.white,
+      ],
+      _AgentTone.general => [
+        colors.accentSoft,
+        colors.surfaceMuted,
+        Colors.white,
+      ],
+    };
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: stops,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.78),
+                shape: BoxShape.circle,
+                border: Border.all(color: colors.border.withValues(alpha: 0.5)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 32,
+                    offset: const Offset(0, 16),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: _AgentPortrait(agent: agent),
+            ),
+          ),
+          Positioned(
+            top: 10,
+            right: 10,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.66)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.auto_awesome, size: 13, color: colors.aiAccent),
+                    const SizedBox(width: 4),
+                    Text(
+                      'AI',
+                      style: TextStyle(
+                        color: colors.aiAccent,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AgentPortrait extends StatelessWidget {
+  const _AgentPortrait({required this.agent});
+  final AiAgent agent;
+
+  @override
+  Widget build(BuildContext context) {
+    final avatar = agent.avatarKey;
+    if (avatar != null &&
+        (avatar.startsWith('https://') || avatar.startsWith('http://'))) {
+      return Image.network(avatar, fit: BoxFit.cover);
+    }
+    return Center(
+      child: Text(
+        agent.name.characters.first.toUpperCase(),
+        style: TextStyle(
+          color: context.councilColors.aiAccent,
+          fontSize: 34,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+enum _AgentTone { creative, study, code, research, general }
+
+_AgentTone _agentTone(AiAgent agent) {
+  final text = '${agent.slug} ${agent.name} ${agent.description}'.toLowerCase();
+  if (text.contains('writing') || text.contains('editor')) {
+    return _AgentTone.creative;
+  }
+  if (text.contains('study') ||
+      text.contains('coach') ||
+      text.contains('learn')) {
+    return _AgentTone.study;
+  }
+  if (text.contains('code') ||
+      text.contains('coding') ||
+      text.contains('developer')) {
+    return _AgentTone.code;
+  }
+  if (text.contains('research') || text.contains('fact')) {
+    return _AgentTone.research;
+  }
+  return _AgentTone.general;
+}
+
+List<String> _agentTags(_AgentTone tone) => switch (tone) {
+  _AgentTone.creative => const ['Creative', 'Precise'],
+  _AgentTone.study => const ['Educational', 'Patient'],
+  _AgentTone.code => const ['Technical', 'Logic'],
+  _AgentTone.research => const ['Research', 'Verified'],
+  _AgentTone.general => const ['Generalist', 'Fast'],
+};
 
 class AiConversationScreen extends ConsumerStatefulWidget {
   const AiConversationScreen({required this.conversationId, super.key});
@@ -240,21 +493,24 @@ class _AiConversationScreenState extends ConsumerState<AiConversationScreen> {
                         constraints: BoxConstraints(
                           maxWidth: MediaQuery.sizeOf(context).width * 0.86,
                         ),
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: message.role == 'assistant'
-                                ? SafeMarkdown(message.content)
-                                : Text(message.content),
-                          ),
+                        child: AiMessageBubble(
+                          role: message.role,
+                          content: message.content,
                         ),
                       ),
                     ),
                   if (partial.isNotEmpty)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: SafeMarkdown(partial),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width * 0.86,
+                        ),
+                        child: AiMessageBubble(
+                          role: 'assistant',
+                          content: partial,
+                          pending: true,
+                        ),
                       ),
                     ),
                 ],
@@ -350,6 +606,55 @@ class _AiConversationScreenState extends ConsumerState<AiConversationScreen> {
           }),
           onDone: () => setState(() => stream = null),
         );
+  }
+}
+
+class AiMessageBubble extends StatelessWidget {
+  const AiMessageBubble({
+    required this.role,
+    required this.content,
+    this.pending = false,
+    super.key,
+  });
+
+  final String role;
+  final String content;
+  final bool pending;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.councilColors;
+    final user = role == 'user';
+    return Opacity(
+      opacity: pending ? 0.72 : 1,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: user ? colors.messageOutgoing : colors.aiAccentSoft,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(user ? 18 : 8),
+            topRight: Radius.circular(user ? 8 : 18),
+            bottomLeft: const Radius.circular(18),
+            bottomRight: const Radius.circular(18),
+          ),
+          border: Border.all(
+            color: user
+                ? colors.messageOutgoing
+                : colors.aiAccent.withValues(alpha: 0.22),
+          ),
+        ),
+        child: user
+            ? Text(
+                content,
+                style: TextStyle(
+                  color: colors.messageOutgoingText,
+                  height: 1.45,
+                ),
+              )
+            : SafeMarkdown(content),
+      ),
+    );
   }
 }
 

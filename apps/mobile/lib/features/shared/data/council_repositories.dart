@@ -126,12 +126,26 @@ class AccountRepository {
     final userId = client.auth.currentUser?.id;
     if (userId == null)
       throw const AppError(AppErrorKind.authenticationRequired, 'Sign in.');
-    final data = await client
-        .from('user_settings')
-        .select()
-        .eq('id', userId)
-        .single();
-    return UserSettings.fromJson(asJsonMap(data, 'settings'));
+    Object? lastError;
+    for (var attempt = 0; attempt < 4; attempt += 1) {
+      try {
+        final data = await client
+            .from('user_settings')
+            .select()
+            .eq('user_id', userId)
+            .maybeSingle();
+        if (data != null)
+          return UserSettings.fromJson(asJsonMap(data, 'settings'));
+      } catch (error) {
+        lastError = error;
+      }
+      await Future<void>.delayed(Duration(milliseconds: 150 * (1 << attempt)));
+    }
+    if (lastError != null) throw AppError.from(lastError);
+    throw const AppError(
+      AppErrorKind.unavailable,
+      'Settings are not ready yet.',
+    );
   }
 
   Future<Profile> setProfile({

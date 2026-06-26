@@ -33,19 +33,24 @@ class ProfileScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 24),
+            Text('Settings', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
             ListTile(
               leading: const Icon(Icons.palette_outlined),
               title: const Text('Appearance'),
+              subtitle: const Text('Theme and chat background'),
               onTap: () => context.push('/profile/appearance'),
             ),
             ListTile(
               leading: const Icon(Icons.visibility_outlined),
               title: const Text('Privacy'),
+              subtitle: const Text('Online and last-seen visibility'),
               onTap: () => context.push('/profile/privacy'),
             ),
             ListTile(
               leading: const Icon(Icons.notifications_outlined),
               title: const Text('Notifications'),
+              subtitle: const Text('Previews, sound, and permission state'),
               onTap: () => context.push('/profile/notifications'),
             ),
             ListTile(
@@ -84,90 +89,150 @@ class AppearanceSettingsScreen extends ConsumerWidget {
   const AppearanceSettingsScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+    final currentTheme = settings.value?.theme ?? 'system';
+    final currentBackground = settings.value?.chatBackground ?? 'clean';
     return SettingsScaffold(
       title: 'Appearance',
       children: [
+        if (settings.isLoading) const LinearProgressIndicator(),
+        Text('Theme', style: Theme.of(context).textTheme.titleMedium),
         for (final theme in ['system', 'light', 'dark'])
-          ListTile(
-            title: Text(theme),
-            leading: const Icon(Icons.brightness_6_outlined),
-            onTap: () async {
-              await ref
-                  .read(accountRepositoryProvider)
-                  .updateSettings(theme: theme);
-              ref.invalidate(settingsProvider);
-            },
+          RadioListTile<String>(
+            value: theme,
+            groupValue: currentTheme,
+            title: Text(_settingLabel(theme)),
+            secondary: Icon(_themeIcon(theme)),
+            onChanged: (value) => _updateTheme(ref, value),
           ),
         const Divider(),
+        Text('Chat background', style: Theme.of(context).textTheme.titleMedium),
         for (final background in ['clean', 'grid', 'paper', 'midnight'])
-          ListTile(
-            title: Text(background),
-            leading: const Icon(Icons.wallpaper_outlined),
-            onTap: () async {
-              await ref
-                  .read(accountRepositoryProvider)
-                  .updateSettings(appearance: {'chat_background': background});
-              ref.invalidate(settingsProvider);
-            },
+          RadioListTile<String>(
+            value: background,
+            groupValue: currentBackground,
+            title: Text(_settingLabel(background)),
+            subtitle: Text(_backgroundDescription(background)),
+            secondary: const Icon(Icons.wallpaper_outlined),
+            onChanged: (value) => _updateBackground(ref, value),
           ),
       ],
     );
   }
+
+  static Future<void> _updateTheme(WidgetRef ref, String? theme) async {
+    if (theme == null) return;
+    await ref.read(accountRepositoryProvider).updateSettings(theme: theme);
+    ref.invalidate(settingsProvider);
+  }
+
+  static Future<void> _updateBackground(
+    WidgetRef ref,
+    String? background,
+  ) async {
+    if (background == null) return;
+    await ref
+        .read(accountRepositoryProvider)
+        .updateSettings(appearance: {'chat_background': background});
+    ref.invalidate(settingsProvider);
+  }
+
+  static IconData _themeIcon(String theme) => switch (theme) {
+    'light' => Icons.light_mode_outlined,
+    'dark' => Icons.dark_mode_outlined,
+    _ => Icons.brightness_auto_outlined,
+  };
+
+  static String _backgroundDescription(String background) =>
+      switch (background) {
+        'grid' => 'Subtle Council grid',
+        'paper' => 'Soft paper texture',
+        'midnight' => 'Deep low-light surface',
+        _ => 'Clean elevated surface',
+      };
 }
 
 class PrivacySettingsScreen extends ConsumerWidget {
   const PrivacySettingsScreen({super.key});
   @override
-  Widget build(BuildContext context, WidgetRef ref) => SettingsScaffold(
-    title: 'Privacy',
-    children: [
-      SwitchListTile(
-        value: true,
-        onChanged: (value) => ref
-            .read(accountRepositoryProvider)
-            .updateSettings(privacy: {'show_online_status': value}),
-        title: const Text('Show online status'),
-      ),
-      SwitchListTile(
-        value: true,
-        onChanged: (value) => ref
-            .read(accountRepositoryProvider)
-            .updateSettings(privacy: {'show_last_seen': value}),
-        title: const Text('Show last seen'),
-      ),
-    ],
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+    final privacy = settings.value?.privacyPreferences ?? const {};
+    final showOnline = _boolSetting(privacy, 'show_online_status', true);
+    final showLastSeen = _boolSetting(privacy, 'show_last_seen', true);
+    return SettingsScaffold(
+      title: 'Privacy',
+      children: [
+        if (settings.isLoading) const LinearProgressIndicator(),
+        SwitchListTile(
+          value: showOnline,
+          onChanged: (value) =>
+              _updatePrivacy(ref, {'show_online_status': value}),
+          title: const Text('Show online status'),
+          subtitle: const Text('Controls presence visibility where allowed.'),
+        ),
+        SwitchListTile(
+          value: showLastSeen,
+          onChanged: (value) => _updatePrivacy(ref, {'show_last_seen': value}),
+          title: const Text('Show last seen'),
+          subtitle: const Text('Keeps last-seen private when disabled.'),
+        ),
+      ],
+    );
+  }
+
+  static Future<void> _updatePrivacy(
+    WidgetRef ref,
+    Map<String, dynamic> value,
+  ) async {
+    await ref.read(accountRepositoryProvider).updateSettings(privacy: value);
+    ref.invalidate(settingsProvider);
+  }
 }
 
 class NotificationSettingsScreen extends ConsumerWidget {
   const NotificationSettingsScreen({super.key});
   @override
-  Widget build(BuildContext context, WidgetRef ref) => SettingsScaffold(
-    title: 'Notifications',
-    children: [
-      SwitchListTile(
-        value: true,
-        onChanged: (value) => ref
-            .read(accountRepositoryProvider)
-            .updateSettings(notifications: {'message_notifications': value}),
-        title: const Text('Message notifications'),
-      ),
-      SwitchListTile(
-        value: true,
-        onChanged: (value) => ref
-            .read(accountRepositoryProvider)
-            .updateSettings(notifications: {'message_previews': value}),
-        title: const Text('Message previews'),
-      ),
-      SwitchListTile(
-        value: true,
-        onChanged: (value) => ref
-            .read(accountRepositoryProvider)
-            .updateSettings(notifications: {'sound': value}),
-        title: const Text('Sound'),
-      ),
-    ],
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+    final notifications = settings.value?.notificationPreferences ?? const {};
+    return SettingsScaffold(
+      title: 'Notifications',
+      children: [
+        if (settings.isLoading) const LinearProgressIndicator(),
+        SwitchListTile(
+          value: _boolSetting(notifications, 'message_notifications', true),
+          onChanged: (value) =>
+              _updateNotifications(ref, {'message_notifications': value}),
+          title: const Text('Message notifications'),
+        ),
+        SwitchListTile(
+          value: _boolSetting(notifications, 'message_previews', false),
+          onChanged: (value) =>
+              _updateNotifications(ref, {'message_previews': value}),
+          title: const Text('Message previews'),
+          subtitle: const Text(
+            'When disabled, notifications use generic text.',
+          ),
+        ),
+        SwitchListTile(
+          value: _boolSetting(notifications, 'sound', true),
+          onChanged: (value) => _updateNotifications(ref, {'sound': value}),
+          title: const Text('Sound'),
+        ),
+      ],
+    );
+  }
+
+  static Future<void> _updateNotifications(
+    WidgetRef ref,
+    Map<String, dynamic> value,
+  ) async {
+    await ref
+        .read(accountRepositoryProvider)
+        .updateSettings(notifications: value);
+    ref.invalidate(settingsProvider);
+  }
 }
 
 class AccessSettingsScreen extends ConsumerStatefulWidget {
@@ -175,6 +240,16 @@ class AccessSettingsScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<AccessSettingsScreen> createState() =>
       _AccessSettingsScreenState();
+}
+
+bool _boolSetting(Map<String, dynamic> source, String key, bool fallback) {
+  final value = source[key];
+  return value is bool ? value : fallback;
+}
+
+String _settingLabel(String value) {
+  if (value.isEmpty) return value;
+  return '${value.characters.first.toUpperCase()}${value.substring(1)}';
 }
 
 class _AccessSettingsScreenState extends ConsumerState<AccessSettingsScreen> {

@@ -230,6 +230,7 @@ class Message {
 class AiAgent {
   const AiAgent({
     required this.id,
+    required this.slug,
     required this.name,
     required this.description,
     required this.enabled,
@@ -238,6 +239,7 @@ class AiAgent {
 
   factory AiAgent.fromJson(JsonMap json) => AiAgent(
     id: requiredString(json, 'id'),
+    slug: optionalString(json, 'slug') ?? '',
     name: requiredString(json, 'name'),
     description: optionalString(json, 'description') ?? '',
     avatarKey: optionalString(json, 'avatar_key'),
@@ -245,6 +247,7 @@ class AiAgent {
   );
 
   final String id;
+  final String slug;
   final String name;
   final String description;
   final String? avatarKey;
@@ -258,27 +261,39 @@ class AiConversation {
     required this.displayName,
     required this.archived,
     this.description,
+    this.avatarKey,
     this.agentId,
     this.personaId,
+    this.updatedAt,
+    this.lastMessageAt,
   });
 
   factory AiConversation.fromJson(JsonMap json) => AiConversation(
     id: requiredString(json, 'id'),
-    kind: requiredString(json, 'kind'),
-    displayName: requiredString(json, 'display_name'),
+    kind: optionalString(json, 'kind') ?? 'builtin',
+    displayName:
+        optionalString(json, 'display_name') ??
+        optionalString(json, 'agent_name') ??
+        'Assistant',
     description: optionalString(json, 'description'),
-    archived: requiredBool(json, 'archived'),
+    avatarKey: optionalString(json, 'avatar_key'),
+    archived: (json['archived'] as bool?) ?? false,
     agentId: optionalString(json, 'agent_id'),
     personaId: optionalString(json, 'persona_id'),
+    updatedAt: optionalString(json, 'updated_at'),
+    lastMessageAt: optionalString(json, 'last_message_at'),
   );
 
   final String id;
   final String kind;
   final String displayName;
   final String? description;
+  final String? avatarKey;
   final bool archived;
   final String? agentId;
   final String? personaId;
+  final String? updatedAt;
+  final String? lastMessageAt;
 }
 
 class AiMessage {
