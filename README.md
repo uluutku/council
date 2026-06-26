@@ -3,8 +3,9 @@
 ![Node](https://img.shields.io/badge/node-%3E%3D22-3c873a)
 ![License](https://img.shields.io/badge/license-source--available-blue)
 
-Council is a private web messenger for conversations with people and AI contacts. Human and AI
-contacts share one clear interface while remaining visibly distinct.
+Council is a private messenger for conversations with people and AI contacts. Human and AI
+contacts share one clear interface while remaining visibly distinct. The repository contains the
+React web app and a Flutter mobile app for Android and iOS.
 
 The application is built with a conservative security model. Connections are encrypted in
 transit, stored data is protected at rest by the platform, files use private storage, and
@@ -76,6 +77,7 @@ requested AI features. Council therefore does not claim end-to-end encryption. S
 ## Technology
 
 - React, Vite, React Router, TanStack Query, and Zustand
+- Flutter and Dart mobile client in `apps/mobile`
 - JavaScript with JSDoc at trust boundaries
 - Shared Zod schemas for runtime validation
 - Supabase Auth, PostgreSQL, Realtime, Storage, and Edge Functions
@@ -156,6 +158,7 @@ a remote project. Only cryptographic hashes are stored. Each plaintext code is d
 | `npm run test:ai-edge`        | Run AI Edge Function tests                                      |
 | `npm run db:test`             | Run pgTAP database tests                                        |
 | `npm run supabase:reset`      | Recreate the local database from migrations                     |
+| `npm run mobile:verify`       | Run local Flutter mobile verification                           |
 
 ## Verification
 
@@ -176,6 +179,7 @@ explicitly confirmed.
 
 ```text
 apps/web/          React application and browser tests
+apps/mobile/       Flutter Android and iOS application
 packages/schemas/  Shared runtime validation
 supabase/          Migrations, Edge Functions, and pgTAP tests
 docs/              Product, architecture, security, and runtime documentation

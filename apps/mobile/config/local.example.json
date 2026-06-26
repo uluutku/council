@@ -1,0 +1,6 @@
+{
+  "APP_ENV": "local",
+  "SUPABASE_URL": "http://127.0.0.1:54321",
+  "SUPABASE_ANON_KEY": "LOCAL_PUBLIC_ANON_KEY",
+  "AI_FUNCTION_URL": "http://127.0.0.1:54321/functions/v1/ai-chat"
+}

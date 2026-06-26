@@ -12,12 +12,18 @@ the authority for those decisions.
 
 ## Secret management
 
-The browser may receive only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The Supabase anon
-key is public by design and does not replace RLS.
+The browser may receive only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The mobile app may
+receive only `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `AI_FUNCTION_URL`, and non-secret environment
+selectors through Dart defines. The Supabase anon key is public by design and does not replace RLS.
 
 `OPENROUTER_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_DB_URL` are server-only. They must
-live in local server secret files or deployment secret stores, never in Vite variables, source
-control, browser bundles, logs, or client responses.
+live in local server secret files or deployment secret stores, never in Vite variables, Dart
+defines, source control, browser/mobile bundles, logs, or client responses.
+
+Mobile local storage is user-scoped. Drafts, offline text-send queue entries, and notification
+deduplication state are cleared on sign out. The mobile app must not persist signed URLs, message
+attachment bytes, provider prompts, memories, access tokens, or service credentials in ordinary
+preferences.
 
 ## Database and storage
 

@@ -5,15 +5,20 @@
 ```mermaid
 flowchart LR
   User[Browser user]
+  MobileUser[Mobile user]
   Web[Council React web app]
+  Mobile[Council Flutter mobile app]
   Supabase[Supabase platform]
   Edge[Supabase Edge Functions]
   OpenRouter[OpenRouter]
   Models[DeepSeek and vision model]
 
   User --> Web
+  MobileUser --> Mobile
   Web -->|Public anon credential + user session| Supabase
+  Mobile -->|Public anon credential + user session| Supabase
   Web -->|Authenticated requests| Edge
+  Mobile -->|Authenticated native requests| Edge
   Edge -->|Service-side data access| Supabase
   Edge -->|Application-owned credential| OpenRouter
   OpenRouter --> Models
@@ -50,6 +55,8 @@ the current runtime.
 ## Repository architecture
 
 - `apps/web` owns the responsive React application, routes, browser integration, and web tests.
+- `apps/mobile` owns the Flutter Android/iOS application, native routing, mobile storage, local
+  notifications, and mobile tests.
 - `packages/schemas` owns environment-neutral Zod schemas shared at runtime boundaries.
 - `supabase` owns local service configuration, immutable migrations, Edge Functions, and pgTAP
   tests.
@@ -62,6 +69,10 @@ locked frontend language while ESLint, runtime validation, and tests provide gua
 Supabase Edge Functions may use TypeScript because Deno supports it directly and server
 boundaries benefit from static checking. Shared schemas remain JavaScript so both environments can
 consume them without a compilation step.
+
+The mobile application uses Dart with Riverpod, go_router, Supabase Flutter, typed model mapping,
+strict SSE parsing, and local user-scoped persistence for drafts and offline text sends. It calls
+the same RPCs, Storage buckets, Realtime topics, and `ai-chat` Edge Function as the web app.
 
 ## Runtime flow
 

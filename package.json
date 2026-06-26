@@ -36,7 +36,18 @@
     "supabase:stop": "node scripts/supabase.mjs stop",
     "supabase:status": "node scripts/supabase.mjs status",
     "supabase:reset": "node scripts/supabase.mjs db reset",
-    "db:test": "node scripts/supabase.mjs test db"
+    "db:test": "node scripts/supabase.mjs test db",
+    "mobile:get": "flutter pub get --directory apps/mobile",
+    "mobile:analyze": "flutter analyze apps/mobile",
+    "mobile:format": "dart format --output=none --set-exit-if-changed apps/mobile",
+    "mobile:test": "flutter test apps/mobile",
+    "mobile:run": "flutter run --directory apps/mobile --dart-define-from-file=apps/mobile/config/local.json",
+    "mobile:run:android": "flutter run --directory apps/mobile -d android --dart-define-from-file=apps/mobile/config/local.json",
+    "mobile:run:ios": "flutter run --directory apps/mobile -d ios --dart-define-from-file=apps/mobile/config/local.json",
+    "mobile:build:android": "flutter build apk --debug --directory apps/mobile --dart-define-from-file=apps/mobile/config/local.json",
+    "mobile:build:ios": "flutter build ios --simulator --no-codesign --directory apps/mobile --dart-define-from-file=apps/mobile/config/local.json",
+    "mobile:verify": "node scripts/verify-mobile-local.mjs",
+    "mobile:integration": "flutter test integration_test --directory apps/mobile --dart-define-from-file=apps/mobile/config/local.json"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

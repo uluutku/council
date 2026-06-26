@@ -72,10 +72,15 @@ Completed:
 - Messenger UI foundation is complete: the authenticated shell, navigation rail, mobile
   navigation, human conversation list, human conversation screen, composer, route skeletons, and
   local screenshot review tooling now use Council's semantic design tokens.
+- Native Flutter mobile foundation is added in `apps/mobile`: Android/iOS projects, Supabase
+  configuration, guarded mobile routing, authentication/onboarding, contacts, human messaging,
+  AI catalogue/chat/persona/memory surfaces, artifacts, profile/settings/access screens, strict
+  AI SSE parsing, local drafts/offline text queue storage, foreground notification abstraction,
+  Android build validation, and local mobile verification scripting.
 
 Incomplete:
 
-- Service-worker/mobile push notifications and richer attachment galleries.
+- Production background push notifications and richer attachment galleries.
 - Scanned-PDF OCR, Office/HTML analysis, and human-chat attachment forwarding.
 - Automatic memory extraction, embeddings, contradiction resolution, semantic search, and
   document knowledge bases.

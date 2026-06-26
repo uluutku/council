@@ -28,3 +28,6 @@ detailed implementation history.
 - Added Council's messenger design-system foundation, full-height authenticated shell, redesigned
   human messaging list/conversation/composer surfaces, route skeletons, and local UI screenshot
   review tooling.
+- Added the Flutter mobile app foundation in `apps/mobile` with Android/iOS projects, Supabase
+  backend integration, mobile auth/onboarding, chats, contacts, AI, memory, artifacts, profile,
+  settings, Premium access, strict AI SSE parsing, local verification scripts, and mobile docs.
