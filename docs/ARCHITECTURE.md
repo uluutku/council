@@ -74,6 +74,11 @@ The mobile application uses Dart with Riverpod, go_router, Supabase Flutter, typ
 strict SSE parsing, and local user-scoped persistence for drafts and offline text sends. It calls
 the same RPCs, Storage buckets, Realtime topics, and `ai-chat` Edge Function as the web app.
 
+Hosted Quality gates run no-secret web/schema/AI-contract and Flutter mobile checks on clean
+GitHub runners. Infrastructure-heavy verification remains local because database/RLS, Edge
+integration, Realtime concurrency, Playwright, mobile integration, iOS simulator, and live AI
+stages require Docker, local Supabase, local browsers or emulators, macOS, or server-side secrets.
+
 ## Runtime flow
 
 TanStack Query manages server state, Zustand manages local UI state, React Router owns

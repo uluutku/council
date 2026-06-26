@@ -66,9 +66,10 @@ Completed:
   mute, foreground browser notifications, inbox filters, and bounded conversation/message search.
 - Owner-issued Premium access codes are complete without payments: hash-only single-use codes,
   immutable grants, attempt limiting, stacked time/credits, and Premium-first exact-once credit use.
-- Local-first verification is complete: hosted GitHub test workflows are disabled, local
-  verification reports PASS/FAIL/SKIPPED, the AI runtime is decomposed internally, CORS is
-  fail-closed, and a small local AI behavior evaluation foundation exists.
+- Verification hardening is underway: hosted quality gates now run no-secret web/schema/mobile
+  checks on clean runners, local verification reports PASS/FAIL/SKIPPED for infrastructure-heavy
+  stages, the AI runtime is decomposed internally, CORS is fail-closed, and a small local AI
+  behavior evaluation foundation exists.
 - Messenger UI foundation is complete: the authenticated shell, navigation rail, mobile
   navigation, human conversation list, human conversation screen, composer, route skeletons, and
   local screenshot review tooling now use Council's semantic design tokens.
@@ -87,7 +88,8 @@ Incomplete:
 - Collaborative/public artifact sharing, comments, PDF/DOCX export, and background revision.
 - Tools, web search, AI inside human conversations, and public/shared personas.
 - Billing, payment checkout, automatic renewal, and recurring subscriptions.
-- Production hardening, deployment operations, and an independent security audit.
+- Production hardening, deployment operations, database-backed hosted verification, and an
+  independent security audit.
 - Full TypeScript migration, `ConversationPage` refactor, multi-browser matrix, automated
   accessibility gate, coverage thresholds, mutation testing, provider fallback, service-worker
   push, and production deployment operations remain intentionally deferred.

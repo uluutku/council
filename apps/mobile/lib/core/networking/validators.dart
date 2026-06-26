@@ -9,8 +9,9 @@ JsonMap asJsonMap(Object? value, String context) {
 
 List<JsonMap> asJsonMapList(Object? value, String context) {
   if (value == null) return const [];
-  if (value is List)
+  if (value is List) {
     return value.map((row) => asJsonMap(row, context)).toList();
+  }
   throw FormatException('Invalid $context response.');
 }
 

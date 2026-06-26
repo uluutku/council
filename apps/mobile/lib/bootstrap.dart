@@ -11,7 +11,7 @@ Future<void> bootstrap() async {
   final environment = MobileEnvironment.fromDartDefines();
   await Supabase.initialize(
     url: environment.effectiveSupabaseUrl,
-    anonKey: environment.supabaseAnonKey,
+    publishableKey: environment.supabaseAnonKey,
     authOptions: const FlutterAuthClientOptions(
       authFlowType: AuthFlowType.pkce,
     ),

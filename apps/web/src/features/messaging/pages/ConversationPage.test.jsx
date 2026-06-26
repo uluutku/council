@@ -257,6 +257,25 @@ describe('ConversationPage rendering', () => {
     expect(messagingApi.getMessageWindow).toHaveBeenCalledWith(CONVERSATION_ID, original.id);
   });
 
+  it('shows an accessible error when a deep-linked message window cannot load', async () => {
+    const reply = makeMessage({
+      sender_user_id: ME_ID,
+      content: 'reply loaded first',
+      reply_to_message_id: '99999999-9999-4999-8999-999999999999',
+    });
+    installServer({ messages: [reply] });
+    messagingApi.getMessageWindow.mockRejectedValueOnce(new MessagingApiError('message_not_found'));
+
+    openConversation({
+      state: { messageId: '99999999-9999-4999-8999-999999999999' },
+    });
+
+    expect(await screen.findByText('reply loaded first')).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That message is no longer available.',
+    );
+  });
+
   it('shows the empty conversation prompt when there are no messages', async () => {
     installServer({ messages: [] });
     openConversation();

@@ -48,6 +48,7 @@ export function useConversationController(conversationId) {
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editError, setEditError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [messageWindowError, setMessageWindowError] = useState('');
   const targetMessageId =
     location.state?.messageId ?? new URLSearchParams(location.search).get('message');
 
@@ -109,18 +110,27 @@ export function useConversationController(conversationId) {
           pages: [windowMessages],
           pageParams: [null],
         });
+        setMessageWindowError('');
       })
-      .catch(() => {});
+      .catch((error) => {
+        setMessageWindowError(messagingErrorMessage(error));
+      });
   }, [conversationId, isValidId, queryClient, targetMessageId]);
 
   const loadMessageWindow = useCallback(
     async (messageId) => {
       if (!isValidId || !messageId) return;
-      const windowMessages = await getMessageWindow(conversationId, messageId);
-      queryClient.setQueryData(messagingKeys.messages(conversationId), {
-        pages: [windowMessages],
-        pageParams: [null],
-      });
+      setMessageWindowError('');
+      try {
+        const windowMessages = await getMessageWindow(conversationId, messageId);
+        queryClient.setQueryData(messagingKeys.messages(conversationId), {
+          pages: [windowMessages],
+          pageParams: [null],
+        });
+      } catch (error) {
+        setMessageWindowError(messagingErrorMessage(error));
+        throw error;
+      }
     },
     [conversationId, isValidId, queryClient],
   );
@@ -217,7 +227,7 @@ export function useConversationController(conversationId) {
     canSend,
     showUnavailable,
     targetMessageId,
-    actionError: actionError || selection.selectionError,
+    actionError: actionError || messageWindowError || selection.selectionError,
     replyReferenceForComposer,
     activeEditingId,
     editState: { isSaving: mutations.edit.isPending, errorMessage: editError },

@@ -102,8 +102,9 @@ class AccountRepository {
 
   Future<Profile> getMyProfile() async {
     final userId = client.auth.currentUser?.id;
-    if (userId == null)
+    if (userId == null) {
       throw const AppError(AppErrorKind.authenticationRequired, 'Sign in.');
+    }
     Object? lastError;
     for (var attempt = 0; attempt < 4; attempt += 1) {
       try {
@@ -112,7 +113,9 @@ class AccountRepository {
             .select()
             .eq('id', userId)
             .maybeSingle();
-        if (data != null) return Profile.fromJson(asJsonMap(data, 'profile'));
+        if (data != null) {
+          return Profile.fromJson(asJsonMap(data, 'profile'));
+        }
       } catch (error) {
         lastError = error;
       }
@@ -124,8 +127,9 @@ class AccountRepository {
 
   Future<UserSettings> getMySettings() async {
     final userId = client.auth.currentUser?.id;
-    if (userId == null)
+    if (userId == null) {
       throw const AppError(AppErrorKind.authenticationRequired, 'Sign in.');
+    }
     Object? lastError;
     for (var attempt = 0; attempt < 4; attempt += 1) {
       try {
@@ -134,8 +138,9 @@ class AccountRepository {
             .select()
             .eq('user_id', userId)
             .maybeSingle();
-        if (data != null)
+        if (data != null) {
           return UserSettings.fromJson(asJsonMap(data, 'settings'));
+        }
       } catch (error) {
         lastError = error;
       }
@@ -192,8 +197,9 @@ class AccountRepository {
 
   Future<String> uploadAvatar(File file) async {
     final userId = client.auth.currentUser?.id;
-    if (userId == null)
+    if (userId == null) {
       throw const AppError(AppErrorKind.authenticationRequired, 'Sign in.');
+    }
     final mime = lookupMimeType(file.path) ?? 'image/jpeg';
     final path =
         '$userId/profile-${const Uuid().v4()}.${mime.split('/').last.replaceAll('jpeg', 'jpg')}';
@@ -495,8 +501,9 @@ class AiRepository {
     Map<String, dynamic>? contextImport,
   }) async* {
     final session = client.auth.currentSession;
-    if (session == null)
+    if (session == null) {
       throw const AppError(AppErrorKind.authenticationRequired, 'Sign in.');
+    }
     final request = http.Request(
       'POST',
       Uri.parse(environment.effectiveAiFunctionUrl),
@@ -548,7 +555,6 @@ class AiRepository {
   }) async {
     final rpc = id == null ? 'create_custom_persona' : 'update_custom_persona';
     final params = {
-      if (id != null) 'p_persona_id': id,
       'p_name': name,
       'p_description': description,
       'p_instructions': instructions,
@@ -556,6 +562,9 @@ class AiRepository {
       'p_verbosity': verbosity,
       'p_avatar_path': avatarPath,
     };
+    if (id != null) {
+      params['p_persona_id'] = id;
+    }
     final data = await client.rpc(rpc, params: params).single();
     return AiPersona.fromJson(asJsonMap(data, 'persona'));
   }

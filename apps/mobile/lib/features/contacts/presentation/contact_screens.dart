@@ -183,7 +183,7 @@ class _DiscoverContactsScreenState
                       .read(contactsRepositoryProvider)
                       .sendRequest(contact.id);
                   ref.invalidate(requestsProvider);
-                  if (mounted) {
+                  if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Request sent.')),
                     );

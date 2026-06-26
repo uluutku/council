@@ -167,13 +167,17 @@ recovery, private attachments, safe AI Markdown, AI credit accounting, artifacts
 typing, mute behavior, notifications, search, Premium code redemption, and small offline AI
 behavior checks.
 
-Verification is local-only. `npm run verify:local` is the normal command. It runs available local
-stages and prints PASS, FAIL, and SKIPPED rows. Infrastructure-dependent stages may be skipped
-when Docker, Supabase, Chromium, required ports, pinned Deno, or local configuration are
-unavailable. `npm run verify:local:strict` uses the same local machine checks and fails when any
-expected stage is skipped or failed. GitHub Actions is not used as a hosted test runner. Optional
-live AI evaluations are never part of local verification and may consume provider credits when
+Hosted Quality gates run no-secret web, schema, AI-contract, and Flutter mobile checks on clean
+GitHub runners for pushes and pull requests. `npm run verify:local` remains the normal local
+command for infrastructure-dependent stages and prints PASS, FAIL, and SKIPPED rows.
+Infrastructure-dependent stages may be skipped when Docker, Supabase, Chromium, required ports,
+pinned Deno, or local configuration are unavailable. `npm run verify:local:strict` uses the same
+local machine checks and fails when any expected stage is skipped or failed. Optional live AI
+evaluations are never part of hosted or local verification and may consume provider credits when
 explicitly confirmed.
+
+See [docs/TESTING.md](docs/TESTING.md) and [docs/OPERATIONS.md](docs/OPERATIONS.md) for release
+gates, local-only stages, and production readiness requirements.
 
 ## Repository
 

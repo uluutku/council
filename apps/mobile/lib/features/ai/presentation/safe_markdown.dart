@@ -14,11 +14,12 @@ class SafeMarkdown extends StatelessWidget {
       data: data,
       selectable: true,
       extensionSet: md.ExtensionSet.gitHubFlavored,
-      imageBuilder: (_, __, ___) => const Text('[remote image omitted]'),
+      sizedImageBuilder: (_) => const Text('[remote image omitted]'),
       onTapLink: (_, href, __) async {
         final uri = Uri.tryParse(href ?? '');
-        if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https'))
+        if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
           return;
+        }
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       },
       builders: {'code': CodeElementBuilder()},

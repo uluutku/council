@@ -1124,7 +1124,7 @@ class _PersonaEditorScreenState extends ConsumerState<PersonaEditorScreen> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField(
-          value: tone,
+          initialValue: tone,
           decoration: const InputDecoration(labelText: 'Tone'),
           items: const ['warm', 'balanced', 'direct', 'playful', 'formal']
               .map(
@@ -1135,7 +1135,7 @@ class _PersonaEditorScreenState extends ConsumerState<PersonaEditorScreen> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField(
-          value: verbosity,
+          initialValue: verbosity,
           decoration: const InputDecoration(labelText: 'Verbosity'),
           items: const ['concise', 'balanced', 'detailed']
               .map(

@@ -1,7 +1,14 @@
 # Testing
 
-Council verification is local-only. GitHub-hosted runners do not run tests, builds, linting,
-database checks, Supabase, Playwright, or deployment jobs.
+Council uses two verification layers:
+
+- Hosted quality gates in `.github/workflows/quality-gates.yml` run on pushes to `main`, pull
+  requests, and manual dispatch. They execute the no-secret stages that can run on clean GitHub
+  runners: formatting, linting, shared/web tests, production web build, AI Edge static check,
+  offline AI evaluations, Flutter dependency resolution, mobile formatting, mobile static analysis,
+  mobile unit/widget tests, and an Android debug build.
+- Local strict verification remains the authority for infrastructure-dependent stages that need
+  Docker, local Supabase, local Realtime/Auth, local Chromium, emulators, or local secrets.
 
 ## Local Commands
 
@@ -29,6 +36,11 @@ Result semantics:
 
 Logs and local eval results are written only under `.local-test-results/`, which is gitignored and
 never uploaded automatically.
+
+Hosted workflow artifacts intentionally do not include private local logs or secrets. Database/RLS,
+Edge integration, Playwright, messaging concurrency, mobile integration tests, iOS simulator
+builds, and live AI evaluations remain local-only until their prerequisites are available in a
+controlled runner without exposing server credentials.
 
 ## Local prerequisites
 
