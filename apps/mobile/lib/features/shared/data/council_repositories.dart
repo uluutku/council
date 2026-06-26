@@ -104,12 +104,22 @@ class AccountRepository {
     final userId = client.auth.currentUser?.id;
     if (userId == null)
       throw const AppError(AppErrorKind.authenticationRequired, 'Sign in.');
-    final data = await client
-        .from('profiles')
-        .select()
-        .eq('id', userId)
-        .single();
-    return Profile.fromJson(asJsonMap(data, 'profile'));
+    Object? lastError;
+    for (var attempt = 0; attempt < 4; attempt += 1) {
+      try {
+        final data = await client
+            .from('profiles')
+            .select()
+            .eq('id', userId)
+            .maybeSingle();
+        if (data != null) return Profile.fromJson(asJsonMap(data, 'profile'));
+      } catch (error) {
+        lastError = error;
+      }
+      await Future<void>.delayed(Duration(milliseconds: 150 * (1 << attempt)));
+    }
+    if (lastError != null) throw AppError.from(lastError);
+    throw const AppError(AppErrorKind.unavailable, 'Profile is not ready yet.');
   }
 
   Future<UserSettings> getMySettings() async {
@@ -135,11 +145,11 @@ class AccountRepository {
         .rpc(
           'set_my_profile',
           params: {
-            'p_username': username,
-            'p_display_name': displayName,
-            'p_bio': bio,
-            'p_status_text': statusText,
-            'p_avatar_path': avatarPath,
+            'username': username,
+            'display_name': displayName,
+            'bio': bio,
+            'avatar_path': avatarPath,
+            'status_text': statusText,
           },
         )
         .single();

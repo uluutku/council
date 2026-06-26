@@ -15,6 +15,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final email = TextEditingController();
   final password = TextEditingController();
+  final emailFocus = FocusNode();
+  final passwordFocus = FocusNode();
   String? error;
   var busy = false;
 
@@ -24,15 +26,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     child: Column(
       children: [
         if (error != null) ErrorBanner(error!),
-        TextField(
+        AuthTextField(
           controller: email,
-          decoration: const InputDecoration(labelText: 'Email'),
+          focusNode: emailFocus,
+          label: 'Email',
+          keyboardType: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email],
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => passwordFocus.requestFocus(),
         ),
         const SizedBox(height: 12),
-        TextField(
+        AuthTextField(
           controller: password,
+          focusNode: passwordFocus,
+          label: 'Password',
           obscureText: true,
-          decoration: const InputDecoration(labelText: 'Password'),
+          autofillHints: const [AutofillHints.password],
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _submit(),
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
@@ -63,6 +74,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) setState(() => busy = false);
     }
   }
+
+  @override
+  void dispose() {
+    email.dispose();
+    password.dispose();
+    emailFocus.dispose();
+    passwordFocus.dispose();
+    super.dispose();
+  }
 }
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -74,6 +94,8 @@ class RegisterScreen extends ConsumerStatefulWidget {
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final email = TextEditingController();
   final password = TextEditingController();
+  final emailFocus = FocusNode();
+  final passwordFocus = FocusNode();
   String? error;
   var busy = false;
 
@@ -83,15 +105,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     child: Column(
       children: [
         if (error != null) ErrorBanner(error!),
-        TextField(
+        AuthTextField(
           controller: email,
-          decoration: const InputDecoration(labelText: 'Email'),
+          focusNode: emailFocus,
+          label: 'Email',
+          keyboardType: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email],
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => passwordFocus.requestFocus(),
         ),
         const SizedBox(height: 12),
-        TextField(
+        AuthTextField(
           controller: password,
+          focusNode: passwordFocus,
+          label: 'Password',
           obscureText: true,
-          decoration: const InputDecoration(labelText: 'Password'),
+          autofillHints: const [AutofillHints.newPassword],
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _submit(),
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
@@ -120,6 +151,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) setState(() => busy = false);
     }
   }
+
+  @override
+  void dispose() {
+    email.dispose();
+    password.dispose();
+    emailFocus.dispose();
+    passwordFocus.dispose();
+    super.dispose();
+  }
 }
 
 class VerifyEmailScreen extends ConsumerStatefulWidget {
@@ -130,15 +170,19 @@ class VerifyEmailScreen extends ConsumerStatefulWidget {
 
 class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   final email = TextEditingController();
+  final emailFocus = FocusNode();
   String? status;
   @override
   Widget build(BuildContext context) => AuthScaffold(
     title: 'Verify your email',
     child: Column(
       children: [
-        TextField(
+        AuthTextField(
           controller: email,
-          decoration: const InputDecoration(labelText: 'Email'),
+          focusNode: emailFocus,
+          label: 'Email',
+          keyboardType: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email],
         ),
         const SizedBox(height: 12),
         FilledButton.tonalIcon(
@@ -160,6 +204,13 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       ],
     ),
   );
+
+  @override
+  void dispose() {
+    email.dispose();
+    emailFocus.dispose();
+    super.dispose();
+  }
 }
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -171,15 +222,20 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final email = TextEditingController();
+  final emailFocus = FocusNode();
   String? status;
   @override
   Widget build(BuildContext context) => AuthScaffold(
     title: 'Reset password',
     child: Column(
       children: [
-        TextField(
+        AuthTextField(
           controller: email,
-          decoration: const InputDecoration(labelText: 'Email'),
+          focusNode: emailFocus,
+          label: 'Email',
+          keyboardType: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email],
+          textInputAction: TextInputAction.done,
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
@@ -197,6 +253,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       ],
     ),
   );
+
+  @override
+  void dispose() {
+    email.dispose();
+    emailFocus.dispose();
+    super.dispose();
+  }
 }
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
@@ -208,6 +271,7 @@ class ResetPasswordScreen extends ConsumerStatefulWidget {
 
 class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final password = TextEditingController();
+  final passwordFocus = FocusNode();
   String? error;
   @override
   Widget build(BuildContext context) => AuthScaffold(
@@ -215,10 +279,13 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     child: Column(
       children: [
         if (error != null) ErrorBanner(error!),
-        TextField(
+        AuthTextField(
           controller: password,
+          focusNode: passwordFocus,
+          label: 'New password',
           obscureText: true,
-          decoration: const InputDecoration(labelText: 'New password'),
+          autofillHints: const [AutofillHints.newPassword],
+          textInputAction: TextInputAction.done,
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
@@ -238,6 +305,13 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       ],
     ),
   );
+
+  @override
+  void dispose() {
+    password.dispose();
+    passwordFocus.dispose();
+    super.dispose();
+  }
 }
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -249,6 +323,8 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final username = TextEditingController();
   final displayName = TextEditingController();
+  final usernameFocus = FocusNode();
+  final displayNameFocus = FocusNode();
   String? error;
   @override
   Widget build(BuildContext context) => AuthScaffold(
@@ -256,14 +332,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     child: Column(
       children: [
         if (error != null) ErrorBanner(error!),
-        TextField(
+        AuthTextField(
           controller: username,
-          decoration: const InputDecoration(labelText: 'Username'),
+          focusNode: usernameFocus,
+          label: 'Username',
+          keyboardType: TextInputType.text,
+          autofillHints: const [AutofillHints.username],
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => displayNameFocus.requestFocus(),
         ),
         const SizedBox(height: 12),
-        TextField(
+        AuthTextField(
           controller: displayName,
-          decoration: const InputDecoration(labelText: 'Display name'),
+          focusNode: displayNameFocus,
+          label: 'Display name',
+          textCapitalization: TextCapitalization.words,
+          autofillHints: const [AutofillHints.name],
+          textInputAction: TextInputAction.done,
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
@@ -287,6 +372,58 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ],
     ),
   );
+
+  @override
+  void dispose() {
+    username.dispose();
+    displayName.dispose();
+    usernameFocus.dispose();
+    displayNameFocus.dispose();
+    super.dispose();
+  }
+}
+
+class AuthTextField extends StatelessWidget {
+  const AuthTextField({
+    required this.controller,
+    required this.focusNode,
+    required this.label,
+    this.keyboardType,
+    this.textInputAction,
+    this.autofillHints,
+    this.obscureText = false,
+    this.textCapitalization = TextCapitalization.none,
+    this.onSubmitted,
+    super.key,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String label;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
+  final bool obscureText;
+  final TextCapitalization textCapitalization;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      focusNode: focusNode,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      autofillHints: autofillHints,
+      obscureText: obscureText,
+      autocorrect: false,
+      enableSuggestions: !obscureText,
+      textCapitalization: textCapitalization,
+      onTap: focusNode.requestFocus,
+      onSubmitted: onSubmitted,
+      decoration: InputDecoration(labelText: label),
+    );
+  }
 }
 
 class AuthScaffold extends StatelessWidget {
