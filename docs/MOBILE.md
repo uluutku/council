@@ -65,6 +65,14 @@ same client id used for backend idempotency, assistant thinking and typing state
 while the stream is pending, and persisted AI history is rendered in the backend's authoritative
 chronological order.
 
+The mobile UI shares token-driven animated panels, list rows, status pills, and empty states across
+Chats, AI, Contacts, Artifacts, Profile, and Settings. Message search uses the existing
+`search_my_conversations` and `search_my_messages` RPCs. Blocked-user management uses
+`list_my_blocked_users` and `unblock_user`. Artifact library search, type filters, archive/restore,
+native sharing, editor save-as-version, and unsaved-change protection are implemented on the
+existing artifact RPCs. Appearance settings include live previews for the four stored chat
+backgrounds before saving through `update_my_settings`.
+
 Background push delivery is represented by the client notification abstraction. Production
 background push still requires Firebase/APNs credentials and a backend dispatch configuration; the
 current verified path is foreground local notification support from Realtime hints.

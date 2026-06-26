@@ -219,6 +219,14 @@ class ContactsRepository {
     ).map(ContactRequest.fromJson).toList();
   }
 
+  Future<List<BlockedUser>> listBlockedUsers() async {
+    final data = await client.rpc('list_my_blocked_users');
+    return asJsonMapList(
+      data,
+      'blocked users',
+    ).map(BlockedUser.fromJson).toList();
+  }
+
   Future<List<Contact>> search(String query) async {
     if (query.trim().length < 2) return const [];
     final data = await client.rpc(
@@ -370,6 +378,37 @@ class MessagingRepository {
       'p_through_sequence': sequence,
     },
   );
+
+  Future<List<ConversationSearchResult>> searchConversations(
+    String query,
+  ) async {
+    if (query.trim().length < 2) return const [];
+    final data = await client.rpc(
+      'search_my_conversations',
+      params: {'p_query': query.trim(), 'p_result_limit': 20},
+    );
+    return asJsonMapList(
+      data,
+      'conversation search',
+    ).map(ConversationSearchResult.fromJson).toList();
+  }
+
+  Future<List<MessageSearchResult>> searchMessages(String query) async {
+    if (query.trim().length < 2) return const [];
+    final data = await client.rpc(
+      'search_my_messages',
+      params: {
+        'p_query': query.trim(),
+        'p_before_created_at': null,
+        'p_before_id': null,
+        'p_result_limit': 30,
+      },
+    );
+    return asJsonMapList(
+      data,
+      'message search',
+    ).map(MessageSearchResult.fromJson).toList();
+  }
 
   RealtimeChannel subscribeConversation(
     String conversationId,

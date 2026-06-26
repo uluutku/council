@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'theme/council_theme.dart';
 import '../features/authentication/presentation/auth_screens.dart';
 import '../features/ai/presentation/ai_screens.dart';
 import '../features/artifacts/presentation/artifact_screens.dart';
@@ -218,32 +219,93 @@ class CouncilShell extends StatelessWidget {
       return Scaffold(
         body: Row(
           children: [
-            NavigationRail(
-              selectedIndex: shell.currentIndex,
-              onDestinationSelected: shell.goBranch,
-              labelType: NavigationRailLabelType.all,
-              destinations: destinations
-                  .map(
-                    (d) => NavigationRailDestination(
-                      icon: d.icon,
-                      label: Text(d.label),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                border: Border(
+                  right: BorderSide(color: context.councilColors.divider),
+                ),
+              ),
+              child: NavigationRail(
+                selectedIndex: shell.currentIndex,
+                onDestinationSelected: shell.goBranch,
+                labelType: NavigationRailLabelType.all,
+                leading: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  )
-                  .toList(),
+                    child: const SizedBox(
+                      width: 38,
+                      height: 38,
+                      child: Center(
+                        child: Text(
+                          'C',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                destinations: destinations
+                    .map(
+                      (d) => NavigationRailDestination(
+                        icon: d.icon,
+                        label: Text(d.label),
+                      ),
+                    )
+                    .toList(),
+              ),
             ),
-            const VerticalDivider(width: 1),
-            Expanded(child: shell),
+            Expanded(
+              child: _ShellAnimatedBody(
+                index: shell.currentIndex,
+                child: shell,
+              ),
+            ),
           ],
         ),
       );
     }
     return Scaffold(
-      body: shell,
+      body: _ShellAnimatedBody(index: shell.currentIndex, child: shell),
       bottomNavigationBar: NavigationBar(
         selectedIndex: shell.currentIndex,
         onDestinationSelected: shell.goBranch,
         destinations: destinations,
       ),
+    );
+  }
+}
+
+class _ShellAnimatedBody extends StatelessWidget {
+  const _ShellAnimatedBody({required this.index, required this.child});
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return child;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeOutCubic,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.015, 0),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      child: KeyedSubtree(key: ValueKey(index), child: child),
     );
   }
 }

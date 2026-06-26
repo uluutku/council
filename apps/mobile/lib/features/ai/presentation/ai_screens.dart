@@ -73,16 +73,35 @@ class AiHomeScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             if (access != null)
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.verified_outlined),
-                  title: Text(access.isPro ? 'Premium access' : 'Trial access'),
-                  subtitle: Text(
-                    'Premium credits ${access.proCreditsRemaining}. Trial credits ${access.trialCreditsRemaining}.',
-                  ),
+              CouncilPanel(
+                margin: const EdgeInsets.only(bottom: 14),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.verified_outlined,
+                      color: access.isPro
+                          ? Theme.of(context).colorScheme.primary
+                          : context.councilColors.textSecondary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        access.isPro ? 'Premium access' : 'Trial access',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    CouncilPill(
+                      label: 'Pro ${access.proCreditsRemaining}',
+                      ai: true,
+                    ),
+                    const SizedBox(width: 6),
+                    CouncilPill(label: 'Trial ${access.trialCreditsRemaining}'),
+                  ],
                 ),
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             Text(
               'Built-in contacts',
               style: Theme.of(context).textTheme.titleMedium,
@@ -113,39 +132,40 @@ class AiHomeScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             personas.when(
-              data: (items) => Column(
-                children: items
-                    .map(
-                      (persona) => Card(
-                        child: ListTile(
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.person_4_outlined),
-                          ),
-                          title: Text(persona.name),
-                          subtitle: Text(
-                            persona.archived ? 'Archived' : persona.description,
-                          ),
-                          trailing: IconButton(
-                            tooltip: 'Edit persona',
-                            icon: const Icon(Icons.edit_outlined),
-                            onPressed: () =>
-                                context.push('/ai/personas/${persona.id}/edit'),
-                          ),
-                          onTap: persona.archived
-                              ? null
-                              : () async {
-                                  final convo = await ref
-                                      .read(aiRepositoryProvider)
-                                      .openConversation(personaId: persona.id);
-                                  ref.invalidate(aiConversationsProvider);
-                                  if (context.mounted)
-                                    context.push('/ai/${convo.id}');
-                                },
-                        ),
-                      ),
+              data: (items) => items.isEmpty
+                  ? const CouncilListTile(
+                      leading: Icon(Icons.person_4_outlined),
+                      title: 'No custom personas yet',
+                      subtitle:
+                          'Create a private AI contact with its own style.',
                     )
-                    .toList(),
-              ),
+                  : Column(
+                      children: [
+                        for (var index = 0; index < items.length; index++)
+                          FadeSlideIn(
+                            delay: Duration(milliseconds: index * 24),
+                            child: PersonaCatalogueCard(
+                              persona: items[index],
+                              onEdit: () => context.push(
+                                '/ai/personas/${items[index].id}/edit',
+                              ),
+                              onOpen: items[index].archived
+                                  ? null
+                                  : () async {
+                                      final convo = await ref
+                                          .read(aiRepositoryProvider)
+                                          .openConversation(
+                                            personaId: items[index].id,
+                                          );
+                                      ref.invalidate(aiConversationsProvider);
+                                      if (context.mounted) {
+                                        context.push('/ai/${convo.id}');
+                                      }
+                                    },
+                            ),
+                          ),
+                      ],
+                    ),
               error: (e, _) => ErrorBanner(AppError.from(e).message),
               loading: () => const SizedBox.shrink(),
             ),
@@ -251,6 +271,86 @@ class AiAgentCatalogueCard extends StatelessWidget {
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PersonaCatalogueCard extends StatelessWidget {
+  const PersonaCatalogueCard({
+    required this.persona,
+    required this.onEdit,
+    required this.onOpen,
+    super.key,
+  });
+
+  final AiPersona persona;
+  final VoidCallback onEdit;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.councilColors;
+    return CouncilPanel(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(14),
+      onTap: onOpen,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AiContactAvatar(name: persona.name, custom: true, radius: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        persona.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    CouncilPill(
+                      label: persona.archived ? 'Archived' : 'Persona',
+                      icon: persona.archived
+                          ? Icons.archive_outlined
+                          : Icons.auto_awesome,
+                      ai: !persona.archived,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  persona.archived
+                      ? 'History remains available. Restore before generating.'
+                      : persona.description,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: colors.textSecondary, height: 1.35),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    CouncilPill(label: persona.tone),
+                    CouncilPill(label: persona.verbosity),
+                    TextButton.icon(
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Edit'),
+                    ),
+                  ],
                 ),
               ],
             ),

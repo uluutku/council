@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../../../app/theme/council_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../core/persistence/local_store.dart';
+import '../../../core/widgets/chat_background.dart';
 import '../../../core/widgets/common.dart';
 import '../../ai/presentation/ai_screens.dart';
 import '../../shared/data/council_repositories.dart';
@@ -119,15 +120,23 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                     children: [
                       if (filtered.isNotEmpty)
                         const _InboxSectionHeader(label: 'Human chats'),
-                      for (final item in filtered)
-                        HumanConversationTile(item: item),
+                      for (var index = 0; index < filtered.length; index++)
+                        FadeSlideIn(
+                          delay: Duration(milliseconds: index * 18),
+                          child: HumanConversationTile(item: filtered[index]),
+                        ),
                       if (aiItems.isNotEmpty)
                         const _InboxSectionHeader(label: 'AI chats'),
                       if (aiConversations.isLoading &&
                           filter == InboxFilter.all)
                         const LinearProgressIndicator(),
-                      for (final item in aiItems)
-                        AiConversationTile(conversation: item),
+                      for (var index = 0; index < aiItems.length; index++)
+                        FadeSlideIn(
+                          delay: Duration(milliseconds: index * 18),
+                          child: AiConversationTile(
+                            conversation: aiItems[index],
+                          ),
+                        ),
                       if (aiConversations.hasError && filter == InboxFilter.all)
                         ErrorBanner(
                           AppError.from(aiConversations.error!).message,
@@ -167,22 +176,27 @@ class HumanConversationTile extends StatelessWidget {
   final ConversationSummary item;
 
   @override
-  Widget build(BuildContext context) => ListTile(
+  Widget build(BuildContext context) => CouncilListTile(
     leading: CircleAvatar(
       child: Text(item.peerLabel.characters.first.toUpperCase()),
     ),
-    title: Text(item.peerLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
-    subtitle: Text(
-      item.preview ?? 'Attachment',
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    ),
+    title: item.peerLabel,
+    subtitle: item.preview?.trim().isNotEmpty == true
+        ? item.preview!.trim()
+        : 'Attachment',
     trailing: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (item.isMuted)
-          const Icon(Icons.notifications_off_outlined, size: 18),
-        if (item.unreadCount > 0) Badge(label: Text('${item.unreadCount}')),
+          Icon(
+            Icons.notifications_off_outlined,
+            size: 18,
+            color: context.councilColors.textTertiary,
+          ),
+        if (item.unreadCount > 0) ...[
+          const SizedBox(width: 8),
+          Badge(label: Text('${item.unreadCount}')),
+        ],
       ],
     ),
     onTap: () => context.push('/chats/${item.id}'),
@@ -197,7 +211,7 @@ class AiConversationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.councilColors;
     final kind = conversation.kind == 'custom' ? 'Custom' : 'AI';
-    return ListTile(
+    return CouncilListTile(
       leading: CircleAvatar(
         backgroundColor: conversation.kind == 'custom'
             ? colors.accentSoft
@@ -219,43 +233,17 @@ class AiConversationTile extends StatelessWidget {
               )
             : Text(conversation.displayName.characters.first.toUpperCase()),
       ),
-      title: Text(
-        conversation.displayName,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Row(
+      title: conversation.displayName,
+      subtitle: conversation.description?.trim().isNotEmpty == true
+          ? conversation.description!.trim()
+          : 'Available',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Text(
-              conversation.description?.trim().isNotEmpty == true
-                  ? conversation.description!.trim()
-                  : 'Online',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 8),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: conversation.kind == 'custom'
-                  ? colors.accentSoft
-                  : colors.aiAccentSoft,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              child: Text(
-                kind,
-                style: TextStyle(
-                  color: conversation.kind == 'custom'
-                      ? colors.messageOutgoing
-                      : colors.aiAccent,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 11,
-                ),
-              ),
-            ),
+          CouncilPill(
+            label: kind,
+            icon: Icons.auto_awesome,
+            ai: conversation.kind != 'custom',
           ),
         ],
       ),
@@ -359,7 +347,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         children: [
           if (error != null) ErrorBanner(error!),
           Expanded(
-            child: ChatBackground(
+            child: SharedChatBackground(
               background: settings?.chatBackground ?? 'clean',
               child: messages.when(
                 data: (items) {
@@ -759,16 +747,152 @@ class MessageBubble extends StatelessWidget {
   }
 }
 
-class MessageSearchScreen extends StatelessWidget {
+class MessageSearchScreen extends ConsumerStatefulWidget {
   const MessageSearchScreen({super.key});
+
+  @override
+  ConsumerState<MessageSearchScreen> createState() =>
+      _MessageSearchScreenState();
+}
+
+class _MessageSearchScreenState extends ConsumerState<MessageSearchScreen> {
+  final query = TextEditingController();
+  Timer? debounce;
+  var conversationResults = const <ConversationSearchResult>[];
+  var messageResults = const <MessageSearchResult>[];
+  String? error;
+  bool loading = false;
+  String lastQuery = '';
+
+  @override
+  void dispose() {
+    debounce?.cancel();
+    query.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Message search')),
-    body: const EmptyState(
-      icon: Icons.search,
-      title: 'Search is backend-backed',
-      body:
-          'Use conversation and message search through the existing bounded RPCs.',
+    body: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (error != null) ErrorBanner(error!),
+        CouncilPanel(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          child: SearchBar(
+            controller: query,
+            leading: const Icon(Icons.search),
+            hintText: 'Search conversations and messages',
+            elevation: const WidgetStatePropertyAll(0),
+            backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+            onChanged: _queueSearch,
+            onSubmitted: (_) => _search(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (loading) const LinearProgressIndicator(),
+        if (!loading && lastQuery.trim().length < 2)
+          const CouncilListTile(
+            leading: Icon(Icons.search),
+            title: 'Type at least 2 characters',
+            subtitle: 'Search runs through bounded private messaging RPCs.',
+          ),
+        if (lastQuery.trim().length >= 2) ...[
+          CouncilSection(
+            title: 'Conversations',
+            children: conversationResults.isEmpty && !loading
+                ? const [
+                    CouncilListTile(
+                      leading: Icon(Icons.chat_bubble_outline),
+                      title: 'No matching conversations',
+                    ),
+                  ]
+                : [
+                    for (final result in conversationResults)
+                      CouncilListTile(
+                        leading: CircleAvatar(
+                          child: Text(
+                            result.peerLabel.characters.first.toUpperCase(),
+                          ),
+                        ),
+                        title: result.peerLabel,
+                        subtitle: 'Open conversation',
+                        onTap: () =>
+                            context.push('/chats/${result.conversationId}'),
+                      ),
+                  ],
+          ),
+          CouncilSection(
+            title: 'Messages',
+            children: messageResults.isEmpty && !loading
+                ? const [
+                    CouncilListTile(
+                      leading: Icon(Icons.search_off),
+                      title: 'No matching messages',
+                    ),
+                  ]
+                : [
+                    for (final result in messageResults)
+                      CouncilListTile(
+                        leading: CircleAvatar(
+                          child: Text(
+                            result.peerLabel.characters.first.toUpperCase(),
+                          ),
+                        ),
+                        title: result.peerLabel,
+                        subtitle: result.snippet,
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () =>
+                            context.push('/chats/${result.conversationId}'),
+                      ),
+                  ],
+          ),
+        ],
+      ],
     ),
   );
+
+  void _queueSearch(String value) {
+    lastQuery = value;
+    debounce?.cancel();
+    if (value.trim().length < 2) {
+      setState(() {
+        conversationResults = const [];
+        messageResults = const [];
+        loading = false;
+        error = null;
+      });
+      return;
+    }
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    debounce = Timer(const Duration(milliseconds: 260), _search);
+  }
+
+  Future<void> _search() async {
+    final current = query.text.trim();
+    lastQuery = current;
+    if (current.length < 2) return;
+    try {
+      final repo = ref.read(messagingRepositoryProvider);
+      final conversations = await repo.searchConversations(current);
+      final messages = await repo.searchMessages(current);
+      if (!mounted || current != query.text.trim()) return;
+      setState(() {
+        conversationResults = conversations;
+        messageResults = messages;
+        loading = false;
+        error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        error = AppError.from(e).message;
+        loading = false;
+      });
+    }
+  }
 }

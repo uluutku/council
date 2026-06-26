@@ -115,6 +115,34 @@ class ContactRequest {
   String get label => displayName?.isNotEmpty == true ? displayName! : username;
 }
 
+class BlockedUser {
+  const BlockedUser({
+    required this.id,
+    required this.username,
+    required this.blockedAt,
+    this.displayName,
+    this.avatarPath,
+    this.statusText,
+  });
+
+  factory BlockedUser.fromJson(JsonMap json) => BlockedUser(
+    id: requiredString(json, 'id'),
+    username: requiredString(json, 'username'),
+    displayName: optionalString(json, 'display_name'),
+    avatarPath: optionalString(json, 'avatar_path'),
+    statusText: optionalString(json, 'status_text'),
+    blockedAt: requiredString(json, 'blocked_at'),
+  );
+
+  final String id;
+  final String username;
+  final String? displayName;
+  final String? avatarPath;
+  final String? statusText;
+  final String blockedAt;
+  String get label => displayName?.isNotEmpty == true ? displayName! : username;
+}
+
 class ConversationSummary {
   const ConversationSummary({
     required this.id,
@@ -155,6 +183,61 @@ class ConversationSummary {
   final String? preview;
   final String? lastSenderId;
   final bool isMuted;
+}
+
+class ConversationSearchResult {
+  const ConversationSearchResult({
+    required this.conversationId,
+    required this.peerId,
+    required this.peerLabel,
+  });
+
+  factory ConversationSearchResult.fromJson(JsonMap json) =>
+      ConversationSearchResult(
+        conversationId: requiredString(json, 'conversation_id'),
+        peerId: requiredString(json, 'peer_id'),
+        peerLabel:
+            optionalString(json, 'peer_display_name') ??
+            optionalString(json, 'peer_username') ??
+            'Council user',
+      );
+
+  final String conversationId;
+  final String peerId;
+  final String peerLabel;
+}
+
+class MessageSearchResult {
+  const MessageSearchResult({
+    required this.conversationId,
+    required this.messageId,
+    required this.sequence,
+    required this.snippet,
+    required this.senderId,
+    required this.createdAt,
+    required this.peerLabel,
+  });
+
+  factory MessageSearchResult.fromJson(JsonMap json) => MessageSearchResult(
+    conversationId: requiredString(json, 'conversation_id'),
+    messageId: requiredString(json, 'message_id'),
+    sequence: requiredInt(json, 'sequence'),
+    snippet: requiredString(json, 'snippet'),
+    senderId: requiredString(json, 'sender_id'),
+    createdAt: requiredString(json, 'created_at'),
+    peerLabel:
+        optionalString(json, 'peer_display_name') ??
+        optionalString(json, 'peer_username') ??
+        'Council user',
+  );
+
+  final String conversationId;
+  final String messageId;
+  final int sequence;
+  final String snippet;
+  final String senderId;
+  final String createdAt;
+  final String peerLabel;
 }
 
 class MessageAttachment {
