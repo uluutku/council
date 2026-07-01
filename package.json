@@ -51,13 +51,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
-    "@supabase/supabase-js": "^2.108.2",
-    "deno": "^2.1.4",
-    "eslint": "^10.5.0",
+    "@supabase/supabase-js": "^2.110.0",
+    "deno": "^2.9.0",
+    "eslint": "^10.6.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
-    "globals": "^17.6.0",
-    "prettier": "^3.8.4",
-    "supabase": "^2.107.0"
+    "globals": "^17.7.0",
+    "prettier": "^3.9.4",
+    "supabase": "^2.109.0"
   }
 }
